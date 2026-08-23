@@ -215,15 +215,49 @@ export function standings(players, metric = 'xp') {
 const latestSnapshot = (snapshots) => snapshots[snapshots.length - 1] ?? null;
 
 /**
- * Baseline for a window: the newest snapshot at or before the cutoff, so the
- * delta spans at least the requested window. Falls back to the oldest snapshot
- * when history is shorter than the window.
+ * Sentinels for the Gains periods: each anchors the cutoff to the start of
+ * the current UTC day/week/month instead of `latest - N seconds`, so the
+ * figure resets to zero at the calendar boundary rather than decaying on a
+ * rolling window. Weeks start Monday 00:00 UTC (ISO 8601).
  */
-function baselineSnapshot(snapshots, windowSeconds) {
-  if (snapshots.length === 0) return null;
-  if (!Number.isFinite(windowSeconds)) return snapshots[0];
+export const CALENDAR_DAY = Symbol('calendar-day');
+export const CALENDAR_WEEK = Symbol('calendar-week');
+export const CALENDAR_MONTH = Symbol('calendar-month');
 
-  const cutoff = (latestSnapshot(snapshots)?.t ?? 0) - windowSeconds;
+const utcDayStart = (unixSeconds) => {
+  const date = new Date(unixSeconds * 1000);
+  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000);
+};
+
+const utcWeekStart = (unixSeconds) => {
+  const dayStart = utcDayStart(unixSeconds);
+  const mondayIndexedWeekday = (new Date(dayStart * 1000).getUTCDay() + 6) % 7; // Mon=0 .. Sun=6
+  return dayStart - mondayIndexedWeekday * 86400;
+};
+
+const utcMonthStart = (unixSeconds) => {
+  const date = new Date(unixSeconds * 1000);
+  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1000);
+};
+
+/**
+ * The baseline cutoff for a window, anchored to the latest snapshot's own
+ * clock (not the caller's) so this stays a pure function of the data. A
+ * non-finite window (no window at all) resolves to -Infinity, which no
+ * snapshot is ever at-or-before, so `snapshotAtOrBefore` falls through to
+ * the very first snapshot — "all of history".
+ */
+function resolveCutoff(latestSeconds, window) {
+  if (window === CALENDAR_DAY) return utcDayStart(latestSeconds);
+  if (window === CALENDAR_WEEK) return utcWeekStart(latestSeconds);
+  if (window === CALENDAR_MONTH) return utcMonthStart(latestSeconds);
+  return Number.isFinite(window) ? latestSeconds - window : -Infinity;
+}
+
+/** The newest snapshot at or before `cutoff`, so the delta spans at least the
+ * requested window; falls back to the oldest snapshot when history doesn't
+ * reach back that far. */
+function snapshotAtOrBefore(snapshots, cutoff) {
   const atOrBefore = snapshots.filter((snapshot) => snapshot.t <= cutoff);
   return atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : snapshots[0];
 }
@@ -231,10 +265,14 @@ function baselineSnapshot(snapshots, windowSeconds) {
 /**
  * XP gained per player over a window. Index 0 of a snapshot vector is Overall,
  * so it is the total; indices 1+ are the individual skills.
+ *
+ * @param window seconds (a rolling span) or CALENDAR_DAY / CALENDAR_WEEK /
+ *   CALENDAR_MONTH (aligned to the start of that UTC calendar period)
  */
-export function computeGains(snapshots, players, windowSeconds) {
+export function computeGains(snapshots, players, window) {
   const current = latestSnapshot(snapshots);
-  const baseline = baselineSnapshot(snapshots, windowSeconds);
+  const cutoff = current ? resolveCutoff(current.t, window) : null;
+  const baseline = current ? snapshotAtOrBefore(snapshots, cutoff) : null;
 
   const hasSpan = Boolean(current && baseline && current.t > baseline.t);
 
@@ -260,9 +298,9 @@ export function computeGains(snapshots, players, windowSeconds) {
   return {
     hasSpan,
     spanSeconds,
-    // False when history is shorter than the window asked for, so the figures
+    // False when history doesn't reach back to the cutoff, so the figures
     // actually cover less time than the heading claims.
-    coversWindow: hasSpan && (!Number.isFinite(windowSeconds) || spanSeconds >= windowSeconds),
+    coversWindow: hasSpan && baseline.t <= cutoff,
     from: baseline ? new Date(baseline.t * 1000).toISOString() : null,
     to: current ? new Date(current.t * 1000).toISOString() : null,
     rows: rows
@@ -279,10 +317,11 @@ export function computeGains(snapshots, players, windowSeconds) {
  * Snapshots older than the `q` field predate quest-point tracking, so only
  * snapshots carrying it count — same reasoning as computeLevelGains and `l`.
  */
-export function computeQuestGains(snapshots, players, windowSeconds) {
+export function computeQuestGains(snapshots, players, window) {
   const withQuests = snapshots.filter((snapshot) => snapshot.q && typeof snapshot.q === 'object');
   const current = latestSnapshot(withQuests);
-  const baseline = baselineSnapshot(withQuests, windowSeconds);
+  const cutoff = current ? resolveCutoff(current.t, window) : null;
+  const baseline = current ? snapshotAtOrBefore(withQuests, cutoff) : null;
 
   const hasSpan = Boolean(current && baseline && current.t > baseline.t);
   const spanSeconds = hasSpan ? current.t - baseline.t : 0;
@@ -299,7 +338,7 @@ export function computeQuestGains(snapshots, players, windowSeconds) {
   return {
     hasSpan,
     spanSeconds,
-    coversWindow: hasSpan && (!Number.isFinite(windowSeconds) || spanSeconds >= windowSeconds),
+    coversWindow: hasSpan && baseline.t <= cutoff,
     rows: rows
       .map((row) => ({ ...row, share: best > 0 ? row.gained / best : 0 }))
       .sort((a, b) => b.gained - a.gained),
@@ -307,7 +346,8 @@ export function computeQuestGains(snapshots, players, windowSeconds) {
 }
 
 /**
- * Levels gained per player over a window (default 24h), overall and per skill.
+ * Levels gained per player over a window (default a rolling 24h), overall
+ * and per skill.
  *
  * Only snapshots carrying a level vector (`l`) count — earlier ones predate
  * level tracking, and treating their absence as "level 0" would report a wildly
@@ -317,7 +357,7 @@ export function computeQuestGains(snapshots, players, windowSeconds) {
  * (the matrix cell's "+N today" chip) and `rows` — ranked, with `bySkill` as
  * an array like computeGains — for a leaderboard band.
  */
-export function computeLevelGains(snapshots, players, windowSeconds = 86400) {
+export function computeLevelGains(snapshots, players, window = 86400) {
   const levelled = snapshots.filter((snapshot) => snapshot.l && typeof snapshot.l === 'object');
   const empty = () => ({
     hasSpan: false,
@@ -331,9 +371,8 @@ export function computeLevelGains(snapshots, players, windowSeconds = 86400) {
   if (levelled.length < 2) return empty();
 
   const current = levelled[levelled.length - 1];
-  const cutoff = current.t - windowSeconds;
-  const atOrBefore = levelled.filter((snapshot) => snapshot.t <= cutoff);
-  const baseline = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : levelled[0];
+  const cutoff = resolveCutoff(current.t, window);
+  const baseline = snapshotAtOrBefore(levelled, cutoff);
 
   if (baseline.t === current.t) return empty();
 
@@ -362,7 +401,7 @@ export function computeLevelGains(snapshots, players, windowSeconds = 86400) {
   return {
     hasSpan: true,
     spanSeconds,
-    coversWindow: !Number.isFinite(windowSeconds) || spanSeconds >= windowSeconds,
+    coversWindow: baseline.t <= cutoff,
     from: new Date(baseline.t * 1000).toISOString(),
     bySlug: Object.fromEntries(perPlayer.map(({ player, total, bySkill }) => [player.slug, { total, bySkill }])),
     rows: perPlayer

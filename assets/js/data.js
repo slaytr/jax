@@ -15,9 +15,10 @@ const LATEST_URL = new URL('../../data/latest.json', import.meta.url);
  * see scripts/history-store.mjs), so a run only ever has to write the one
  * file that changed instead of rewriting the group's entire tracking history.
  *
- * The page never needs more than a month of it: the longest gain window is
- * 30 days (see ONE_MONTH in app.js). A few extra days of margin keep that
- * window's baseline lookup covered even right at the edge.
+ * The page never needs more than a month of it: the longest Gains period is
+ * "month", calendar-aligned to the 1st of the UTC month (see CALENDAR_MONTH
+ * in compute.js) — at most ~31 days back. A couple of days' margin keep that
+ * baseline lookup covered even right at the edge.
  */
 const HISTORY_WINDOW_DAYS = 33;
 

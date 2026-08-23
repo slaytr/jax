@@ -10,6 +10,9 @@
 import { loadGroupData } from './data.js';
 import { loadPrefs, savePrefs } from './prefs.js';
 import {
+  CALENDAR_DAY,
+  CALENDAR_WEEK,
+  CALENDAR_MONTH,
   computeGains,
   computeLevelGains,
   computeQuestGains,
@@ -23,10 +26,6 @@ import { renderMasthead } from './views/masthead.js';
 import { renderGains } from './views/leaderboards.js';
 import { renderStandings } from './views/standings.js';
 import { renderMatrix } from './views/matrix.js';
-
-const ONE_DAY = 86400;
-const ONE_WEEK = 7 * ONE_DAY;
-const ONE_MONTH = 30 * ONE_DAY;
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -61,12 +60,18 @@ function paintMasthead() {
   });
 }
 
-/** Every Gains band for every period, computed once so switching tabs is instant. */
+/**
+ * Every Gains band for every period, computed once so switching tabs is
+ * instant. Each period is calendar-aligned — since UTC midnight, the most
+ * recent Monday 00:00 UTC, or the 1st of the UTC month — and resets to zero
+ * at that boundary, rather than a rolling N-day span. See CALENDAR_DAY /
+ * CALENDAR_WEEK / CALENDAR_MONTH.
+ */
 function computeAllGains() {
   const forEachPeriod = (compute) => ({
-    day: compute(state.snapshots, state.players, ONE_DAY),
-    week: compute(state.snapshots, state.players, ONE_WEEK),
-    month: compute(state.snapshots, state.players, ONE_MONTH),
+    day: compute(state.snapshots, state.players, CALENDAR_DAY),
+    week: compute(state.snapshots, state.players, CALENDAR_WEEK),
+    month: compute(state.snapshots, state.players, CALENDAR_MONTH),
   });
 
   return {
