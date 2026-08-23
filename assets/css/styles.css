@@ -1,0 +1,1213 @@
+/* ============================================================================
+   Jax — Group Ironman hiscores
+   Aesthetic: "forge ledger" — blackened steel, brass hairlines, ember light,
+   chiselled display caps over a dense tabular ledger.
+   Dark surface only, by design: the palette is validated against #0c0a09.
+   ========================================================================= */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --surface-0: #0c0a09;
+  --surface-1: #131110;
+  --surface-2: #1a1715;
+  --surface-3: #221d19;
+
+  /* Ink */
+  --ink: #ece3d4;
+  --ink-2: #a89e8c;
+  --ink-muted: #776d5f;
+
+  /* Structure — brass reads as forged metal, never as data */
+  --hairline: rgba(236, 227, 212, 0.09);
+  --hairline-strong: rgba(236, 227, 212, 0.16);
+  --brass: rgba(201, 162, 39, 0.42);
+  --ember: #d95926;
+
+  /* Gains. 4.9:1 on the panel surface, so the "+N" reads as text, not decor. */
+  --gain: #5fd39b;
+  --gain-bg: rgba(25, 158, 112, 0.16);
+
+  /* Categorical series — validated set, order is load-bearing (see config.js) */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+
+  --font-display: 'Cinzel', 'Times New Roman', serif;
+  --font-body: 'Spectral', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --page-max: 1440px;
+  --radius: 3px;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* Forge light: a warm bloom behind the masthead, and a cold floor below it. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
+    radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
+    linear-gradient(180deg, #100d0b 0%, var(--surface-0) 38%, #080706 100%);
+}
+
+/* Grain: keeps the large dark fields from banding. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shell {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3.5vw, 3.5rem) 5rem;
+}
+
+/* ------------------------------------------------------- masthead / topbar */
+
+.masthead {
+  padding: 1.5rem 0 0;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2.5rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--brass);
+}
+
+.identity {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 3.6vw, 2.6rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.identity-sub {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Rank rides beside the wordmark only in the narrow layout, where the metric
+   strip has no room for a fifth column. */
+.identity-rank {
+  display: none;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+}
+
+.identity-rank-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.identity-rank-value {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.identity-sub .dot {
+  color: var(--hairline-strong);
+}
+
+.identity-sub .warn {
+  color: var(--series-4);
+}
+
+/* Metric strip — the numbers the scoreboard exists to relay. */
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 1.75rem;
+}
+
+.metric {
+  padding-left: 1.75rem;
+  border-left: 1px solid var(--hairline);
+}
+
+.metric:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.metric-label {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.metric-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.metric-unit {
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Direction is carried by the arrow glyph and the hidden label, not by hue. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.12rem 0.36rem;
+  border-radius: 2px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.delta.is-up {
+  color: #8fd0a4;
+  background: rgba(25, 158, 112, 0.16);
+}
+
+.delta.is-down {
+  color: #efa08a;
+  background: rgba(217, 89, 38, 0.16);
+}
+
+.sparkline {
+  display: block;
+  width: 132px;
+  height: 26px;
+  overflow: visible;
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--ember);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-area {
+  fill: rgba(217, 89, 38, 0.14);
+}
+
+.sparkline-head {
+  fill: var(--ember);
+  stroke: var(--surface-0);
+  stroke-width: 2;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+.matrix-section {
+  margin-top: 2rem;
+}
+
+.matrix-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.matrix-head h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.matrix-note {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+}
+
+/* The identity dot. Never the sole identifier — a name always sits beside it. */
+.swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--swatch, currentColor);
+  box-shadow: 0 0 0 2px var(--surface-0);
+  flex: none;
+}
+
+/* ------------------------------------------------------- gain chips */
+
+/* "+N" gained since yesterday. The sign carries the meaning; green reinforces. */
+.chip-up {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--gain);
+  background: var(--gain-bg);
+  white-space: nowrap;
+}
+
+.cell-gain {
+  font-size: 0.58rem;
+}
+
+/* --------------------------------------------------- leaderboard rows */
+
+.lb {
+  margin-bottom: 1.75rem;
+}
+
+.lb-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  margin-bottom: 0.7rem;
+}
+
+.lb-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.lb-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  object-fit: contain;
+}
+
+.graph-line {
+  fill: none;
+  stroke: var(--gain);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.graph-axis {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.lb-note {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+}
+
+/* The three periods share one bordered block so a player can be followed down
+   the columns; each band is still ranked independently. */
+.lb-stack {
+  display: grid;
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.lb-band {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 1px;
+  background: var(--hairline);
+}
+
+.lb-band-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-2);
+}
+
+.lb-band-label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.lb-band-note {
+  margin: 0;
+  font-size: 0.6rem;
+  line-height: 1.3;
+  color: var(--ink-muted);
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--hairline);
+}
+
+.lb-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  padding: 0.7rem 0.85rem 0.85rem;
+  background: var(--surface-1);
+  transition: background-color 0.16s var(--ease);
+}
+
+.lb-entry:hover,
+.lb-entry:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.lb-place {
+  grid-row: 1 / span 2;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+.lb-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.lb-value {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.lb-sub {
+  grid-column: 2;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+}
+
+.lb-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(236, 227, 212, 0.06);
+}
+
+.lb-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.9;
+  transition: width 0.5s var(--ease);
+}
+
+/* ------------------------------------------------------------ panel chrome */
+
+.panel-note {
+  margin: 0.5rem 0 0;
+  max-width: 68ch;
+  color: var(--ink-2);
+  font-size: 0.93rem;
+}
+
+/* ----------------------------------------------------------- skill matrix */
+
+/* No inner scrollport: the table flows with the page and the reader scrolls
+   normally. It must therefore never be wider than the viewport — the compact
+   rules below drop the skill names well before that can happen.
+   Deliberately no `overflow` here: any value other than visible would make this
+   a scroll container again and displace the sticky header instead of pinning it. */
+.matrix-scroll {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--surface-1), rgba(19, 17, 16, 0.4));
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pins to the top of the viewport as the page scrolls past the table. */
+.matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--brass);
+}
+
+.matrix th.corner {
+  left: 0;
+  z-index: 3;
+  min-width: 168px;
+}
+
+.matrix thead th {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: bottom;
+}
+
+.player-head {
+  min-width: 108px;
+}
+
+.corner span {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.6rem;
+}
+
+/* The whole heading is the sort control. */
+.player-sort {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-sort:hover .player-name,
+.player-sort:focus-visible .player-name {
+  color: #fdf5e7;
+}
+
+.player-sort:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 3px;
+}
+
+.player-head.is-sorted {
+  background: linear-gradient(180deg, rgba(236, 227, 212, 0.07), transparent);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.player-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+
+/* Each column carries that account's totals, so comparison needs no other view. */
+.player-totals {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.player-level {
+  font-size: 0.95rem;
+  color: #f6ecd9;
+}
+
+.player-xp {
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+}
+
+/* Rows led — the at-a-glance "who is ahead" figure. */
+.player-leads {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.player-leads.has-leads {
+  color: var(--ember);
+}
+
+.row-quests th,
+.row-quests .cell {
+  border-top: 1px solid var(--brass);
+  background: var(--surface-2);
+}
+
+.row-quests .skill-name,
+.row-total .skill-name {
+  color: var(--ink);
+}
+
+/* Styled as an ordinary row — only the label and icon mark it as the summary. */
+.row-total th,
+.row-total .cell {
+  border-bottom: 0;
+}
+
+/* Stays a table-cell: flex here would drop it out of the table box model and
+   break column alignment against the sticky header. */
+.matrix tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-1);
+  text-align: left;
+  font-weight: 400;
+  padding: 0.28rem 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  white-space: nowrap;
+  min-width: 152px;
+}
+
+.skill-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 0.5rem;
+  vertical-align: -0.3em;
+  object-fit: contain;
+}
+
+.skill-name {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+
+.matrix tbody tr:hover th,
+.matrix tbody tr:hover .cell {
+  background: var(--surface-2);
+}
+
+.cell {
+  position: relative;
+  padding: 0.28rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+  transition: background-color 0.14s var(--ease);
+  cursor: default;
+}
+
+.cell-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.cell-primary {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.cell-secondary {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+}
+
+.cell.is-empty .cell-primary,
+.cell.is-empty .cell-secondary {
+  color: var(--ink-muted);
+  opacity: 0.55;
+}
+
+/* The rule is the only mark that carries the player's series colour. */
+.cell-rule {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.28rem;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(236, 227, 212, 0.07);
+  overflow: hidden;
+}
+
+.cell-rule-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.85;
+  transition: width 0.5s var(--ease);
+}
+
+/* Leader: an ember spine on the left edge plus a brighter field. */
+.cell.is-leader {
+  background: linear-gradient(90deg, rgba(217, 89, 38, 0.13), rgba(217, 89, 38, 0.02) 70%);
+  box-shadow: inset 2px 0 0 var(--ember);
+}
+
+.cell.is-leader .cell-primary {
+  color: #fdf5e7;
+}
+
+
+/* ------------------------------------------------------------ empty/error */
+
+.empty {
+  padding: 4rem 2rem;
+  text-align: center;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.empty-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.empty-body {
+  margin: 0 auto;
+  max-width: 56ch;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
+.empty-body + .empty-body {
+  margin-top: 0.8rem;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+.empty-error {
+  border-color: rgba(217, 89, 38, 0.4);
+}
+
+/* ---------------------------------------------------------------- tooltip */
+
+.tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  min-width: 180px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: rgba(26, 23, 21, 0.97);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s var(--ease);
+  backdrop-filter: blur(8px);
+}
+
+.tooltip[data-visible] {
+  opacity: 1;
+}
+
+.tooltip-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tooltip-rows {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.tooltip-rows dt {
+  color: var(--ink-muted);
+}
+
+.tooltip-rows dd {
+  margin: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.site-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+}
+
+.site-footer a {
+  color: var(--ink-2);
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.site-footer a:hover {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------- page load */
+
+body[data-ready] .masthead,
+body[data-ready] #panel {
+  animation: rise 0.7s var(--ease) both;
+}
+
+body[data-ready] #panel {
+  animation-delay: 0.1s;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.loading {
+  padding: 5rem 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+body[data-ready] .loading {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* Rank moves up beside the wordmark; the account count goes entirely. */
+  .identity-rank {
+    display: flex;
+  }
+
+  .identity-accounts,
+  .metric-rank {
+    display: none;
+  }
+
+  /* One row: total level, 99s, updated, then total xp taking the slack so its
+     graph has somewhere to go. Everything shrinks rather than wraps. */
+  .metrics {
+    display: grid;
+    grid-template-columns: auto auto auto minmax(0, 1fr);
+    align-items: end;
+    gap: 0 0.7rem;
+    width: 100%;
+  }
+
+  .metric {
+    min-width: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  /* Explicit row AND column. DOM order is level, xp, skills, updated — with the
+     row left to auto, sparse placement pushes the later two onto a second row
+     because the cursor has already passed their columns. */
+  .metric-level {
+    grid-area: 1 / 1;
+  }
+
+  .metric-skills {
+    grid-area: 1 / 2;
+  }
+
+  .metric-updated {
+    grid-area: 1 / 3;
+  }
+
+  .metric-xp {
+    grid-area: 1 / 4;
+  }
+
+  .metric-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+  }
+
+  .metric-value {
+    font-size: 1.05rem;
+    gap: 0.25rem;
+  }
+
+  .metric-updated .metric-value {
+    font-size: 0.8rem;
+  }
+
+  .metric-xp .metric-value {
+    gap: 0.4rem;
+  }
+
+  .metric-xp .sparkline {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    height: 20px;
+  }
+
+  .topbar {
+    gap: 1.1rem;
+  }
+
+  /* All five players stay on one row: the entry collapses to "place name" over
+     the figure, and the secondary line is dropped to buy width. */
+  .lb-band {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .lb-band-head {
+    padding: 0.4rem 0.4rem;
+  }
+
+  .lb-band-label {
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+  }
+
+  .lb-band-note {
+    display: none;
+  }
+
+  .lb-entry {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.15rem 0.25rem;
+    padding: 0.5rem 0.35rem 0.6rem;
+  }
+
+  .lb-place {
+    grid-area: 1 / 1;
+    font-size: 0.58rem;
+  }
+
+  .lb-name {
+    grid-area: 1 / 2;
+    font-size: 0.55rem;
+    letter-spacing: 0;
+    gap: 0.25rem;
+  }
+
+  .lb-name .swatch {
+    width: 6px;
+    height: 6px;
+  }
+
+  .lb-value {
+    grid-area: 2 / 1 / 3 / -1;
+    font-size: 0.9rem;
+    gap: 0.2rem;
+  }
+
+  .lb-value .chip-up {
+    padding: 0 0.15rem;
+    font-size: 0.5rem;
+  }
+
+  .lb-sub {
+    display: none;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0.6rem 0.4rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* ------------------------------------------------- compact matrix (narrow)
+
+   Below this width the skill names cannot coexist with five player columns, so
+   the icon carries the row identity (the accessible name lives in the cell's
+   visually-hidden label and the tooltip) and each column is trimmed to name,
+   total level and rows-led. The table must still fit without sideways scroll. */
+@media (max-width: 860px) {
+  .matrix {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .player-xp {
+    display: none;
+  }
+
+  /* Clipped, not removed: the icon is decorative (alt=""), so this text is the
+     row's only accessible name and must stay in the accessibility tree. */
+  .skill-name,
+  .corner span {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .matrix tbody th {
+    min-width: 0;
+    width: 30px;
+    padding: 0.28rem 0.3rem;
+    text-align: center;
+  }
+
+  .matrix th.corner {
+    width: 30px;
+  }
+
+  .skill-icon {
+    margin-right: 0;
+    vertical-align: middle;
+  }
+
+  .matrix thead th {
+    padding: 0.5rem 0.35rem;
+  }
+
+  .player-head {
+    min-width: 0;
+  }
+
+  .player-name {
+    display: block;
+    font-size: 0.6rem;
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The dot would eat scarce width; the name alone identifies the column here. */
+  .player-head .swatch {
+    display: none;
+  }
+
+  .player-totals {
+    gap: 0.25rem;
+    margin-top: 0.2rem;
+  }
+
+  .player-level {
+    font-size: 0.8rem;
+  }
+
+  .player-leads {
+    margin-top: 0.15rem;
+    font-size: 0.55rem;
+  }
+
+  .cell {
+    padding: 0.28rem 0.35rem 0.5rem;
+  }
+
+  .cell-figures {
+    gap: 0.2rem;
+  }
+
+  .cell-primary {
+    font-size: 0.8rem;
+  }
+
+  .cell-gain {
+    padding: 0 0.15rem;
+    font-size: 0.5rem;
+  }
+
+  .cell-rule {
+    left: 0.35rem;
+    right: 0.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .cell.is-leader {
+    outline: 2px solid CanvasText;
+  }
+
+  .swatch,
+  .cell-rule-fill,
+  .lb-bar-fill {
+    forced-color-adjust: none;
+  }
+}

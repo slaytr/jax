@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jax · Group Ironman hiscores</title>
+    <meta
+      name="description"
+      content="Live RuneScape 3 hiscore standings for the Jax group ironman team — skill matrix, standings and experience gained."
+    />
+    <meta name="theme-color" content="#0c0a09" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0a09'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' font-weight='700' fill='%23d95926' text-anchor='middle'%3EJ%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead" id="masthead"></header>
+
+      <main id="panel" aria-label="Group standings and skill matrix">
+        <p class="loading">Reading the ledger…</p>
+      </main>
+
+      <footer class="site-footer">
+        <span id="footer-meta"></span>
+        <span>
+          Not affiliated with Jagex ·
+          <a href="https://github.com/slaytr/jax">source on GitHub</a>
+        </span>
+      </footer>
+    </div>
+
+    <script type="module" src="assets/js/app.js"></script>
+    <noscript>
+      <p class="loading">
+        This scoreboard renders the committed hiscore snapshot in the browser and needs JavaScript enabled.
+        The underlying data is readable directly at <code>data/latest.json</code>.
+      </p>
+    </noscript>
+  </body>
+</html>

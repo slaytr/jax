@@ -1,0 +1,16 @@
+{
+  "name": "jax-hiscores",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static GitHub Pages scoreboard for the Jax group ironman team, fed by the RuneScape 3 hiscores.",
+  "scripts": {
+    "update": "node scripts/update.mjs",
+    "icons": "node scripts/fetch-icons.mjs",
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

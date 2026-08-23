@@ -1,0 +1,165 @@
+/**
+ * Pure snapshot/history transforms. No IO, no mutation: every function returns
+ * new objects so the caller can diff, test, or discard the result freely.
+ */
+
+import { SKILL_COUNT } from './hiscores.mjs';
+
+export const HISTORY_VERSION = 1;
+
+/** Snapshots newer than this are kept at full cron resolution. */
+const FULL_RESOLUTION_DAYS = 45;
+/** Beyond that, history is thinned to one snapshot per UTC day. */
+const SECONDS_PER_DAY = 86400;
+
+const utcDayKey = (epochSeconds) => new Date(epochSeconds * 1000).toISOString().slice(0, 10);
+
+/** Compact per-player vector indexed by skill id. */
+function vectorOf(result, field) {
+  const vector = new Array(SKILL_COUNT).fill(0);
+  for (const skill of result.skills) {
+    if (skill.id >= 0 && skill.id < SKILL_COUNT) vector[skill.id] = skill[field];
+  }
+  return vector;
+}
+
+/**
+ * @param groupRank optional competitive-ladder standing; its rank is stored as
+ *   `r` so day-over-day movement can be computed later.
+ */
+export function toSnapshot(results, epochSeconds, groupRank = null) {
+  const ok = results.filter((result) => result.ok);
+
+  // `p` is xp per skill, `l` is level per skill. Levels are stored rather than
+  // derived: RS3's elite skills (Invention especially) use their own xp curve,
+  // so reconstructing a level from xp would be wrong for exactly the skills
+  // where it matters most.
+  const snapshot = {
+    t: epochSeconds,
+    p: Object.fromEntries(ok.map((result) => [result.slug, vectorOf(result, 'xp')])),
+    l: Object.fromEntries(ok.map((result) => [result.slug, vectorOf(result, 'level')])),
+  };
+
+  return Number.isFinite(groupRank?.rank) ? { ...snapshot, r: groupRank.rank } : snapshot;
+}
+
+const sameVectors = (a = [], b = []) => a.length === b.length && a.every((value, i) => value === b[i]);
+
+/** True when nothing in the group moved since the previous snapshot. */
+export function isRedundant(snapshot, previous) {
+  if (!previous) return false;
+  // A ladder move is a change worth recording even when no xp was gained —
+  // other groups passing us still shifts our rank.
+  if (snapshot.r !== previous.r) return false;
+
+  // A snapshot carrying data the previous one lacks is an upgrade, not a
+  // duplicate. Without this, a new field would never be written until somebody
+  // happened to gain xp.
+  if (snapshot.l && !previous.l) return false;
+
+  const slugs = Object.keys(snapshot.p);
+  if (slugs.length !== Object.keys(previous.p).length) return false;
+  return slugs.every((slug) => sameVectors(snapshot.p[slug], previous.p[slug]));
+}
+
+export function pruneSnapshots(snapshots, nowSeconds) {
+  const cutoff = nowSeconds - FULL_RESOLUTION_DAYS * SECONDS_PER_DAY;
+  const recent = snapshots.filter((snapshot) => snapshot.t >= cutoff);
+  const older = snapshots.filter((snapshot) => snapshot.t < cutoff);
+
+  // Keep only the final snapshot of each UTC day once outside the full-resolution window.
+  const dailyByKey = new Map();
+  for (const snapshot of older) {
+    const key = utcDayKey(snapshot.t);
+    const kept = dailyByKey.get(key);
+    if (!kept || snapshot.t > kept.t) dailyByKey.set(key, snapshot);
+  }
+
+  return [...dailyByKey.values(), ...recent].sort((a, b) => a.t - b.t);
+}
+
+export function appendSnapshot(history, snapshot) {
+  const existing = Array.isArray(history?.snapshots) ? history.snapshots : [];
+  const previous = existing[existing.length - 1];
+
+  if (isRedundant(snapshot, previous)) {
+    return { history, appended: false };
+  }
+
+  return {
+    history: {
+      version: HISTORY_VERSION,
+      trackingSince: history?.trackingSince ?? new Date(snapshot.t * 1000).toISOString(),
+      snapshots: pruneSnapshots([...existing, snapshot], snapshot.t),
+    },
+    appended: true,
+  };
+}
+
+const totalsFrom = (skills) => {
+  const overall = skills.find((skill) => skill.id === 0);
+  return { level: overall?.level ?? 0, xp: overall?.xp ?? 0, rank: overall?.rank ?? null };
+};
+
+/**
+ * Builds the player list for latest.json. A player whose fetch failed keeps
+ * their previous numbers and is flagged stale — a transient Jagex outage must
+ * not blank the leaderboard.
+ */
+export function mergePlayers(roster, results, previousPlayers = [], questsBySlug = {}) {
+  const previousBySlug = new Map(previousPlayers.map((player) => [player.slug, player]));
+  const resultBySlug = new Map(results.map((result) => [result.slug, result]));
+
+  /**
+   * Quest points come from a separate API, so they succeed and fail
+   * independently of the hiscore fetch: keep the previous value when the
+   * profile is private or the call failed.
+   */
+  const questsFor = (slug, previous) => {
+    const quest = questsBySlug[slug];
+    if (quest?.ok) {
+      return { questPoints: quest.questPoints, questsComplete: quest.questsComplete, questsStale: false };
+    }
+    return {
+      questPoints: previous?.questPoints ?? null,
+      questsComplete: previous?.questsComplete ?? null,
+      questsStale: true,
+    };
+  };
+
+  return roster.map((entry) => {
+    const result = resultBySlug.get(entry.slug);
+    const previous = previousBySlug.get(entry.slug);
+
+    if (result?.ok) {
+      return {
+        slug: entry.slug,
+        name: result.name,
+        table: result.table,
+        stale: false,
+        error: null,
+        total: totalsFrom(result.skills),
+        ...questsFor(entry.slug, previous),
+        skills: result.skills,
+        activities: result.activities,
+      };
+    }
+
+    const error = result?.error ?? 'player was not fetched';
+    if (previous) {
+      return { ...previous, ...questsFor(entry.slug, previous), stale: true, error };
+    }
+
+    return {
+      slug: entry.slug,
+      name: entry.name,
+      table: entry.table ?? 'main',
+      stale: true,
+      error,
+      total: { level: 0, xp: 0, rank: null },
+      ...questsFor(entry.slug, null),
+      skills: [],
+      activities: [],
+    };
+  });
+}

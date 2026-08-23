@@ -1,0 +1,6 @@
+node_modules/
+
+# Local preview / tooling artefacts. Root-level only — assets/icons/*.png are
+# committed on purpose.
+/*.png
+.playwright-mcp/
