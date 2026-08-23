@@ -16,31 +16,45 @@ const ORDINAL_SUFFIXES = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
 const ordinal = (n) => `${n}${ORDINAL_SUFFIXES[ORDINAL_SUFFIX.select(n)]}`;
 
 /** Podium column, 1st through 3rd — everything else is unmarked, not "4th". */
-const MEDAL_CLASS = { 1: 'is-gold', 2: 'is-silver', 3: 'is-bronze' };
+const MEDAL_RIBBON = { 1: ['1st', 'is-gold'], 2: ['2nd', 'is-silver'], 3: ['3rd', 'is-bronze'] };
 
 /**
  * The rank number is dropped from view — column position already reads as
  * rank ("ranked highest first" per the band note) — and replaced with a
- * podium tint on the top three columns. It stays for screen readers, which
- * have no notion of column position.
+ * gold/silver/bronze corner banner on the top three columns. It stays for
+ * screen readers, which have no notion of column position.
  *
- * `sub` may be a plain string or a node (e.g. an icon-led fragment); `mood`
- * is an optional decorative emoji appended after `value` — opt-in per call
- * site, since it's only wanted on the Gains bands, not every grid built from
- * this row. `ribbon` is a short (1–2 word) corner banner, similarly opt-in.
+ * `sub` may be a plain string or a node (e.g. an icon-led fragment). `ribbon`
+ * is a custom corner banner for a column with no podium medal (e.g. the
+ * trailing column's "Slacker") — ignored on a podium place, since that
+ * banner already takes the corner.
+ *
+ * A real button rather than a div: clicking it selects the player, tinting
+ * every cell of theirs in the same grid with their own colour (`--accent`,
+ * set here) — see `.lb-entry.is-selected`. `selected` is that state for
+ * *this* cell; `onSelect` reports the click back up so the grid can toggle it.
  */
-export function entry({ player, value, sub, place, mood, ribbon }) {
-  const medal = MEDAL_CLASS[place];
-  return el('div', { class: `lb-entry${medal ? ` ${medal}` : ''}`, tabindex: '0' }, [
-    ribbon ? el('span', { class: 'lb-ribbon', text: ribbon }) : null,
-    el('span', { class: 'visually-hidden', text: `${ordinal(place)} place — ` }),
-    el('span', { class: 'lb-name' }, [swatch(player.colour), el('span', { text: player.name })]),
-    el('span', { class: 'lb-value' }, [
-      el('span', { text: value }),
-      mood ? el('span', { class: 'lb-mood', 'aria-hidden': 'true', text: mood }) : null,
-    ]),
-    sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
-  ]);
+export function entry({ player, value, sub, place, ribbon, selected, onSelect }) {
+  const medal = MEDAL_RIBBON[place];
+  const ribbonText = medal ? medal[0] : ribbon;
+  const ribbonClass = medal ? ` ${medal[1]}` : '';
+
+  return el(
+    'button',
+    {
+      type: 'button',
+      class: `lb-entry${selected ? ' is-selected' : ''}`,
+      style: { '--accent': player.colour },
+      onclick: () => onSelect(player.slug),
+    },
+    [
+      ribbonText ? el('span', { class: `lb-ribbon${ribbonClass}`, text: ribbonText }) : null,
+      el('span', { class: 'visually-hidden', text: `${ordinal(place)} place — ` }),
+      el('span', { class: 'lb-name' }, [swatch(player.colour), el('span', { text: player.name })]),
+      el('span', { class: 'lb-value' }, [el('span', { text: value })]),
+      sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
+    ],
+  );
 }
 
 /** A drawn glyph: "gained over time" has no game asset to borrow. */
@@ -61,9 +75,6 @@ const skillGain = (entry, className = 'skill-gain') =>
     el('span', { text: `+${formatCompact(entry.gained)}` }),
   ]);
 
-/** Column mood, 1st through 5th — every band has exactly five players. */
-const MOOD_BY_PLACE = { 1: '😎', 2: '😁', 3: '🙂', 4: '😐', 5: '😴' };
-
 /**
  * Every skill the player trained in the window, icon-led and ordered by gain.
  * `bySkill` is already sorted descending by computeGains / computeLevelGains.
@@ -82,7 +93,7 @@ function skillBreakdown(bySkill) {
  * shape from computeGains / computeLevelGains, differing only in how the
  * headline figure is formatted and what the tooltip calls it.
  */
-function skillGainRow(gains, { formatValue, valueLabel }) {
+function skillGainRow(gains, { formatValue, valueLabel }, selectedPlayer, onSelectPlayer) {
   return gains.rows.map((row, index) => {
     const place = index + 1;
     const top = row.bySkill[0];
@@ -92,7 +103,9 @@ function skillGainRow(gains, { formatValue, valueLabel }) {
       place,
       value: row.total > 0 ? `+${formatValue(row.total)}` : '—',
       sub: top ? skillGain(top) : 'Slacker',
-      mood: MOOD_BY_PLACE[place],
+      ribbon: place === gains.rows.length ? 'Slacker' : null,
+      selected: row.player.slug === selectedPlayer,
+      onSelect: onSelectPlayer,
     });
 
     return bindTooltip(node, () =>
@@ -110,18 +123,22 @@ function skillGainRow(gains, { formatValue, valueLabel }) {
   });
 }
 
-const levelsRow = (gains) => skillGainRow(gains, { formatValue: formatNumber, valueLabel: 'Levels gained' });
-const xpRow = (gains) => skillGainRow(gains, { formatValue: formatCompact, valueLabel: 'XP gained' });
+const levelsRow = (gains, selectedPlayer, onSelectPlayer) =>
+  skillGainRow(gains, { formatValue: formatNumber, valueLabel: 'Levels gained' }, selectedPlayer, onSelectPlayer);
+const xpRow = (gains, selectedPlayer, onSelectPlayer) =>
+  skillGainRow(gains, { formatValue: formatCompact, valueLabel: 'XP gained' }, selectedPlayer, onSelectPlayer);
 
 /** Quest points have no per-skill breakdown, so this stays a plain figure. */
-function questsRow(gains) {
+function questsRow(gains, selectedPlayer, onSelectPlayer) {
   return gains.rows.map((row, index) => {
     const place = index + 1;
     const node = entry({
       player: row.player,
       place,
       value: row.gained > 0 ? `+${formatNumber(row.gained)}` : '—',
-      mood: MOOD_BY_PLACE[place],
+      ribbon: place === gains.rows.length ? 'Slacker' : null,
+      selected: row.player.slug === selectedPlayer,
+      onSelect: onSelectPlayer,
     });
 
     return bindTooltip(node, () =>
@@ -187,8 +204,11 @@ function periodToggle(period, onSelect) {
  *   computeLevelGains / computeGains / computeQuestGains
  * @param period 'day' | 'week' | 'month' — which window to show
  * @param onSelectPeriod (period) => void
+ * @param selectedPlayer slug of the player currently highlighted in this
+ *   grid, or null — see entry()'s `selected`/`onSelect`.
+ * @param onSelectPlayer (slug) => void
  */
-export function renderGains(gains, period, onSelectPeriod) {
+export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer) {
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
       el('div', { class: 'lb-title' }, [
@@ -198,9 +218,9 @@ export function renderGains(gains, period, onSelectPeriod) {
       periodToggle(period, onSelectPeriod),
     ]),
     el('div', { class: 'lb-stack' }, [
-      band('Levels', levelsRow(gains.levels[period])),
-      band('XP', xpRow(gains.xp[period])),
-      band(questPointsIcon(), questsRow(gains.quests[period])),
+      band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
+      band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
+      band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
     ]),
   ]);
 }

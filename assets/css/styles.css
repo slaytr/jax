@@ -605,14 +605,23 @@ body::after {
   background: var(--hairline);
 }
 
+/* A <button>, not a div: clicking selects the player (see .is-selected). The
+   usual button chrome (border, UA background/font) is reset so it still
+   reads as a plain grid cell at rest. */
 .lb-entry {
   position: relative;
   display: flex;
   flex-direction: column;
+  width: 100%;
   gap: 0.15rem;
   padding: 0.7rem 0.85rem 0.85rem;
   overflow: hidden;
+  border: 0;
   background: var(--surface-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   transition: background-color 0.16s var(--ease);
 }
 
@@ -622,25 +631,21 @@ body::after {
   outline: none;
 }
 
-/* Podium stripe stands in for the old rank number: 1st/2nd/3rd column only.
-   A box-shadow rather than a background tint, so it reads as an accent, not
-   a change of surface — text colours and contrast stay identical to any
-   other column, and the stripe survives hover untouched either way. */
-.lb-entry.is-gold {
-  box-shadow: inset 0 2px 0 var(--medal-gold);
+/* Selected: every cell of this player in the grid tints with their own
+   colour, so the eye can track one account down the columns at a glance. */
+.lb-entry.is-selected {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface-1));
 }
 
-.lb-entry.is-silver {
-  box-shadow: inset 0 2px 0 var(--medal-silver);
+.lb-entry.is-selected:hover,
+.lb-entry.is-selected:focus-visible {
+  background: color-mix(in srgb, var(--accent) 38%, var(--surface-1));
 }
 
-.lb-entry.is-bronze {
-  box-shadow: inset 0 2px 0 var(--medal-bronze);
-}
-
-/* Corner banner for the trailing column — a diagonal sash, clipped to the
-   cell by .lb-entry's own overflow:hidden. Short labels only (1–2 words):
-   the strip is fixed-width and centred, not sized to its text. */
+/* Corner banner — a diagonal sash, clipped to the cell by .lb-entry's own
+   overflow:hidden. Short labels only (1–2 words): the strip is fixed-width
+   and centred, not sized to its text. Colour defaults to ember (the trailing
+   column's "Trying" banner); the podium places override it below. */
 .lb-ribbon {
   position: absolute;
   top: 0.55rem;
@@ -658,6 +663,19 @@ body::after {
   text-transform: uppercase;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Podium banners replace the old top-stripe indicator: 1st/2nd/3rd column only. */
+.lb-ribbon.is-gold {
+  background: var(--medal-gold);
+}
+
+.lb-ribbon.is-silver {
+  background: var(--medal-silver);
+}
+
+.lb-ribbon.is-bronze {
+  background: var(--medal-bronze);
 }
 
 .lb-name {
@@ -682,12 +700,6 @@ body::after {
   font-weight: 500;
   line-height: 1;
   color: var(--ink);
-}
-
-/* Column mood — desktop-only flourish, see the mobile override below. */
-.lb-mood {
-  font-size: 1rem;
-  line-height: 1;
 }
 
 .lb-sub {
@@ -1326,10 +1338,6 @@ body[data-ready] .loading {
   }
 
   /* Desktop-only flourish — narrow columns have no room to spare for it. */
-  .lb-mood {
-    display: none;
-  }
-
   .lb-ribbon {
     display: none;
   }

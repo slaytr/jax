@@ -77,8 +77,16 @@ function render() {
 
   replaceChildren(
     dom.panel,
-    renderStandings(state),
-    renderGains(gains, state.gainsPeriod, (period) => setState({ gainsPeriod: period })),
+    renderStandings(state, (slug) =>
+      setState({ standingsSelectedPlayer: state.standingsSelectedPlayer === slug ? null : slug }),
+    ),
+    renderGains(
+      gains,
+      state.gainsPeriod,
+      (period) => setState({ gainsPeriod: period }),
+      state.gainsSelectedPlayer,
+      (slug) => setState({ gainsSelectedPlayer: state.gainsSelectedPlayer === slug ? null : slug }),
+    ),
     renderMatrix(
       state,
       gains.levels.day,
@@ -109,7 +117,16 @@ async function boot() {
     // invertLeaders: when true, the matrix highlights each row's lowest level
     // instead of its highest.
     // gainsPeriod: which window ('day' | 'week' | 'month') the Gains section shows.
-    state = { ...data, sortedBy: null, invertLeaders: false, gainsPeriod: 'day' };
+    // standingsSelectedPlayer / gainsSelectedPlayer: slug highlighted across
+    // every cell of that grid, or null — each grid's selection is independent.
+    state = {
+      ...data,
+      sortedBy: null,
+      invertLeaders: false,
+      gainsPeriod: 'day',
+      standingsSelectedPlayer: null,
+      gainsSelectedPlayer: null,
+    };
 
     document.title = `${data.group.name} · Group Ironman hiscores`;
     replaceChildren(

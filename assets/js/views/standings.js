@@ -22,12 +22,14 @@ function podiumIcon() {
  * from renderLeaderboards.
  */
 
-function levelRow(row) {
+function levelRow(row, selectedPlayer, onSelectPlayer) {
   const node = entry({
     player: row.player,
     place: row.place,
     value: formatNumber(row.player.total?.level ?? 0),
     ribbon: row.place === 5 ? 'Trying' : null,
+    selected: row.player.slug === selectedPlayer,
+    onSelect: onSelectPlayer,
   });
 
   return bindTooltip(node, () =>
@@ -43,12 +45,14 @@ function levelRow(row) {
   );
 }
 
-function xpRow(row) {
+function xpRow(row, selectedPlayer, onSelectPlayer) {
   const node = entry({
     player: row.player,
     place: row.place,
     value: formatCompact(row.player.total?.xp ?? 0),
     ribbon: row.place === 5 ? 'Trying' : null,
+    selected: row.player.slug === selectedPlayer,
+    onSelect: onSelectPlayer,
   });
 
   return bindTooltip(node, () =>
@@ -63,7 +67,7 @@ function xpRow(row) {
   );
 }
 
-function questRow(row) {
+function questRow(row, selectedPlayer, onSelectPlayer) {
   const { player } = row;
   const known = Number.isFinite(player.questPoints);
 
@@ -73,6 +77,8 @@ function questRow(row) {
     value: known ? formatNumber(player.questPoints) : '—',
     sub: known ? null : 'unavailable',
     ribbon: row.place === 5 ? 'Trying' : null,
+    selected: player.slug === selectedPlayer,
+    onSelect: onSelectPlayer,
   });
 
   return bindTooltip(node, () =>
@@ -88,16 +94,31 @@ function questRow(row) {
   );
 }
 
-export function renderStandings(state) {
+/**
+ * @param onSelectPlayer (slug) => void — toggles state.standingsSelectedPlayer,
+ *   read here to tint every cell of the selected player across all three bands.
+ */
+export function renderStandings(state, onSelectPlayer) {
+  const selectedPlayer = state.standingsSelectedPlayer;
+
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
       el('h2', {}, [podiumIcon(), el('span', { text: 'Account standings' })]),
       el('p', { class: 'lb-note', text: 'Ranked highest first.' }),
     ]),
     el('div', { class: 'lb-stack' }, [
-      band('Total levels', standings(state.players, 'level').map(levelRow)),
-      band('Total XP', standings(state.players, 'xp').map(xpRow)),
-      band(questPointsIcon(), questStandings(state.players).map(questRow)),
+      band(
+        'Total levels',
+        standings(state.players, 'level').map((row) => levelRow(row, selectedPlayer, onSelectPlayer)),
+      ),
+      band(
+        'Total XP',
+        standings(state.players, 'xp').map((row) => xpRow(row, selectedPlayer, onSelectPlayer)),
+      ),
+      band(
+        questPointsIcon(),
+        questStandings(state.players).map((row) => questRow(row, selectedPlayer, onSelectPlayer)),
+      ),
     ]),
   ]);
 }
