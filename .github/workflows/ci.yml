@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'data/latest.json'
-      - 'data/history.json'
+      - 'data/history/**'
   pull_request:
 
 jobs:

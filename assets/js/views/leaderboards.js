@@ -4,22 +4,42 @@ import { iconFor } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 
 /**
- * The standings rows: experience gained over the last day, week and month.
- *
- * Each is ordered best-first and shares one row component, so the eye reads all
- * three the same way. Total level and quest points are not repeated here — both
- * are rows in the matrix below.
+ * The Gains section: levels, xp and quest points gained, for whichever
+ * period (day/week/month) the reader has selected — see the tab row beside
+ * the title. Each band shares one row component, so the eye reads all three
+ * the same way.
  */
 
-function entry({ player, value, sub, share, place }) {
-  return el('div', { class: 'lb-entry', style: { '--accent': player.colour }, tabindex: '0' }, [
-    el('span', { class: 'lb-place', text: place }),
+/** "1st", "2nd", "3rd", "4th"… — for the screen-reader-only place label. */
+const ORDINAL_SUFFIX = new Intl.PluralRules('en', { type: 'ordinal' });
+const ORDINAL_SUFFIXES = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
+const ordinal = (n) => `${n}${ORDINAL_SUFFIXES[ORDINAL_SUFFIX.select(n)]}`;
+
+/** Podium column, 1st through 3rd — everything else is unmarked, not "4th". */
+const MEDAL_CLASS = { 1: 'is-gold', 2: 'is-silver', 3: 'is-bronze' };
+
+/**
+ * The rank number is dropped from view — column position already reads as
+ * rank ("ranked highest first" per the band note) — and replaced with a
+ * podium tint on the top three columns. It stays for screen readers, which
+ * have no notion of column position.
+ *
+ * `sub` may be a plain string or a node (e.g. an icon-led fragment); `mood`
+ * is an optional decorative emoji appended after `value` — opt-in per call
+ * site, since it's only wanted on the Gains bands, not every grid built from
+ * this row. `ribbon` is a short (1–2 word) corner banner, similarly opt-in.
+ */
+export function entry({ player, value, sub, place, mood, ribbon }) {
+  const medal = MEDAL_CLASS[place];
+  return el('div', { class: `lb-entry${medal ? ` ${medal}` : ''}`, tabindex: '0' }, [
+    ribbon ? el('span', { class: 'lb-ribbon', text: ribbon }) : null,
+    el('span', { class: 'visually-hidden', text: `${ordinal(place)} place — ` }),
     el('span', { class: 'lb-name' }, [swatch(player.colour), el('span', { text: player.name })]),
-    el('span', { class: 'lb-value' }, [el('span', { text: value })]),
-    sub ? el('span', { class: 'lb-sub', text: sub }) : null,
-    el('span', { class: 'lb-bar', role: 'presentation' }, [
-      el('span', { class: 'lb-bar-fill', style: { width: `${(share * 100).toFixed(1)}%` } }),
+    el('span', { class: 'lb-value' }, [
+      el('span', { text: value }),
+      mood ? el('span', { class: 'lb-mood', 'aria-hidden': 'true', text: mood }) : null,
     ]),
+    sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
   ]);
 }
 
@@ -41,9 +61,12 @@ const skillGain = (entry, className = 'skill-gain') =>
     el('span', { text: `+${formatCompact(entry.gained)}` }),
   ]);
 
+/** Column mood, 1st through 5th — every band has exactly five players. */
+const MOOD_BY_PLACE = { 1: '😎', 2: '😁', 3: '🙂', 4: '😐', 5: '😴' };
+
 /**
  * Every skill the player trained in the window, icon-led and ordered by gain.
- * `bySkill` is already sorted descending by computeGains.
+ * `bySkill` is already sorted descending by computeGains / computeLevelGains.
  */
 function skillBreakdown(bySkill) {
   if (bySkill.length === 0) return null;
@@ -54,97 +77,130 @@ function skillBreakdown(bySkill) {
   ]);
 }
 
-function gainsRow(players, gains, windowLabel) {
-  const bySlug = Object.fromEntries(gains.rows.map((row) => [row.player.slug, row]));
-  const ordered = [...players].sort((a, b) => (bySlug[b.slug]?.total ?? 0) - (bySlug[a.slug]?.total ?? 0));
-  const best = Math.max(...ordered.map((player) => bySlug[player.slug]?.total ?? 0), 0);
-
-  return ordered.map((player, index) => {
-    const row = bySlug[player.slug];
-    const total = row?.total ?? 0;
-    const top = row?.bySkill?.[0];
+/**
+ * Shared row builder for the two skill-driven bands (Levels, XP) — identical
+ * shape from computeGains / computeLevelGains, differing only in how the
+ * headline figure is formatted and what the tooltip calls it.
+ */
+function skillGainRow(gains, { formatValue, valueLabel }) {
+  return gains.rows.map((row, index) => {
+    const place = index + 1;
+    const top = row.bySkill[0];
 
     const node = entry({
-      player,
-      place: index + 1,
-      value: total > 0 ? `+${formatCompact(total)}` : '—',
-      sub: top ? `${top.skill.name} +${formatCompact(top.gained)}` : 'no training',
-      share: best > 0 ? total / best : 0,
+      player: row.player,
+      place,
+      value: row.total > 0 ? `+${formatValue(row.total)}` : '—',
+      sub: top ? skillGain(top) : 'Slacker',
+      mood: MOOD_BY_PLACE[place],
     });
-
-    const trained = row?.bySkill ?? [];
 
     return bindTooltip(node, () =>
       tooltipContent(
-        player.name,
+        row.player.name,
         [
-          [`XP gained (${windowLabel})`, formatNumber(total)],
-          ['Skills trained', formatNumber(trained.length)],
+          [valueLabel, formatNumber(row.total)],
+          ['Skills trained', formatNumber(row.bySkill.length)],
           ['Top skill', top ? skillGain(top, 'skill-gain is-top') : '—'],
         ],
-        player.colour,
-        skillBreakdown(trained),
+        row.player.colour,
+        skillBreakdown(row.bySkill),
       ),
     );
   });
 }
 
-/** One labelled band — a period name, then that period's ranked five. */
-const band = (label, note, entries) =>
+const levelsRow = (gains) => skillGainRow(gains, { formatValue: formatNumber, valueLabel: 'Levels gained' });
+const xpRow = (gains) => skillGainRow(gains, { formatValue: formatCompact, valueLabel: 'XP gained' });
+
+/** Quest points have no per-skill breakdown, so this stays a plain figure. */
+function questsRow(gains) {
+  return gains.rows.map((row, index) => {
+    const place = index + 1;
+    const node = entry({
+      player: row.player,
+      place,
+      value: row.gained > 0 ? `+${formatNumber(row.gained)}` : '—',
+      mood: MOOD_BY_PLACE[place],
+    });
+
+    return bindTooltip(node, () =>
+      tooltipContent(row.player.name, [['Quest points gained', formatNumber(row.gained)]], row.player.colour),
+    );
+  });
+}
+
+/** One labelled band — a period name, then that period's ranked five.
+ * `label` is usually a string, but may be a node (e.g. questPointsIcon()) for
+ * a band identified by icon rather than text. */
+export const band = (label, entries) =>
   el('div', { class: 'lb-band' }, [
-    el('div', { class: 'lb-band-head' }, [
-      el('p', { class: 'lb-band-label', text: label }),
-      note ? el('p', { class: 'lb-band-note', text: note }) : null,
-    ]),
+    el(
+      'div',
+      { class: 'lb-band-head' },
+      [typeof label === 'string' ? el('p', { class: 'lb-band-label', text: label }) : el('p', { class: 'lb-band-label' }, [label])],
+    ),
     el('div', { class: 'lb-row' }, entries),
   ]);
 
-const plural = (amount, unit) => `${amount} ${unit}${amount === 1 ? '' : 's'}`;
+/** The quest-points row/band, identified by its game icon rather than a text label. */
+export const questPointsIcon = () =>
+  el('img', {
+    class: 'lb-band-icon',
+    src: 'assets/icons/quest-points.png',
+    alt: 'Quest points',
+    width: 18,
+    height: 18,
+    decoding: 'async',
+  });
 
-/** Human span, so a short history can say what it actually covers. */
-function describeSpan(seconds) {
-  const hours = seconds / 3600;
-  if (hours < 1) return plural(Math.max(1, Math.round(seconds / 60)), 'minute');
-  if (hours < 48) return plural(Math.round(hours), 'hour');
-  return plural(Math.round(hours / 24), 'day');
+const PERIODS = [
+  ['day', 'Day'],
+  ['week', 'Week'],
+  ['month', 'Month'],
+];
+
+/** Day/Week/Month — picks which pre-computed window the three bands show. */
+function periodToggle(period, onSelect) {
+  return el(
+    'div',
+    { class: 'tabs', role: 'tablist', 'aria-label': 'Gains period' },
+    PERIODS.map(([value, label]) =>
+      el('button', {
+        type: 'button',
+        class: `tab${period === value ? ' is-active' : ''}`,
+        role: 'tab',
+        'aria-selected': period === value ? 'true' : 'false',
+        onclick: () => onSelect(value),
+        text: label,
+      }),
+    ),
+  );
 }
 
 /**
- * A window longer than the stored history silently falls back to the oldest
- * snapshot, so say so rather than letting the heading overstate the range.
- */
-function noteFor(gains) {
-  if (!gains.hasSpan) return 'Needs two snapshots — populates once the update job has run again.';
-  if (!gains.coversWindow) return `History only covers ${describeSpan(gains.spanSeconds)} so far.`;
-  return null;
-}
-
-/**
- * One block, three bands. Kept adjacent so the same player can be tracked down
- * the columns, while each band stays independently ranked.
+ * One block, three bands (Levels, XP, Quest points), all showing the same
+ * selected period. Kept adjacent so the same player can be tracked down the
+ * columns, while each band stays independently ranked.
  *
- * @param windows day/week/month gain results, each from computeGains
+ * @param gains { levels, xp, quests }, each { day, week, month } from
+ *   computeLevelGains / computeGains / computeQuestGains
+ * @param period 'day' | 'week' | 'month' — which window to show
+ * @param onSelectPeriod (period) => void
  */
-export function renderLeaderboards(state, windows) {
-  const bands = [
-    ['Day', 'last day', windows.day],
-    ['Week', 'last week', windows.week],
-    ['Month', 'last month', windows.month],
-  ];
-
-  return [
-    el('section', { class: 'lb' }, [
-      el('div', { class: 'lb-head' }, [
-        el('h2', {}, [graphIcon(), el('span', { text: 'Experience gained' })]),
-        el('p', { class: 'lb-note', text: 'Ranked highest first within each period.' }),
+export function renderGains(gains, period, onSelectPeriod) {
+  return el('section', { class: 'lb' }, [
+    el('div', { class: 'lb-head' }, [
+      el('div', { class: 'lb-title' }, [
+        el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })]),
+        el('p', { class: 'lb-note', text: 'Ranked highest first.' }),
       ]),
-      el(
-        'div',
-        { class: 'lb-stack' },
-        bands.map(([label, windowLabel, gains]) =>
-          band(label, noteFor(gains), gainsRow(state.players, gains, windowLabel)),
-        ),
-      ),
+      periodToggle(period, onSelectPeriod),
     ]),
-  ];
+    el('div', { class: 'lb-stack' }, [
+      band('Levels', levelsRow(gains.levels[period])),
+      band('XP', xpRow(gains.xp[period])),
+      band(questPointsIcon(), questsRow(gains.quests[period])),
+    ]),
+  ]);
 }

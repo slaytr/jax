@@ -53,16 +53,15 @@ export const SKILLS = Object.freeze(
 export const iconFor = (skill) => `assets/icons/${skill.slug}.png`;
 
 /**
- * When the update job is scheduled to run, in UTC — every six hours at :17.
+ * When the update job is scheduled to run, in UTC — on the hour, every hour.
  *
  * COUPLED to the cron in .github/workflows/update-hiscores.yml. Change one and
- * you must change the other; nothing enforces it at runtime. (The cron string
- * is not quoted here because it contains a comment-terminating sequence.)
+ * you must change the other; nothing enforces it at runtime.
  *
  * GitHub queues cron jobs on a best-effort basis and can run them late, so any
  * countdown derived from this is an estimate, not a guarantee.
  */
-export const UPDATE_SCHEDULE = Object.freeze({ minute: 17, hours: [0, 6, 12, 18] });
+export const UPDATE_SCHEDULE = Object.freeze({ minute: 0, hours: Array.from({ length: 24 }, (_, hour) => hour) });
 
 /** Every skill except the synthetic "Overall" row. */
 export const TRACKED_SKILLS = Object.freeze(SKILLS.filter((skill) => skill.id !== 0));
@@ -72,21 +71,39 @@ export const SKILL_BY_ID = Object.freeze(
 );
 
 /**
- * Player palette: crimson, blue, green, purple, pink — assigned left-to-right
- * down the total-level standings.
+ * Player palette: teal, red, green, blue, pink.
  *
  * Validated with the dataviz palette validator against the page surface
- * #0c0a09 in this exact order: lightness band, chroma floor, contrast and the
- * adjacent-pair gates all PASS (worst adjacent normal-vision ΔE 18.4).
+ * #0c0a09 in this exact declared order: lightness band, chroma floor,
+ * contrast and the adjacent-pair CVD gate all PASS (worst adjacent
+ * normal-vision ΔE 20.9). Red↔green sits in the accepted 6–8 CVD floor band
+ * — legal here because colour is never the sole identifier: every player's
+ * name sits beside their colour in every view. Re-run the validator before
+ * changing any value or reordering.
  *
- * Known limit: across *all* pairs the worst is blue↔purple at ΔE 12.5 normal /
- * 5.5 deutan. Five hues containing both a blue and a purple cannot clear the
- * all-pairs floor — that is a documented property of the method, not an
- * oversight. It is acceptable here only because colour is never the sole
- * identifier: every player's name sits beside their colour in every view.
- * Re-run the validator before changing any value.
+ * Colour is pinned per account (see PLAYER_COLOURS below) rather than
+ * cycled by index, so this order only matters for validation and for the
+ * fallback a roster addition gets.
  */
-const SERIES_COLOURS = Object.freeze(['#cc3346', '#3987e5', '#199e70', '#8d4fc9', '#dd6296']);
+const SERIES_COLOURS = Object.freeze(['#0b8fa3', '#cc3346', '#199e70', '#3987e5', '#dd6296']);
+
+/**
+ * Fixed per-account colour, keyed by slug — so a player's colour stays
+ * stable as standings shift, rather than swapping when two players cross in
+ * rank. Update alongside data/players.json if the roster changes; a slug not
+ * listed here falls back to cycling SERIES_COLOURS by roster position (see
+ * colourForPlayer).
+ */
+const PLAYER_COLOURS = Object.freeze({
+  'jelly-tax': SERIES_COLOURS[0],
+  bloyze: SERIES_COLOURS[1],
+  melooms: SERIES_COLOURS[2],
+  'cpt-draynor': SERIES_COLOURS[3],
+  highlordwhos: SERIES_COLOURS[4],
+});
 
 export const colourForIndex = (index) => SERIES_COLOURS[index % SERIES_COLOURS.length];
+
+/** `fallbackIndex` (e.g. roster position) covers a slug with no pinned colour. */
+export const colourForPlayer = (slug, fallbackIndex) => PLAYER_COLOURS[slug] ?? colourForIndex(fallbackIndex);
 

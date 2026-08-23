@@ -8,32 +8,32 @@ const at = (iso) => new Date(iso);
 const iso = (date) => date.toISOString();
 
 describe('nextScheduledRun', () => {
-  it('finds the next slot later the same day', () => {
-    assert.equal(iso(nextScheduledRun(at('2026-08-23T03:35:00Z'))), '2026-08-23T06:17:00.000Z');
-    assert.equal(iso(nextScheduledRun(at('2026-08-23T06:18:00Z'))), '2026-08-23T12:17:00.000Z');
+  it('finds the top of the next hour', () => {
+    assert.equal(iso(nextScheduledRun(at('2026-08-23T03:35:00Z'))), '2026-08-23T04:00:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2026-08-23T04:01:00Z'))), '2026-08-23T05:00:00.000Z');
   });
 
   it('rolls over midnight into the next day', () => {
-    assert.equal(iso(nextScheduledRun(at('2026-08-23T18:30:00Z'))), '2026-08-24T00:17:00.000Z');
-    assert.equal(iso(nextScheduledRun(at('2026-08-23T23:59:59Z'))), '2026-08-24T00:17:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2026-08-23T23:30:00Z'))), '2026-08-24T00:00:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2026-08-23T23:59:59Z'))), '2026-08-24T00:00:00.000Z');
   });
 
   it('rolls over a month boundary', () => {
-    assert.equal(iso(nextScheduledRun(at('2026-08-31T19:00:00Z'))), '2026-09-01T00:17:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2026-08-31T23:30:00Z'))), '2026-09-01T00:00:00.000Z');
   });
 
   it('rolls over a year boundary', () => {
-    assert.equal(iso(nextScheduledRun(at('2026-12-31T22:00:00Z'))), '2027-01-01T00:17:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2026-12-31T23:30:00Z'))), '2027-01-01T00:00:00.000Z');
   });
 
   it('handles a leap day', () => {
-    assert.equal(iso(nextScheduledRun(at('2028-02-28T19:00:00Z'))), '2028-02-29T00:17:00.000Z');
+    assert.equal(iso(nextScheduledRun(at('2028-02-28T23:30:00Z'))), '2028-02-29T00:00:00.000Z');
   });
 
   it('is always strictly in the future, even exactly on a slot', () => {
-    // Landing exactly on 06:17:00 must advance, not return the same instant.
-    const onTheSlot = at('2026-08-23T06:17:00Z');
-    assert.equal(iso(nextScheduledRun(onTheSlot)), '2026-08-23T12:17:00.000Z');
+    // Landing exactly on 04:00:00 must advance, not return the same instant.
+    const onTheSlot = at('2026-08-23T04:00:00Z');
+    assert.equal(iso(nextScheduledRun(onTheSlot)), '2026-08-23T05:00:00.000Z');
   });
 
   it('never returns a time more than the scheduling interval away', () => {

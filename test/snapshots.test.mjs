@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { appendSnapshot, isRedundant, mergePlayers, pruneSnapshots, toSnapshot } from '../scripts/snapshots.mjs';
-
-const DAY = 86400;
+import { isRedundant, mergePlayers, toSnapshot } from '../scripts/snapshots.mjs';
 
 const skills = (overall, attack = 0) => [
   { id: 0, level: 10, xp: overall, rank: 1 },
@@ -11,6 +9,7 @@ const skills = (overall, attack = 0) => [
 ];
 
 const okResult = (slug, overall, attack) => ({ ok: true, slug, name: slug, table: 'main', skills: skills(overall, attack), activities: [] });
+const okQuest = (points) => ({ ok: true, questPoints: points, questsComplete: 1 });
 
 describe('toSnapshot', () => {
   it('keeps only successful fetches and indexes xp by skill id', () => {
@@ -34,6 +33,20 @@ describe('toSnapshot', () => {
   it('records the group rank when one is supplied', () => {
     assert.equal(toSnapshot([okResult('a', 1)], 1000, { rank: 1048 }).r, 1048);
     assert.equal('r' in toSnapshot([okResult('a', 1)], 1000, null), false);
+  });
+
+  it('stores quest points when supplied, keyed by slug', () => {
+    const snapshot = toSnapshot([okResult('a', 100)], 1000, null, { a: okQuest(50) });
+    assert.equal(snapshot.q.a, 50);
+  });
+
+  it('omits a player whose quest fetch failed', () => {
+    const snapshot = toSnapshot([okResult('a', 100)], 1000, null, { a: { ok: false, error: 'boom' } });
+    assert.equal('a' in (snapshot.q ?? {}), false);
+  });
+
+  it('omits the q field entirely when no quest data is supplied', () => {
+    assert.equal('q' in toSnapshot([okResult('a', 100)], 1000), false);
   });
 });
 
@@ -67,65 +80,24 @@ describe('isRedundant', () => {
 
     assert.equal(isRedundant(upgraded, legacy), false);
   });
-});
 
-describe('appendSnapshot', () => {
-  it('records trackingSince from the first snapshot', () => {
-    const { history, appended } = appendSnapshot(null, toSnapshot([okResult('a', 100)], 1_700_000_000));
+  it('is false when the new snapshot carries quest points the old one lacks', () => {
+    const legacy = { t: 1000, p: { a: new Array(30).fill(0) } };
+    const upgraded = toSnapshot([okResult('a', 0)], 2000, null, { a: okQuest(10) });
 
-    assert.equal(appended, true);
-    assert.equal(history.snapshots.length, 1);
-    assert.equal(history.trackingSince, new Date(1_700_000_000 * 1000).toISOString());
+    assert.equal(isRedundant(upgraded, legacy), false);
   });
 
-  it('skips a duplicate reading but preserves history', () => {
-    const first = appendSnapshot(null, toSnapshot([okResult('a', 100)], 1000)).history;
-    const { history, appended } = appendSnapshot(first, toSnapshot([okResult('a', 100)], 2000));
-
-    assert.equal(appended, false);
-    assert.equal(history.snapshots.length, 1);
+  it('is false when quest points changed but xp did not', () => {
+    const first = toSnapshot([okResult('a', 100)], 1000, null, { a: okQuest(10) });
+    const second = toSnapshot([okResult('a', 100)], 2000, null, { a: okQuest(15) });
+    assert.equal(isRedundant(second, first), false);
   });
 
-  it('does not mutate the history it is given', () => {
-    const first = appendSnapshot(null, toSnapshot([okResult('a', 100)], 1000)).history;
-    const before = JSON.stringify(first);
-
-    appendSnapshot(first, toSnapshot([okResult('a', 200)], 2000));
-    assert.equal(JSON.stringify(first), before);
-  });
-});
-
-describe('pruneSnapshots', () => {
-  it('leaves recent snapshots at full resolution', () => {
-    const now = 100 * DAY;
-    const recent = [now - 3600, now - 1800, now].map((t) => ({ t, p: {} }));
-    assert.equal(pruneSnapshots(recent, now).length, 3);
-  });
-
-  it('thins snapshots older than the window to one per day', () => {
-    const now = 200 * DAY;
-    const oldDay = 100 * DAY;
-    const snapshots = [
-      { t: oldDay + 1, p: { a: [1] } },
-      { t: oldDay + 2, p: { a: [2] } },
-      { t: oldDay + 3, p: { a: [3] } },
-      { t: now, p: { a: [9] } },
-    ];
-
-    const pruned = pruneSnapshots(snapshots, now);
-
-    assert.equal(pruned.length, 2, 'one survivor from the old day plus the recent one');
-    assert.equal(pruned[0].p.a[0], 3, 'keeps the last reading of the day');
-    assert.equal(pruned[1].t, now);
-  });
-
-  it('returns snapshots in ascending time order', () => {
-    const now = 200 * DAY;
-    const pruned = pruneSnapshots([{ t: now }, { t: 10 * DAY }, { t: 50 * DAY }], now);
-    assert.deepEqual(
-      pruned.map((s) => s.t),
-      [10 * DAY, 50 * DAY, now],
-    );
+  it('is true when quest points are unchanged too', () => {
+    const first = toSnapshot([okResult('a', 100)], 1000, null, { a: okQuest(10) });
+    const second = toSnapshot([okResult('a', 100)], 2000, null, { a: okQuest(10) });
+    assert.equal(isRedundant(second, first), true);
   });
 });
 

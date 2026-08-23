@@ -5,9 +5,8 @@ name: Update hiscores
 
 on:
   schedule:
-    # Every six hours. GitHub queues cron jobs on a best-effort basis, so treat
-    # the interval as approximate rather than exact.
-    - cron: '17 */6 * * *'
+    # On the hour, every hour.
+    - cron: '0 * * * *'
   workflow_dispatch:
   push:
     branches: [main]

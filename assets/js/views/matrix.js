@@ -1,6 +1,6 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatRank } from '../format.js';
-import { buildMatrix, buildQuestRow, leaderCounts } from '../compute.js';
+import { buildMatrix, buildTotalsRow, leaderCounts, TOTAL_MEASURE } from '../compute.js';
 import { iconFor } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 
@@ -21,8 +21,11 @@ function matrixCell(cell, skill, levelsGained) {
     },
     [
       el('span', { class: 'cell-figures' }, [
-        el('span', { class: 'cell-primary', text: formatNumber(cell.level) }),
-        // Levels gained in the last day, beside the level itself.
+        el('span', { class: 'cell-level' }, [
+          el('span', { class: 'cell-primary', text: formatNumber(cell.level) }),
+          cell.isLeader ? el('span', { class: 'cell-star', 'aria-hidden': 'true', text: '★' }) : null,
+        ]),
+        // Levels gained in the last day, pinned to the cell's far edge.
         levelsGained > 0
           ? el('span', { class: 'chip-up cell-gain' }, [
               el('span', { text: `+${levelsGained}` }),
@@ -45,40 +48,6 @@ function matrixCell(cell, skill, levelsGained) {
         ['Levels today', levelsGained > 0 ? `+${levelsGained}` : 'none'],
         ['Experience', `${formatNumber(cell.xp)} xp`],
         ['Rank', formatRank(cell.rank)],
-        ['Group', cell.isLeader ? 'Leading this skill' : '—'],
-      ],
-      cell.player.colour,
-    ),
-  );
-}
-
-/** Quest points: a single figure per player, with no level/xp/rank behind it. */
-function questCell(cell) {
-  const node = el(
-    'td',
-    {
-      class: `cell${cell.isLeader ? ' is-leader' : ''}${cell.points ? '' : ' is-empty'}`,
-      style: { '--accent': cell.player.colour },
-      tabindex: '0',
-    },
-    [
-      el('span', { class: 'cell-figures' }, [
-        el('span', { class: 'cell-primary', text: cell.points === null ? '—' : formatNumber(cell.points) }),
-      ]),
-      el('span', { class: 'cell-rule', role: 'presentation' }, [
-        el('span', { class: 'cell-rule-fill', style: { width: `${(cell.share * 100).toFixed(1)}%` } }),
-      ]),
-      cell.isLeader ? el('span', { class: 'visually-hidden', text: ' — group leader' }) : null,
-    ],
-  );
-
-  return bindTooltip(node, () =>
-    tooltipContent(
-      `${cell.player.name} · Quest points`,
-      [
-        ['Quest points', cell.points === null ? 'unavailable' : formatNumber(cell.points)],
-        ['Quests complete', cell.questsComplete === null ? '—' : formatNumber(cell.questsComplete)],
-        ['Source', cell.stale ? 'cached — RuneMetrics unavailable' : 'RuneMetrics'],
       ],
       cell.player.colour,
     ),
@@ -88,9 +57,12 @@ function questCell(cell) {
 /**
  * Player column heading. The whole heading is a button: clicking sorts the
  * table by that account — the skills it leads first, then its level descending.
+ * Wording follows the invert toggle: "leads"/"best" flip to "trails"/"weakest"
+ * so the header still describes what's actually highlighted.
  */
-function playerHead(player, leads, sortedBy, onSort) {
+function playerHead(player, leads, sortedBy, onSort, invertLeaders) {
   const isSorted = sortedBy === player.slug;
+  const verb = invertLeaders ? 'Trails' : 'Leads';
 
   const button = el(
     'button',
@@ -98,14 +70,14 @@ function playerHead(player, leads, sortedBy, onSort) {
       type: 'button',
       class: 'player-sort',
       onclick: () => onSort(isSorted ? null : player.slug),
-      title: isSorted ? 'Clear sorting' : `Sort by ${player.name}'s best skills`,
+      title: isSorted ? 'Clear sorting' : `Sort by ${player.name}'s ${invertLeaders ? 'weakest' : 'best'} skills`,
     },
     [
-      el('span', { class: 'player-name' }, [swatch(player.colour), el('span', { text: player.name })]),
+      el('span', { class: 'player-name' }, [swatch(player.colour), el('span', { class: 'player-name-text', text: player.name })]),
       el('span', { class: `player-leads${leads > 0 ? ' has-leads' : ''}` }, [
-        el('span', { 'aria-hidden': 'true', text: '★' }),
+        el('span', { class: 'player-leads-star', 'aria-hidden': 'true', text: '★' }),
         el('span', { 'aria-hidden': 'true', text: formatNumber(leads) }),
-        el('span', { class: 'visually-hidden', text: `Leads ${formatNumber(leads)} rows` }),
+        el('span', { class: 'visually-hidden', text: `${verb} ${formatNumber(leads)} rows` }),
       ]),
       // No visual sort marker: the highlighted column carries it, and aria-sort
       // on the th announces it.
@@ -124,6 +96,29 @@ function playerHead(player, leads, sortedBy, onSort) {
   );
 }
 
+/** Flips which end of each row gets the ember highlight — strongest or weakest. */
+function invertToggle(invertLeaders, onToggle) {
+  return el(
+    'button',
+    {
+      type: 'button',
+      class: `matrix-invert${invertLeaders ? ' is-active' : ''}`,
+      onclick: onToggle,
+      'aria-pressed': invertLeaders ? 'true' : 'false',
+      title: invertLeaders
+        ? 'Showing the lowest level per skill — click to show the highest'
+        : 'Showing the highest level per skill — click to show the lowest',
+    },
+    [
+      el('span', { 'aria-hidden': 'true', text: invertLeaders ? '▼' : '▲' }),
+      el('span', {
+        class: 'visually-hidden',
+        text: invertLeaders ? 'Showing lowest' : 'Showing highest',
+      }),
+    ],
+  );
+}
+
 const skillHead = (skill) =>
   el('th', { scope: 'row', class: 'skill-head' }, [
     el('img', {
@@ -139,75 +134,64 @@ const skillHead = (skill) =>
   ]);
 
 /**
- * Totals row: each account's overall level, presented exactly like a skill row.
- * Experience is in the tooltip rather than beside the figure.
+ * Totals row: each account's overall level, built from the exact same
+ * `matrixCell` as a skill row — same leader star, same "+N" gain chip
+ * (summed across every skill gained today), same right-aligned layout —
+ * so it reads as one more row rather than a special case.
  */
-function totalsRow(players) {
-  const best = Math.max(...players.map((player) => player.total?.level ?? 0), 1);
-
+function totalsRow(totalsData, totalLevelGainFor) {
   return el('tr', { class: 'row-total' }, [
     el('th', { scope: 'row', class: 'skill-head' }, [
       el('img', { class: 'skill-icon', src: 'assets/icons/stats.png', alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'skill-name', text: 'Total' }),
     ]),
-    ...players.map((player) => {
-      const level = player.total?.level ?? 0;
-      const node = el('td', { class: 'cell', style: { '--accent': player.colour }, tabindex: '0' }, [
-        el('span', { class: 'cell-figures' }, [el('span', { class: 'cell-primary', text: formatNumber(level) })]),
-        el('span', { class: 'cell-rule', role: 'presentation' }, [
-          el('span', { class: 'cell-rule-fill', style: { width: `${((level / best) * 100).toFixed(1)}%` } }),
-        ]),
-      ]);
-
-      return bindTooltip(node, () =>
-        tooltipContent(
-          player.name,
-          [
-            ['Total level', formatNumber(player.total?.level)],
-            ['Total experience', `${formatNumber(player.total?.xp)} xp`],
-            ['Overall rank', formatRank(player.total?.rank)],
-          ],
-          player.colour,
-        ),
-      );
-    }),
+    ...totalsData.cells.map((cell) => matrixCell(cell, TOTAL_MEASURE, totalLevelGainFor(cell.player.slug))),
   ]);
 }
 
 /**
  * Sorts rows for one account: the skills it leads first, then its own level
- * high to low. Ties fall back to experience so the order is stable.
+ * high to low. Ties fall back to experience so the order is stable. Inverted,
+ * both the level and experience tie-breaks flip too — otherwise "weakest
+ * skills first" would still list the account's strongest skills below its
+ * one or two rock-bottom rows.
  */
-function sortRowsFor(rows, slug) {
+function sortRowsFor(rows, slug, invertLeaders) {
   const cellFor = (row) => row.cells.find((cell) => cell.player.slug === slug);
+  const direction = invertLeaders ? -1 : 1;
 
   return [...rows].sort((a, b) => {
     const left = cellFor(a);
     const right = cellFor(b);
     if (!left || !right) return 0;
-    return Number(right.isLeader) - Number(left.isLeader) || right.level - left.level || right.xp - left.xp;
+    return (
+      Number(right.isLeader) - Number(left.isLeader) ||
+      direction * (right.level - left.level) ||
+      direction * (right.xp - left.xp)
+    );
   });
 }
 
-export function renderMatrix(state, levelGains, onSort) {
-  const { players, sortedBy } = state;
+export function renderMatrix(state, levelGains, onSort, onToggleInvert) {
+  const { players, sortedBy, invertLeaders } = state;
 
-  const skillRows = buildMatrix(players, 'level');
-  const questRow = buildQuestRow(players);
-  const leads = leaderCounts([...skillRows, questRow]);
-  const ordered = sortedBy ? sortRowsFor(skillRows, sortedBy) : skillRows;
+  const skillRows = buildMatrix(players, 'level', invertLeaders);
+  const totalsData = buildTotalsRow(players, invertLeaders);
+  const leads = leaderCounts([...skillRows, totalsData]);
+  const ordered = sortedBy ? sortRowsFor(skillRows, sortedBy, invertLeaders) : skillRows;
 
   const gainFor = (slug, skillId) => levelGains.bySlug[slug]?.bySkill?.[skillId] ?? 0;
+  const totalLevelGainFor = (slug) => levelGains.bySlug[slug]?.total ?? 0;
 
   const table = el('table', { class: 'matrix' }, [
     el('caption', {
       class: 'visually-hidden',
-      text: 'Every RuneScape 3 skill level by player, plus quest points and totals. The group leader is marked in each row.',
+      text: `Every RuneScape 3 skill level by player, plus totals. The ${invertLeaders ? 'account behind' : 'group leader'} is marked in each row.`,
     }),
     el('thead', {}, [
       el('tr', {}, [
         el('th', { class: 'corner', scope: 'col' }, [el('span', { text: 'Skill' })]),
-        ...players.map((player) => playerHead(player, leads[player.slug] ?? 0, sortedBy, onSort)),
+        ...players.map((player) => playerHead(player, leads[player.slug] ?? 0, sortedBy, onSort, invertLeaders)),
       ]),
     ]),
     el('tbody', {}, [
@@ -217,19 +201,21 @@ export function renderMatrix(state, levelGains, onSort) {
           ...row.cells.map((cell) => matrixCell(cell, row.skill, gainFor(cell.player.slug, row.skill.id))),
         ]),
       ),
-      el('tr', { class: 'row-quests' }, [skillHead(questRow.skill), ...questRow.cells.map(questCell)]),
-      totalsRow(players),
+      totalsRow(totalsData, totalLevelGainFor),
     ]),
   ]);
 
   return el('section', { class: 'matrix-section' }, [
     el('div', { class: 'matrix-head' }, [
-      el('h2', { text: 'Skill matrix' }),
+      el('div', { class: 'matrix-title' }, [
+        el('h2', { text: `Skill Leaderboard${invertLeaders ? ' (Inverse)' : ''}` }),
+        invertToggle(invertLeaders, onToggleInvert),
+      ]),
       el('p', {
         class: 'matrix-note',
         text: sortedBy
           ? `Sorted by ${players.find((p) => p.slug === sortedBy)?.name ?? ''} — click the column again to reset.`
-          : 'Click a player column to sort by their best skills. Hover a cell for experience and rank.',
+          : `Click a player column to sort by their ${invertLeaders ? 'weakest' : 'best'} skills. Hover a cell for experience and rank.`,
       }),
     ]),
     el('div', { class: 'matrix-scroll' }, [table]),

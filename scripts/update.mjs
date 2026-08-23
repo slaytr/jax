@@ -3,8 +3,8 @@
  * Entry point for the scheduled hiscore update.
  *
  * Reads data/players.json, pulls each account from the RS3 feed, then rewrites
- * data/latest.json and appends to data/history.json. Run by GitHub Actions on a
- * cron; safe to run locally too.
+ * data/latest.json and appends a snapshot to today's file under data/history/.
+ * Run by GitHub Actions on a cron; safe to run locally too.
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -14,12 +14,12 @@ import { fileURLToPath } from 'node:url';
 import { fetchAllPlayers } from './hiscores.mjs';
 import { fetchGroupRank } from './group-rank.mjs';
 import { fetchAllQuestPoints } from './quests.mjs';
-import { appendSnapshot, mergePlayers, toSnapshot, HISTORY_VERSION } from './snapshots.mjs';
+import { isRedundant, mergePlayers, toSnapshot, HISTORY_VERSION } from './snapshots.mjs';
+import { appendDailySnapshot } from './history-store.mjs';
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const ROSTER_PATH = join(DATA_DIR, 'players.json');
 const LATEST_PATH = join(DATA_DIR, 'latest.json');
-const HISTORY_PATH = join(DATA_DIR, 'history.json');
 
 async function readJson(path, fallback) {
   try {
@@ -87,7 +87,6 @@ async function main() {
   }
 
   const previousLatest = await readJson(LATEST_PATH, null);
-  const previousHistory = await readJson(HISTORY_PATH, null);
 
   const group = roster.group ?? { name: 'Group', tagline: '' };
   const groupRank = await resolveGroupRank(group, previousLatest?.groupRank ?? null);
@@ -100,26 +99,26 @@ async function main() {
     );
   });
 
-  const { history, appended } = appendSnapshot(previousHistory, toSnapshot(results, epochSeconds, groupRank));
+  const snapshot = toSnapshot(results, epochSeconds, groupRank, quests);
+  const { appended, dayKey, count } = await appendDailySnapshot(DATA_DIR, snapshot, isRedundant);
   const players = mergePlayers(roster.players, results, previousLatest?.players ?? [], quests);
 
   const latest = {
     version: HISTORY_VERSION,
     fetchedAt: now.toISOString(),
-    trackingSince: history.trackingSince,
+    trackingSince: previousLatest?.trackingSince ?? now.toISOString(),
     group,
     groupRank,
     players,
   };
 
   await writeJson(LATEST_PATH, latest);
-  await writeJson(HISTORY_PATH, history);
 
   const failed = results.length - succeeded.length;
-  console.log(
-    `\nWrote latest.json (${succeeded.length} ok, ${failed} carried forward) and history.json ` +
-      `(${history.snapshots.length} snapshots, ${appended ? 'appended' : 'no change — skipped duplicate'}).`,
-  );
+  const historyNote = appended
+    ? `appended to history/${dayKey}.json (${count} today)`
+    : `no change — skipped history/${dayKey}.json`;
+  console.log(`\nWrote latest.json (${succeeded.length} ok, ${failed} carried forward); ${historyNote}.`);
 }
 
 main().catch((error) => {

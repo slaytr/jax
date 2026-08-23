@@ -11,6 +11,7 @@ import { loadGroupData } from './data.js';
 import {
   computeGains,
   computeLevelGains,
+  computeQuestGains,
   computeRankDelta,
   groupSummary,
   groupTrend,
@@ -18,7 +19,8 @@ import {
 } from './compute.js';
 import { el, replaceChildren } from './dom.js';
 import { renderMasthead } from './views/masthead.js';
-import { renderLeaderboards } from './views/leaderboards.js';
+import { renderGains } from './views/leaderboards.js';
+import { renderStandings } from './views/standings.js';
 import { renderMatrix } from './views/matrix.js';
 
 const ONE_DAY = 86400;
@@ -53,21 +55,36 @@ function paintMasthead() {
   });
 }
 
-function render() {
-  const levelGains = computeLevelGains(state.snapshots, state.players, ONE_DAY);
+/** Every Gains band for every period, computed once so switching tabs is instant. */
+function computeAllGains() {
+  const forEachPeriod = (compute) => ({
+    day: compute(state.snapshots, state.players, ONE_DAY),
+    week: compute(state.snapshots, state.players, ONE_WEEK),
+    month: compute(state.snapshots, state.players, ONE_MONTH),
+  });
 
-  const windows = {
-    day: computeGains(state.snapshots, state.players, ONE_DAY),
-    week: computeGains(state.snapshots, state.players, ONE_WEEK),
-    month: computeGains(state.snapshots, state.players, ONE_MONTH),
+  return {
+    levels: forEachPeriod(computeLevelGains),
+    xp: forEachPeriod(computeGains),
+    quests: forEachPeriod(computeQuestGains),
   };
+}
+
+function render() {
+  const gains = computeAllGains();
 
   paintMasthead();
 
   replaceChildren(
     dom.panel,
-    ...renderLeaderboards(state, windows),
-    renderMatrix(state, levelGains, (slug) => setState({ sortedBy: slug })),
+    renderStandings(state),
+    renderGains(gains, state.gainsPeriod, (period) => setState({ gainsPeriod: period })),
+    renderMatrix(
+      state,
+      gains.levels.day,
+      (slug) => setState({ sortedBy: slug }),
+      () => setState({ invertLeaders: !state.invertLeaders }),
+    ),
   );
 }
 
@@ -89,7 +106,10 @@ async function boot() {
   try {
     const data = await loadGroupData();
     // sortedBy: player slug the matrix is ordered around, or null for skill order.
-    state = { ...data, sortedBy: null };
+    // invertLeaders: when true, the matrix highlights each row's lowest level
+    // instead of its highest.
+    // gainsPeriod: which window ('day' | 'week' | 'month') the Gains section shows.
+    state = { ...data, sortedBy: null, invertLeaders: false, gainsPeriod: 'day' };
 
     document.title = `${data.group.name} · Group Ironman hiscores`;
     replaceChildren(

@@ -7,13 +7,6 @@ import { SKILL_COUNT } from './hiscores.mjs';
 
 export const HISTORY_VERSION = 1;
 
-/** Snapshots newer than this are kept at full cron resolution. */
-const FULL_RESOLUTION_DAYS = 45;
-/** Beyond that, history is thinned to one snapshot per UTC day. */
-const SECONDS_PER_DAY = 86400;
-
-const utcDayKey = (epochSeconds) => new Date(epochSeconds * 1000).toISOString().slice(0, 10);
-
 /** Compact per-player vector indexed by skill id. */
 function vectorOf(result, field) {
   const vector = new Array(SKILL_COUNT).fill(0);
@@ -24,10 +17,26 @@ function vectorOf(result, field) {
 }
 
 /**
+ * Quest points per slug, keeping only successful fetches — same convention as
+ * `p`/`l`, which keep only successful hiscore fetches. Quest points come from
+ * a separate feed (RuneMetrics) that fails independently, so a player can be
+ * missing here even when their hiscore fetch above succeeded.
+ */
+function questVector(questsBySlug = {}) {
+  return Object.fromEntries(
+    Object.entries(questsBySlug)
+      .filter(([, result]) => result?.ok)
+      .map(([slug, result]) => [slug, result.questPoints]),
+  );
+}
+
+/**
  * @param groupRank optional competitive-ladder standing; its rank is stored as
  *   `r` so day-over-day movement can be computed later.
+ * @param questsBySlug optional quest-point results (from fetchAllQuestPoints),
+ *   stored as `q` so quest points gained over a window can be computed later.
  */
-export function toSnapshot(results, epochSeconds, groupRank = null) {
+export function toSnapshot(results, epochSeconds, groupRank = null, questsBySlug = {}) {
   const ok = results.filter((result) => result.ok);
 
   // `p` is xp per skill, `l` is level per skill. Levels are stored rather than
@@ -40,10 +49,18 @@ export function toSnapshot(results, epochSeconds, groupRank = null) {
     l: Object.fromEntries(ok.map((result) => [result.slug, vectorOf(result, 'level')])),
   };
 
-  return Number.isFinite(groupRank?.rank) ? { ...snapshot, r: groupRank.rank } : snapshot;
+  const withRank = Number.isFinite(groupRank?.rank) ? { ...snapshot, r: groupRank.rank } : snapshot;
+
+  const q = questVector(questsBySlug);
+  return Object.keys(q).length > 0 ? { ...withRank, q } : withRank;
 }
 
 const sameVectors = (a = [], b = []) => a.length === b.length && a.every((value, i) => value === b[i]);
+
+const sameScalars = (a = {}, b = {}) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+};
 
 /** True when nothing in the group moved since the previous snapshot. */
 export function isRedundant(snapshot, previous) {
@@ -56,44 +73,15 @@ export function isRedundant(snapshot, previous) {
   // duplicate. Without this, a new field would never be written until somebody
   // happened to gain xp.
   if (snapshot.l && !previous.l) return false;
+  if (snapshot.q && !previous.q) return false;
 
   const slugs = Object.keys(snapshot.p);
   if (slugs.length !== Object.keys(previous.p).length) return false;
-  return slugs.every((slug) => sameVectors(snapshot.p[slug], previous.p[slug]));
-}
+  if (!slugs.every((slug) => sameVectors(snapshot.p[slug], previous.p[slug]))) return false;
 
-export function pruneSnapshots(snapshots, nowSeconds) {
-  const cutoff = nowSeconds - FULL_RESOLUTION_DAYS * SECONDS_PER_DAY;
-  const recent = snapshots.filter((snapshot) => snapshot.t >= cutoff);
-  const older = snapshots.filter((snapshot) => snapshot.t < cutoff);
-
-  // Keep only the final snapshot of each UTC day once outside the full-resolution window.
-  const dailyByKey = new Map();
-  for (const snapshot of older) {
-    const key = utcDayKey(snapshot.t);
-    const kept = dailyByKey.get(key);
-    if (!kept || snapshot.t > kept.t) dailyByKey.set(key, snapshot);
-  }
-
-  return [...dailyByKey.values(), ...recent].sort((a, b) => a.t - b.t);
-}
-
-export function appendSnapshot(history, snapshot) {
-  const existing = Array.isArray(history?.snapshots) ? history.snapshots : [];
-  const previous = existing[existing.length - 1];
-
-  if (isRedundant(snapshot, previous)) {
-    return { history, appended: false };
-  }
-
-  return {
-    history: {
-      version: HISTORY_VERSION,
-      trackingSince: history?.trackingSince ?? new Date(snapshot.t * 1000).toISOString(),
-      snapshots: pruneSnapshots([...existing, snapshot], snapshot.t),
-    },
-    appended: true,
-  };
+  // Quest points can change with no xp gained (a quest completed for points
+  // alone), so that alone must also force a new entry.
+  return sameScalars(snapshot.q, previous.q);
 }
 
 const totalsFrom = (skills) => {

@@ -1,5 +1,5 @@
 import { el, svgEl, replaceChildren } from '../dom.js';
-import { formatDuration, formatCompact, formatNumber, formatShortAge } from '../format.js';
+import { formatDuration, formatCompact, formatNumber, formatRelativeTime, formatShortAge } from '../format.js';
 
 /**
  * A compact metric bar rather than a hero banner: the scoreboard's job is to
@@ -96,10 +96,10 @@ export function renderMasthead(container, state) {
       ]),
 
       el('div', { class: 'metrics' }, [
-        metric('rank', 'Group rank', rankValue, rankDeltaBadge(rankDelta)),
+        metric('rank', 'Group rank', rankValue),
         metric('level', 'Total level', formatNumber(summary.totalLevel)),
         metric('xp', 'Total xp', formatCompact(summary.totalXp), sparkline(trend)),
-        metric('skills', 'Skills 99', formatNumber(summary.maxedSkills)),
+        metric('skills', '99s', formatNumber(summary.maxedSkills)),
         metric('updated', 'Last updated', formatShortAge(fetchedAt), null, fetchedTitle),
         metric(
           'next',

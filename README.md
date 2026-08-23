@@ -29,12 +29,12 @@ This also buys the thing a live fetch could never give you: **history**. Gains
 are computed by diffing snapshots, which only works because they are stored.
 
 ```
-GitHub Actions (every 6h)          repo                     GitHub Pages
-┌──────────────────────┐    ┌──────────────────┐    ┌────────────────────┐
-│ scripts/update.mjs   │───▶│ data/latest.json │◀───│ assets/js/app.js   │
-│  · hiscore feed ×5   │    │ data/history.json│    │  (fetch + render)  │
-│  · group ladder page │    └──────────────────┘    └────────────────────┘
-└──────────────────────┘
+GitHub Actions (hourly)            repo                          GitHub Pages
+┌──────────────────────┐    ┌──────────────────────────┐    ┌────────────────────┐
+│ scripts/update.mjs   │───▶│ data/latest.json         │◀───│ assets/js/app.js   │
+│  · hiscore feed ×5   │    │ data/history/YYYY-MM/     │    │  (fetch + render)  │
+│  · group ladder page │    │   DD.json (one per day)  │    └────────────────────┘
+└──────────────────────┘    └──────────────────────────┘
 ```
 
 ## Setup
@@ -45,7 +45,7 @@ GitHub Actions (every 6h)          repo                     GitHub Pages
    permissions → *Read and write permissions*. Without this the update job
    cannot push its snapshot.
 3. **Run the job once** — Actions → *Update hiscores* → *Run workflow*. It also
-   runs automatically every six hours.
+   runs automatically every hour, on the hour.
 
 Gains stay empty until the job has run **twice** — one snapshot cannot be diffed.
 
@@ -91,7 +91,8 @@ exactly as committed.
 | `scripts/hiscores.mjs` | RS3 hiscore feed client — retries, timeouts, validation |
 | `scripts/group-rank.mjs` | Parses the competitive ladder out of the page's RSC payload |
 | `scripts/quests.mjs` | Quest points, summed from the RuneMetrics quest list |
-| `scripts/snapshots.mjs` | Pure snapshot/history transforms (append, prune, merge) |
+| `scripts/snapshots.mjs` | Pure snapshot transforms (build a snapshot, redundancy check, merge) |
+| `scripts/history-store.mjs` | Reads/writes the sharded `data/history/YYYY-MM/DD.json` files |
 | `scripts/update.mjs` | Orchestrates a run and writes `data/` |
 | `scripts/fetch-icons.mjs` | One-off: downloads skill icons into `assets/icons/` |
 
@@ -103,10 +104,14 @@ Three deliberate robustness choices:
 - **Each source fails independently.** Hiscores, the group ladder and quest
   points are three separate services; any one going down leaves the other two
   fresh and only its own column marked stale.
-- **History is deduplicated and pruned.** Identical consecutive snapshots are
-  skipped — though a ladder move counts as a change, since other groups passing
-  us shifts our rank without us gaining xp. Snapshots older than 45 days are
-  thinned to one per day.
+- **History is sharded by day and deduplicated.** Each UTC day gets its own
+  file (`data/history/YYYY-MM/DD.json`), grouped into month folders, so an
+  hourly run only ever writes and commits the one file that changed instead of
+  rewriting the group's whole tracking history. Identical consecutive readings
+  are skipped rather than stored — though a ladder move counts as a change,
+  since other groups passing us shifts our rank without us gaining xp. The page
+  itself only ever loads the last ~33 days of shards, since no gain window
+  looks back further than a month.
 
 ### Quest points come from a different API
 

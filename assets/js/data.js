@@ -6,10 +6,55 @@
  * GitHub Actions, and are plain static assets from the page's own origin.
  */
 
-import { colourForIndex } from './config.js';
+import { colourForPlayer } from './config.js';
 
 const LATEST_URL = new URL('../../data/latest.json', import.meta.url);
-const HISTORY_URL = new URL('../../data/history.json', import.meta.url);
+
+/**
+ * History is sharded one file per UTC day (data/history/YYYY-MM/DD.json —
+ * see scripts/history-store.mjs), so a run only ever has to write the one
+ * file that changed instead of rewriting the group's entire tracking history.
+ *
+ * The page never needs more than a month of it: the longest gain window is
+ * 30 days (see ONE_MONTH in app.js). A few extra days of margin keep that
+ * window's baseline lookup covered even right at the edge.
+ */
+const HISTORY_WINDOW_DAYS = 33;
+
+const utcDayKey = (date) => date.toISOString().slice(0, 10);
+
+function historyFileUrl(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return new URL(`../../data/history/${year}-${month}/${day}.json`, import.meta.url);
+}
+
+/**
+ * Fetches the last `days` daily shards — but never further back than
+ * `trackingSince`, so a group in its first weeks doesn't spend a fetch (and a
+ * console 404) on days that provably can't exist yet. Flattens the result
+ * into one ascending-by-time snapshot array — the same shape `compute.js`
+ * expected from the old single history.json.
+ */
+async function loadRecentHistory(days, trackingSince) {
+  const today = new Date();
+  const earliestKey = trackingSince ? utcDayKey(new Date(trackingSince)) : null;
+
+  const urls = [];
+  for (let offset = 0; offset < days; offset += 1) {
+    const date = new Date(today);
+    date.setUTCDate(date.getUTCDate() - offset);
+    if (earliestKey && utcDayKey(date) < earliestKey) break;
+    urls.push(historyFileUrl(date));
+  }
+
+  const files = await Promise.all(urls.map((url) => loadJson(url, { required: false })));
+
+  return files
+    .flatMap((file) => (Array.isArray(file?.snapshots) ? file.snapshots : []))
+    .sort((a, b) => a.t - b.t);
+}
 
 async function loadJson(url, { required }) {
   let response;
@@ -41,31 +86,21 @@ function validateLatest(latest) {
 /**
  * Attaches presentation-only fields the views need, without mutating the source.
  *
- * Colour is assigned by total-level position — the leader takes the first hue,
- * and so on left-to-right down the standings. Note the consequence: because the
- * assignment follows rank rather than identity, two players swapping places
- * swaps their colours. That is the requested behaviour; if colours should
- * instead be pinned per account, key this off `slug` order rather than level.
+ * Colour is pinned per account (see PLAYER_COLOURS in config.js) rather than
+ * derived from live standings, so a player keeps their colour as ranks shift
+ * — two players crossing in the standings no longer swaps their colours.
  */
 function decorate(players) {
-  const byLevel = [...players]
-    .sort((a, b) => (b.total?.level ?? 0) - (a.total?.level ?? 0) || (b.total?.xp ?? 0) - (a.total?.xp ?? 0))
-    .map((player) => player.slug);
-
-  return players.map((player) => ({
+  return players.map((player, index) => ({
     ...player,
-    colour: colourForIndex(byLevel.indexOf(player.slug)),
+    colour: colourForPlayer(player.slug, index),
     skillById: Object.fromEntries((player.skills ?? []).map((skill) => [skill.id, skill])),
   }));
 }
 
 export async function loadGroupData() {
-  const [latest, history] = await Promise.all([
-    loadJson(LATEST_URL, { required: true }),
-    loadJson(HISTORY_URL, { required: false }),
-  ]);
-
-  validateLatest(latest);
+  const latest = validateLatest(await loadJson(LATEST_URL, { required: true }));
+  const snapshots = await loadRecentHistory(HISTORY_WINDOW_DAYS, latest.trackingSince);
 
   return {
     fetchedAt: latest.fetchedAt,
@@ -73,6 +108,6 @@ export async function loadGroupData() {
     group: latest.group ?? { name: 'Group', tagline: '' },
     groupRank: latest.groupRank ?? null,
     players: decorate(latest.players),
-    snapshots: Array.isArray(history?.snapshots) ? history.snapshots : [],
+    snapshots,
   };
 }
