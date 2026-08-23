@@ -31,6 +31,38 @@ const setState = (patch) => {
   render();
 };
 
+let statusTimer = null;
+
+/** Clears the transient result message after a moment, without a re-fetch. */
+function flashStatus(message, status = 'idle') {
+  clearTimeout(statusTimer);
+  setState({ refresh: { status, message } });
+  statusTimer = setTimeout(() => setState({ refresh: { status: 'idle', message: '' } }), 6000);
+}
+
+/**
+ * Re-reads the committed snapshot. It cannot trigger a live hiscore fetch:
+ * that happens server-side in the Action, and firing it from here would mean
+ * shipping a GitHub token to every visitor.
+ */
+async function refreshData() {
+  if (state.refresh.status === 'loading') return;
+
+  clearTimeout(statusTimer);
+  setState({ refresh: { status: 'loading', message: '' } });
+
+  const previousFetch = state.fetchedAt;
+  try {
+    const data = await loadGroupData();
+    // Keep view state (such as the active sort) across a refresh.
+    state = { ...state, ...data };
+    flashStatus(data.fetchedAt === previousFetch ? 'Already up to date' : 'Updated');
+  } catch (error) {
+    console.error(error);
+    flashStatus(`Could not refresh: ${error.message}`, 'error');
+  }
+}
+
 function render() {
   const summary = groupSummary(state.players);
   const levelGains = computeLevelGains(state.snapshots, state.players, ONE_DAY);
@@ -43,6 +75,7 @@ function render() {
 
   renderMasthead(dom.masthead, {
     ...state,
+    onRefresh: refreshData,
     summary,
     trend: groupTrend(state.snapshots),
     rankDelta: computeRankDelta(state.snapshots),
@@ -74,7 +107,7 @@ async function boot() {
   try {
     const data = await loadGroupData();
     // sortedBy: player slug the matrix is ordered around, or null for skill order.
-    state = { ...data, sortedBy: null };
+    state = { ...data, sortedBy: null, refresh: { status: 'idle', message: '' } };
 
     document.title = `${data.group.name} · Group Ironman hiscores`;
     replaceChildren(

@@ -189,6 +189,66 @@ body::after {
   color: var(--series-4);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+
+/* Manual refresh — re-reads the published snapshot; see masthead.js. */
+.refresh {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.refresh-button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(201, 162, 39, 0.14), rgba(201, 162, 39, 0.03));
+  color: #f6ecd9;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.16s var(--ease), border-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.refresh-button:hover:not(:disabled) {
+  border-color: var(--ember);
+  background: rgba(217, 89, 38, 0.18);
+}
+
+.refresh-button:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.refresh-button:disabled {
+  cursor: progress;
+  color: var(--ink-muted);
+  border-color: var(--hairline-strong);
+  background: var(--surface-2);
+}
+
+.refresh-status {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  min-height: 0.8em;
+  text-align: right;
+}
+
+.refresh-status.is-error {
+  color: #efa08a;
+}
+
 /* Metric strip — the numbers the scoreboard exists to relay. */
 .metrics {
   display: flex;
@@ -1059,8 +1119,41 @@ body[data-ready] .loading {
     height: 20px;
   }
 
+  /* Grid so the button can sit on the identity line while the metric strip
+     spans the row beneath. `display: contents` lets the wrapper's children
+     place themselves directly in this grid. */
   .topbar {
-    gap: 1.1rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.9rem 1rem;
+  }
+
+  .identity {
+    grid-area: 1 / 1;
+  }
+
+  .topbar-right {
+    display: contents;
+  }
+
+  .refresh {
+    grid-area: 1 / 2;
+    justify-self: end;
+  }
+
+  .metrics {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+
+  .refresh-button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+  }
+
+  .refresh-status {
+    display: none;
   }
 
   /* All five players stay on one row: the entry collapses to "place name" over
