@@ -63,36 +63,8 @@ function sparkline(trend) {
   return svg;
 }
 
-/**
- * Manual refresh. It re-reads the committed snapshot from this origin — it
- * cannot make Jagex re-scan, since the hiscore feed sends no CORS headers and
- * the scheduled Action is what actually fetches. So this picks up a newer
- * snapshot if one has been published since the page loaded.
- */
-function updateButton(refresh, onRefresh) {
-  const busy = refresh.status === 'loading';
-
-  return el('div', { class: 'refresh' }, [
-    el('button', {
-      type: 'button',
-      class: `refresh-button${busy ? ' is-busy' : ''}`,
-      disabled: busy,
-      'aria-busy': busy ? 'true' : 'false',
-      title: 'Re-read the latest published snapshot',
-      onclick: onRefresh,
-      text: busy ? 'Updating…' : 'Update',
-    }),
-    el('span', {
-      class: `refresh-status${refresh.status === 'error' ? ' is-error' : ''}`,
-      role: 'status',
-      'aria-live': 'polite',
-      text: refresh.message ?? '',
-    }),
-  ]);
-}
-
 export function renderMasthead(container, state) {
-  const { group, summary, trend, fetchedAt, staleCount, groupRank, rankDelta, refresh, onRefresh } = state;
+  const { group, summary, trend, fetchedAt, staleCount, groupRank, rankDelta } = state;
 
   const rankValue = groupRank && Number.isFinite(groupRank.rank) ? formatNumber(groupRank.rank) : '—';
 
@@ -118,15 +90,12 @@ export function renderMasthead(container, state) {
         ]),
       ]),
 
-      el('div', { class: 'topbar-right' }, [
-        el('div', { class: 'metrics' }, [
-          metric('rank', 'Group rank', rankValue, rankDeltaBadge(rankDelta)),
-          metric('level', 'Total level', formatNumber(summary.totalLevel)),
-          metric('xp', 'Total xp', formatCompact(summary.totalXp), sparkline(trend)),
-          metric('skills', 'Skills 99', formatNumber(summary.maxedSkills)),
-          metric('updated', 'Updated', formatRelativeTime(fetchedAt).replace(' ago', '')),
-        ]),
-        updateButton(refresh, onRefresh),
+      el('div', { class: 'metrics' }, [
+        metric('rank', 'Group rank', rankValue, rankDeltaBadge(rankDelta)),
+        metric('level', 'Total level', formatNumber(summary.totalLevel)),
+        metric('xp', 'Total xp', formatCompact(summary.totalXp), sparkline(trend)),
+        metric('skills', 'Skills 99', formatNumber(summary.maxedSkills)),
+        metric('updated', 'Updated', formatRelativeTime(fetchedAt).replace(' ago', '')),
       ]),
     ]),
   );
