@@ -65,8 +65,13 @@ export function bindTooltip(target, build) {
 window.addEventListener('scroll', hide, { passive: true, capture: true });
 window.addEventListener('keydown', (event) => event.key === 'Escape' && hide());
 
-/** Standard tooltip body: a title line plus label/value rows. */
-export function tooltipContent(title, rows, accent) {
+/**
+ * Standard tooltip body: a title line plus label/value rows.
+ *
+ * A row value may be a string or a Node, so a row can carry an icon. `extra` is
+ * appended below the rows for richer content such as a per-skill breakdown.
+ */
+export function tooltipContent(title, rows, accent, extra) {
   return el('div', { class: 'tooltip-body' }, [
     el('p', { class: 'tooltip-title' }, [
       accent ? el('span', { class: 'swatch', style: { '--swatch': accent } }) : null,
@@ -75,7 +80,11 @@ export function tooltipContent(title, rows, accent) {
     el(
       'dl',
       { class: 'tooltip-rows' },
-      rows.flatMap(([label, value]) => [el('dt', { text: label }), el('dd', { text: value })]),
+      rows.flatMap(([label, value]) => [
+        el('dt', { text: label }),
+        value instanceof Node ? el('dd', {}, [value]) : el('dd', { text: value }),
+      ]),
     ),
+    extra,
   ]);
 }

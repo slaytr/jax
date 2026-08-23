@@ -1,5 +1,6 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatCompact, formatNumber } from '../format.js';
+import { iconFor } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 
 /**
@@ -32,6 +33,27 @@ function graphIcon() {
   return svg;
 }
 
+/** Skill icon plus its gain. The name rides along for screen readers. */
+const skillGain = (entry, className = 'skill-gain') =>
+  el('span', { class: className }, [
+    el('img', { src: iconFor(entry.skill), alt: '', width: 14, height: 14, decoding: 'async' }),
+    el('span', { class: 'visually-hidden', text: `${entry.skill.name} ` }),
+    el('span', { text: `+${formatCompact(entry.gained)}` }),
+  ]);
+
+/**
+ * Every skill the player trained in the window, icon-led and ordered by gain.
+ * `bySkill` is already sorted descending by computeGains.
+ */
+function skillBreakdown(bySkill) {
+  if (bySkill.length === 0) return null;
+
+  return el('div', { class: 'tooltip-skills' }, [
+    el('p', { class: 'tooltip-skills-label', text: 'Skills trained' }),
+    el('div', { class: 'tooltip-skills-grid' }, bySkill.map((entry) => skillGain(entry))),
+  ]);
+}
+
 function gainsRow(players, gains, windowLabel) {
   const bySlug = Object.fromEntries(gains.rows.map((row) => [row.player.slug, row]));
   const ordered = [...players].sort((a, b) => (bySlug[b.slug]?.total ?? 0) - (bySlug[a.slug]?.total ?? 0));
@@ -50,15 +72,18 @@ function gainsRow(players, gains, windowLabel) {
       share: best > 0 ? total / best : 0,
     });
 
+    const trained = row?.bySkill ?? [];
+
     return bindTooltip(node, () =>
       tooltipContent(
         player.name,
         [
           [`XP gained (${windowLabel})`, formatNumber(total)],
-          ['Skills trained', formatNumber(row?.bySkill?.length ?? 0)],
-          ['Top skill', top ? `${top.skill.name} +${formatCompact(top.gained)}` : '—'],
+          ['Skills trained', formatNumber(trained.length)],
+          ['Top skill', top ? skillGain(top, 'skill-gain is-top') : '—'],
         ],
         player.colour,
+        skillBreakdown(trained),
       ),
     );
   });
