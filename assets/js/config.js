@@ -52,6 +52,18 @@ export const SKILLS = Object.freeze(
 /** Committed locally rather than hotlinked — see scripts/fetch-icons.mjs. */
 export const iconFor = (skill) => `assets/icons/${skill.slug}.png`;
 
+/**
+ * When the update job is scheduled to run, in UTC — every six hours at :17.
+ *
+ * COUPLED to the cron in .github/workflows/update-hiscores.yml. Change one and
+ * you must change the other; nothing enforces it at runtime. (The cron string
+ * is not quoted here because it contains a comment-terminating sequence.)
+ *
+ * GitHub queues cron jobs on a best-effort basis and can run them late, so any
+ * countdown derived from this is an estimate, not a guarantee.
+ */
+export const UPDATE_SCHEDULE = Object.freeze({ minute: 17, hours: [0, 6, 12, 18] });
+
 /** Every skill except the synthetic "Overall" row. */
 export const TRACKED_SKILLS = Object.freeze(SKILLS.filter((skill) => skill.id !== 0));
 

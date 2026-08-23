@@ -41,6 +41,29 @@ export function formatRelativeTime(isoString) {
   return `${amount} ${match.unit}${amount === 1 ? '' : 's'} ago`;
 }
 
+/** Compact age for the metric strip: "18m", "2h", "3d". */
+export function formatShortAge(isoString) {
+  const then = Date.parse(isoString);
+  if (!Number.isFinite(then)) return '—';
+
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+  return `${Math.round(seconds / 86400)}d`;
+}
+
+/** Remaining time as "3h 12m" / "12m". Never negative. */
+export function formatDuration(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return 'due';
+  if (milliseconds < 60000) return '<1m';
+
+  const totalMinutes = Math.round(milliseconds / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 export function formatDate(isoString) {
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return 'unknown';

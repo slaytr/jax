@@ -8,7 +8,14 @@
  */
 
 import { loadGroupData } from './data.js';
-import { computeGains, computeLevelGains, computeRankDelta, groupSummary, groupTrend } from './compute.js';
+import {
+  computeGains,
+  computeLevelGains,
+  computeRankDelta,
+  groupSummary,
+  groupTrend,
+  nextScheduledRun,
+} from './compute.js';
 import { el, replaceChildren } from './dom.js';
 import { renderMasthead } from './views/masthead.js';
 import { renderLeaderboards } from './views/leaderboards.js';
@@ -31,8 +38,22 @@ const setState = (patch) => {
   render();
 };
 
+/**
+ * The masthead alone, so the "last updated" age and "next update in" countdown
+ * can tick without rebuilding the matrix underneath the reader's cursor.
+ */
+function paintMasthead() {
+  renderMasthead(dom.masthead, {
+    ...state,
+    summary: groupSummary(state.players),
+    trend: groupTrend(state.snapshots),
+    rankDelta: computeRankDelta(state.snapshots),
+    nextRun: nextScheduledRun(),
+    staleCount: state.players.filter((player) => player.stale).length,
+  });
+}
+
 function render() {
-  const summary = groupSummary(state.players);
   const levelGains = computeLevelGains(state.snapshots, state.players, ONE_DAY);
 
   const windows = {
@@ -41,13 +62,7 @@ function render() {
     month: computeGains(state.snapshots, state.players, ONE_MONTH),
   };
 
-  renderMasthead(dom.masthead, {
-    ...state,
-    summary,
-    trend: groupTrend(state.snapshots),
-    rankDelta: computeRankDelta(state.snapshots),
-    staleCount: state.players.filter((player) => player.stale).length,
-  });
+  paintMasthead();
 
   replaceChildren(
     dom.panel,
@@ -85,6 +100,7 @@ async function boot() {
     );
 
     render();
+    setInterval(paintMasthead, 60000);
   } catch (error) {
     console.error(error);
     renderFatal(error.message);

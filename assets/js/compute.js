@@ -3,7 +3,32 @@
  * here mutates the loaded snapshot.
  */
 
-import { TRACKED_SKILLS } from './config.js';
+import { TRACKED_SKILLS, UPDATE_SCHEDULE } from './config.js';
+
+/**
+ * The next time the update job is due, in UTC. Estimated from the workflow's
+ * cron — GitHub runs scheduled jobs late under load, so treat it as "no sooner
+ * than", not a promise.
+ */
+export function nextScheduledRun(from = new Date()) {
+  // Two days of candidates is enough to cross a midnight boundary; Date.UTC
+  // normalises an overflowing day into the next month.
+  for (let dayOffset = 0; dayOffset <= 1; dayOffset += 1) {
+    for (const hour of UPDATE_SCHEDULE.hours) {
+      const candidate = new Date(
+        Date.UTC(
+          from.getUTCFullYear(),
+          from.getUTCMonth(),
+          from.getUTCDate() + dayOffset,
+          hour,
+          UPDATE_SCHEDULE.minute,
+        ),
+      );
+      if (candidate.getTime() > from.getTime()) return candidate;
+    }
+  }
+  return null;
+}
 
 const EMPTY_SKILL = Object.freeze({ level: 1, xp: 0, rank: null });
 
