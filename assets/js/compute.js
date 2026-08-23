@@ -6,31 +6,6 @@
 import { SKILLS, TRACKED_SKILLS, UPDATE_SCHEDULE } from './config.js';
 
 /**
- * The next time the update job is due, in UTC. Estimated from the workflow's
- * cron — GitHub runs scheduled jobs late under load, so treat it as "no sooner
- * than", not a promise.
- */
-export function nextScheduledRun(from = new Date()) {
-  // Two days of candidates is enough to cross a midnight boundary; Date.UTC
-  // normalises an overflowing day into the next month.
-  for (let dayOffset = 0; dayOffset <= 1; dayOffset += 1) {
-    for (const hour of UPDATE_SCHEDULE.hours) {
-      const candidate = new Date(
-        Date.UTC(
-          from.getUTCFullYear(),
-          from.getUTCMonth(),
-          from.getUTCDate() + dayOffset,
-          hour,
-          UPDATE_SCHEDULE.minute,
-        ),
-      );
-      if (candidate.getTime() > from.getTime()) return candidate;
-    }
-  }
-  return null;
-}
-
-/**
  * When the next update is due, estimated as one schedule interval after the
  * last successful fetch rather than the cron's wall-clock slot — so a late
  * or skipped run pushes the countdown out instead of it snapping back to 0.

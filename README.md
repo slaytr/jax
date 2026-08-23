@@ -4,15 +4,19 @@ A static scoreboard for the **Jax** RuneScape 3 group ironman team, hosted on Gi
 
 One page, no tabs:
 
-- a **metric bar** — group rank (with day-over-day movement), total level, total
-  xp, skills at 99, last update;
-- **experience gained**, as three adjacent bands — day, week, month — each
-  independently ranked highest-first;
-- the **skill matrix**: all 29 skills, plus quest points and totals as rows.
+- a **metric bar** — group rank (with day-over-day movement), total level,
+  total xp, skills at 99, last update, and a countdown to the next one;
+- **account standings** — total level, total xp and quest points, each ranked
+  highest-first with a share-of-cap progress bar;
+- **gains** — levels, xp and quest points gained over a selected Day / Week /
+  Month, as either a ranked grid or grouped bar charts (toggle beside the
+  title — the choice, and any selected player, is remembered per browser);
+- the **skill matrix**: all 29 skills, plus a totals row.
 
-Levels gained since yesterday appear as a green `+N` beside the level itself.
-On a phone every band puts all five players on one line and the matrix drops to
-icons-only columns (see Layout notes).
+A gain also rides as a green `+N` chip beside the matching figure in Account
+Standings and the matrix, for whichever period Gains is currently showing.
+On a phone every grid band puts all five players on one line and the matrix
+drops to icons-only columns (see Layout notes).
 
 ## Why there is a build step at all
 
@@ -130,10 +134,18 @@ curve, so reconstructing a level would be wrong for exactly the skills where it
 matters most.
 
 A lower rank number is better, so a positive rank delta is a climb; direction is
-shown with an arrow and a screen-reader label, never by colour alone. Both the
-rank badge and the `+N` level chips appear once two snapshots at least a day
-apart carry the relevant field — the first run after a schema change writes it
-even when nothing else moved, so the upgrade is never stuck behind a quiet day.
+shown with an arrow and a screen-reader label, never by colour alone. The rank
+badge compares against a rolling 24 hours ago.
+
+Gains — and the `+N` chips fed by it, in the matrix and Account Standings —
+work differently: each period resets at a fixed calendar boundary rather than
+rolling. Day resets at UTC midnight, Week at Monday 00:00 UTC, Month on the
+1st. A figure can therefore be small right after a boundary even when history
+goes back much further; that is the point, not a bug.
+
+Both the rank badge and the Gains figures need two qualifying snapshots to
+show anything — the first run after a schema change writes the relevant field
+even when nothing else moved, so an upgrade is never stuck behind a quiet day.
 
 ### The group rank is scraped, and scrapers break
 
@@ -189,27 +201,27 @@ sticky header instead of pinning it.
 Because there is no sideways scroll, the table must always fit. Below 860px the
 compact rules drop the skill names (kept in the accessibility tree, clipped
 rather than removed, since the icons are decorative) and trim each column to
-name, total level and rows-led, so all five players fit on a phone.
+name and rows-led, so all five players fit on a phone.
 
 ## Design notes
 
-Players are colour-coded **crimson, blue, green, purple, pink**, assigned
-left-to-right down the total-level standings, and that colour follows the player
-everywhere else on the page.
+Players are colour-coded **teal, red, green, blue, pink** (`SERIES_COLOURS` in
+`assets/js/config.js`), and that colour follows the player everywhere on the
+page — swatches, bars, chart bars, everything.
 
 The exact hues are not hand-picked — they were tuned with a colour-blindness
 validator against the page surface `#0c0a09` until every adjacent-pair gate
-passed (worst adjacent normal-vision ΔE 18.4). One limit is worth knowing: across
-*all* pairs, blue↔purple measures ΔE 12.5 normal / 5.5 deutan. Five hues
-containing both a blue and a purple cannot clear the all-pairs floor — that is a
-property of the method, not an oversight. It is acceptable only because colour
-is never the sole identifier: every player's name sits beside their colour in
-every view. Re-run the validator before changing any value.
+passed in this declared order (worst adjacent normal-vision ΔE 20.9). One
+limit is worth knowing: red↔green sits in the accepted 6–8 CVD floor band
+rather than clearing it outright — legal here only because colour is never the
+sole identifier: every player's name sits beside their colour in every view.
+Re-run the validator before changing any value or reordering.
 
-Because the assignment follows **rank rather than identity**, two players
-swapping total-level places swaps their colours. That is intentional; to pin a
-colour per account instead, key `decorate()` in `assets/js/data.js` off `slug`
-order rather than level.
+Colour is **pinned per account** (`PLAYER_COLOURS`, keyed by slug), not
+reassigned by rank — a player keeps their colour as standings shift, rather
+than two accounts swapping colours when they cross in rank. A slug with no
+entry there falls back to cycling `SERIES_COLOURS` by roster position. Update
+`PLAYER_COLOURS` alongside `data/players.json` if the roster changes.
 
 ---
 

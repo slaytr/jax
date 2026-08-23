@@ -75,10 +75,6 @@ export const TRACKED_SKILLS = Object.freeze(SKILLS.filter((skill) => skill.id !=
 export const MAX_TOTAL_LEVEL = 3232;
 export const MAX_QUEST_POINTS = 473;
 
-export const SKILL_BY_ID = Object.freeze(
-  Object.fromEntries(SKILLS.map((skill) => [skill.id, skill])),
-);
-
 /**
  * Player palette: teal, red, green, blue, pink.
  *

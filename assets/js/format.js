@@ -17,11 +17,6 @@ export function formatCompact(value) {
 
 export const formatRank = (rank) => (Number.isFinite(rank) && rank > 0 ? GROUPED.format(rank) : 'unranked');
 
-export const formatSigned = (value) => {
-  if (!Number.isFinite(value) || value === 0) return '0';
-  return `${value > 0 ? '+' : '−'}${formatCompact(Math.abs(value))}`;
-};
-
 export function formatRelativeTime(isoString) {
   const then = Date.parse(isoString);
   if (!Number.isFinite(then)) return 'unknown';
@@ -62,18 +57,4 @@ export function formatDuration(milliseconds) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-}
-
-export function formatDate(isoString) {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return 'unknown';
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-/** Initials for the player marker, e.g. "Cpt Draynor" → "CD". */
-export function initials(name) {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
