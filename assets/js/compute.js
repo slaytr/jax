@@ -30,6 +30,17 @@ export function nextScheduledRun(from = new Date()) {
   return null;
 }
 
+/**
+ * When the next update is due, estimated as one schedule interval after the
+ * last successful fetch rather than the cron's wall-clock slot — so a late
+ * or skipped run pushes the countdown out instead of it snapping back to 0.
+ */
+export function nextRunEstimate(fetchedAt) {
+  if (!fetchedAt) return null;
+  const intervalMs = (24 * 60 * 60 * 1000) / UPDATE_SCHEDULE.hours.length;
+  return new Date(new Date(fetchedAt).getTime() + intervalMs);
+}
+
 const EMPTY_SKILL = Object.freeze({ level: 1, xp: 0, rank: null });
 
 const skillFor = (player, skillId) => player.skillById?.[skillId] ?? EMPTY_SKILL;

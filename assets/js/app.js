@@ -15,7 +15,7 @@ import {
   computeRankDelta,
   groupSummary,
   groupTrend,
-  nextScheduledRun,
+  nextRunEstimate,
 } from './compute.js';
 import { el, replaceChildren } from './dom.js';
 import { renderMasthead } from './views/masthead.js';
@@ -50,7 +50,7 @@ function paintMasthead() {
     summary: groupSummary(state.players),
     trend: groupTrend(state.snapshots),
     rankDelta: computeRankDelta(state.snapshots),
-    nextRun: nextScheduledRun(),
+    nextRun: nextRunEstimate(state.fetchedAt),
     staleCount: state.players.filter((player) => player.stale).length,
   });
 }

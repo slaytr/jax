@@ -70,7 +70,7 @@ export function renderMasthead(container, state) {
 
   const fetchedTitle = fetchedAt ? `Fetched ${new Date(fetchedAt).toUTCString()}` : undefined;
   const nextTitle = nextRun
-    ? `Scheduled for ${nextRun.toUTCString()}. GitHub runs cron jobs on a best-effort basis, so it may be later.`
+    ? `Expected around ${nextRun.toUTCString()}, one hour after the last fetch. GitHub runs cron jobs on a best-effort basis, so it may be later.`
     : undefined;
 
   replaceChildren(
