@@ -66,6 +66,15 @@ export const UPDATE_SCHEDULE = Object.freeze({ minute: 0, hours: Array.from({ le
 /** Every skill except the synthetic "Overall" row. */
 export const TRACKED_SKILLS = Object.freeze(SKILLS.filter((skill) => skill.id !== 0));
 
+/**
+ * Current RS3 caps, for scaling the Account Standings progress bars. Not
+ * derived from SKILLS' own `max` totals — those track individual skill caps
+ * (last updated for Necromancy) and undercount the game's actual current
+ * total level; update by hand if the caps change again.
+ */
+export const MAX_TOTAL_LEVEL = 3232;
+export const MAX_QUEST_POINTS = 473;
+
 export const SKILL_BY_ID = Object.freeze(
   Object.fromEntries(SKILLS.map((skill) => [skill.id, skill])),
 );

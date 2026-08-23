@@ -77,7 +77,7 @@ function render() {
 
   replaceChildren(
     dom.panel,
-    renderStandings(state, (slug) =>
+    renderStandings(state, gains, (slug) =>
       setState({ standingsSelectedPlayer: state.standingsSelectedPlayer === slug ? null : slug }),
     ),
     renderGains(

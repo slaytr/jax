@@ -88,8 +88,6 @@ export function renderMasthead(container, state) {
 
         el('p', { class: 'identity-sub' }, [
           el('span', { text: group.tagline || 'Group Ironman' }),
-          el('span', { class: 'dot identity-accounts', 'aria-hidden': 'true', text: '·' }),
-          el('span', { class: 'identity-accounts', text: `${summary.playerCount} accounts` }),
           staleCount > 0 ? el('span', { class: 'dot', 'aria-hidden': 'true', text: '·' }) : null,
           staleCount > 0 ? el('span', { class: 'warn', text: `${staleCount} cached` }) : null,
         ]),

@@ -18,6 +18,9 @@ const ordinal = (n) => `${n}${ORDINAL_SUFFIXES[ORDINAL_SUFFIX.select(n)]}`;
 /** Podium column, 1st through 3rd — everything else is unmarked, not "4th". */
 const MEDAL_RIBBON = { 1: ['1st', 'is-gold'], 2: ['2nd', 'is-silver'], 3: ['3rd', 'is-bronze'] };
 
+/** The two trailing-column call-outs — Gains' "Slacker" reads as a warning, Account Standings' "Trying" as encouragement. */
+const RIBBON_CLASS = { Slacker: 'is-crimson', Trying: 'is-green' };
+
 /**
  * The rank number is dropped from view — column position already reads as
  * rank ("ranked highest first" per the band note) — and replaced with a
@@ -27,17 +30,20 @@ const MEDAL_RIBBON = { 1: ['1st', 'is-gold'], 2: ['2nd', 'is-silver'], 3: ['3rd'
  * `sub` may be a plain string or a node (e.g. an icon-led fragment). `ribbon`
  * is a custom corner banner for a column with no podium medal (e.g. the
  * trailing column's "Slacker") — ignored on a podium place, since that
- * banner already takes the corner.
+ * banner already takes the corner. `gain`, when given, is a chip node (see
+ * `gainChip`) that rides beside the headline value. `share` (0–1), when
+ * given, draws a coloured progress rule along the cell's bottom edge in the
+ * player's own colour — e.g. their total level's share of the game's cap.
  *
  * A real button rather than a div: clicking it selects the player, tinting
  * every cell of theirs in the same grid with their own colour (`--accent`,
  * set here) — see `.lb-entry.is-selected`. `selected` is that state for
  * *this* cell; `onSelect` reports the click back up so the grid can toggle it.
  */
-export function entry({ player, value, sub, place, ribbon, selected, onSelect }) {
+export function entry({ player, value, sub, gain, share, place, ribbon, selected, onSelect }) {
   const medal = MEDAL_RIBBON[place];
   const ribbonText = medal ? medal[0] : ribbon;
-  const ribbonClass = medal ? ` ${medal[1]}` : '';
+  const ribbonClass = medal ? ` ${medal[1]}` : RIBBON_CLASS[ribbon] ? ` ${RIBBON_CLASS[ribbon]}` : '';
 
   return el(
     'button',
@@ -51,11 +57,41 @@ export function entry({ player, value, sub, place, ribbon, selected, onSelect })
       ribbonText ? el('span', { class: `lb-ribbon${ribbonClass}`, text: ribbonText }) : null,
       el('span', { class: 'visually-hidden', text: `${ordinal(place)} place — ` }),
       el('span', { class: 'lb-name' }, [swatch(player.colour), el('span', { text: player.name })]),
-      el('span', { class: 'lb-value' }, [el('span', { text: value })]),
-      sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
+      el('span', { class: 'lb-value' }, [
+        el('span', { text: value }),
+        gain,
+        sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
+      ]),
+      Number.isFinite(share)
+        ? el('span', { class: 'lb-bar', role: 'presentation' }, [
+            el('span', { class: 'lb-bar-fill', style: { width: `${Math.min(100, share * 100).toFixed(1)}%` } }),
+          ])
+        : null,
     ],
   );
 }
+
+/** A green "+N" chip — same voice as the matrix's per-skill gain chip
+ * (`.chip-up.cell-gain`), reused wherever a headline value needs a gain
+ * riding beside it. `label` is the screen-reader-only qualifier, e.g.
+ * "gained today". */
+export const gainChip = (text, label) =>
+  el('span', { class: 'chip-up lb-gain' }, [
+    el('span', { text }),
+    el('span', { class: 'visually-hidden', text: ` ${label}` }),
+  ]);
+
+/** A player with nothing gained this period sits out the band entirely — the
+ * column stays reserved so the grid doesn't reflow, but shows nothing. */
+const emptyEntry = () => el('div', { class: 'lb-entry lb-entry-empty', 'aria-hidden': 'true' });
+
+/**
+ * The "Slacker" ribbon's column: the last row with any gain at all, not
+ * necessarily the last column — rows are sorted descending, so a zero-gain
+ * tail renders as empty cells (see `emptyEntry`) and the ribbon would
+ * otherwise land on a blank column instead of the real trailing performer.
+ */
+const lastActivePlace = (rows, valueOf) => rows.filter((row) => valueOf(row) > 0).length;
 
 /** A drawn glyph: "gained over time" has no game asset to borrow. */
 function graphIcon() {
@@ -94,16 +130,20 @@ function skillBreakdown(bySkill) {
  * headline figure is formatted and what the tooltip calls it.
  */
 function skillGainRow(gains, { formatValue, valueLabel }, selectedPlayer, onSelectPlayer) {
+  const slackerPlace = lastActivePlace(gains.rows, (row) => row.total);
+
   return gains.rows.map((row, index) => {
+    if (row.total <= 0) return emptyEntry();
+
     const place = index + 1;
     const top = row.bySkill[0];
 
     const node = entry({
       player: row.player,
       place,
-      value: row.total > 0 ? `+${formatValue(row.total)}` : '—',
-      sub: top ? skillGain(top) : 'Slacker',
-      ribbon: place === gains.rows.length ? 'Slacker' : null,
+      value: `+${formatValue(row.total)}`,
+      sub: skillGain(top),
+      ribbon: place === slackerPlace ? 'Slacker' : null,
       selected: row.player.slug === selectedPlayer,
       onSelect: onSelectPlayer,
     });
@@ -130,13 +170,17 @@ const xpRow = (gains, selectedPlayer, onSelectPlayer) =>
 
 /** Quest points have no per-skill breakdown, so this stays a plain figure. */
 function questsRow(gains, selectedPlayer, onSelectPlayer) {
+  const slackerPlace = lastActivePlace(gains.rows, (row) => row.gained);
+
   return gains.rows.map((row, index) => {
+    if (row.gained <= 0) return emptyEntry();
+
     const place = index + 1;
     const node = entry({
       player: row.player,
       place,
-      value: row.gained > 0 ? `+${formatNumber(row.gained)}` : '—',
-      ribbon: place === gains.rows.length ? 'Slacker' : null,
+      value: `+${formatNumber(row.gained)}`,
+      ribbon: place === slackerPlace ? 'Slacker' : null,
       selected: row.player.slug === selectedPlayer,
       onSelect: onSelectPlayer,
     });
@@ -211,10 +255,7 @@ function periodToggle(period, onSelect) {
 export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer) {
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
-      el('div', { class: 'lb-title' }, [
-        el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })]),
-        el('p', { class: 'lb-note', text: 'Ranked highest first.' }),
-      ]),
+      el('div', { class: 'lb-title' }, [el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })])]),
       periodToggle(period, onSelectPeriod),
     ]),
     el('div', { class: 'lb-stack' }, [

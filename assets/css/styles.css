@@ -29,6 +29,11 @@
   --gain: #5fd39b;
   --gain-bg: rgba(25, 158, 112, 0.16);
 
+  /* The two trailing-column ribbons — deliberately apart from --ember/--gain
+     above, and from each other in hue, not just lightness. */
+  --crimson: #8a1c2b;
+  --leaf: #2c9e4d;
+
   /* Podium stripe for a leaderboard's 1st/2nd/3rd column — stands in for the
      rank number, so it's deliberately gold/silver/bronze, not a series hue. */
   --medal-gold: #d9b44a;
@@ -433,6 +438,10 @@ body::after {
   font-size: 0.58rem;
 }
 
+.lb-gain {
+  font-size: 0.58rem;
+}
+
 /* --------------------------------------------------- leaderboard rows */
 
 .lb {
@@ -631,6 +640,12 @@ body::after {
   outline: none;
 }
 
+/* No gains this period: a bare reserved slot, not a button — nothing to
+   select, hover, or read a tooltip on. */
+.lb-entry-empty {
+  cursor: default;
+}
+
 /* Selected: every cell of this player in the grid tints with their own
    colour, so the eye can track one account down the columns at a glance. */
 .lb-entry.is-selected {
@@ -644,8 +659,11 @@ body::after {
 
 /* Corner banner — a diagonal sash, clipped to the cell by .lb-entry's own
    overflow:hidden. Short labels only (1–2 words): the strip is fixed-width
-   and centred, not sized to its text. Colour defaults to ember (the trailing
-   column's "Trying" banner); the podium places override it below. */
+   and centred, not sized to its text. Ember is the fallback for any ribbon
+   text without its own colour below (podium places, Slacker, Trying).
+   Background is a gradient of the one colour (--ribbon-colour, set per
+   variant below) — a slight light-to-dark sheen along the sash rather than
+   a flat fill. */
 .lb-ribbon {
   position: absolute;
   top: 0.55rem;
@@ -654,7 +672,12 @@ body::after {
   padding: 0.1rem 0;
   transform: rotate(45deg);
   transform-origin: center;
-  background: var(--ember);
+  --ribbon-colour: var(--ember);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--ribbon-colour) 88%, white),
+    color-mix(in srgb, var(--ribbon-colour) 82%, black)
+  );
   color: #1a0f08;
   font-family: var(--font-mono);
   font-size: 0.52rem;
@@ -667,15 +690,27 @@ body::after {
 
 /* Podium banners replace the old top-stripe indicator: 1st/2nd/3rd column only. */
 .lb-ribbon.is-gold {
-  background: var(--medal-gold);
+  --ribbon-colour: var(--medal-gold);
 }
 
 .lb-ribbon.is-silver {
-  background: var(--medal-silver);
+  --ribbon-colour: var(--medal-silver);
 }
 
 .lb-ribbon.is-bronze {
-  background: var(--medal-bronze);
+  --ribbon-colour: var(--medal-bronze);
+}
+
+/* Trailing-column call-outs: Gains' "Slacker" reads as a warning, Account
+   Standings' "Trying" as encouragement — so they split from the shared ember
+   default instead of matching each other. */
+.lb-ribbon.is-crimson {
+  --ribbon-colour: var(--crimson);
+  color: var(--ink);
+}
+
+.lb-ribbon.is-green {
+  --ribbon-colour: var(--leaf);
 }
 
 .lb-name {
@@ -693,6 +728,7 @@ body::after {
 
 .lb-value {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 0.4rem;
   font-family: var(--font-mono);
@@ -722,6 +758,25 @@ body::after {
 .lb-sub .skill-gain img {
   width: 12px;
   height: 12px;
+}
+
+/* Share-of-cap rule along the cell's bottom edge, in the player's own colour
+   — same mechanism as the matrix's .cell-rule. */
+.lb-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(236, 227, 212, 0.06);
+}
+
+.lb-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.9;
+  transition: width 0.5s var(--ease);
 }
 
 /* ------------------------------------------------------------ panel chrome */
@@ -1216,12 +1271,11 @@ body[data-ready] .loading {
 }
 
 @media (max-width: 720px) {
-  /* Rank moves up beside the wordmark; the account count goes entirely. */
+  /* Rank moves up beside the wordmark. */
   .identity-rank {
     display: flex;
   }
 
-  .identity-accounts,
   .metric-rank {
     display: none;
   }
@@ -1495,7 +1549,8 @@ body[data-ready] .loading {
   }
 
   .swatch,
-  .cell-rule-fill {
+  .cell-rule-fill,
+  .lb-bar-fill {
     forced-color-adjust: none;
   }
 }
