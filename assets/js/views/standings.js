@@ -3,7 +3,8 @@ import { formatCompact, formatNumber, formatRank } from '../format.js';
 import { standings, questStandings } from '../compute.js';
 import { MAX_TOTAL_LEVEL, MAX_QUEST_POINTS } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
-import { entry, band, questPointsIcon, gainChip } from './leaderboards.js';
+import { entry, gainChip } from './leaderboards.js';
+import { band, questPointsIcon } from './gains-shared.js';
 
 /** Screen-reader qualifier for the gain chip, matching the Gains section's own wording. */
 const PERIOD_LABEL = { day: 'today', week: 'this week', month: 'this month' };

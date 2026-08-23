@@ -1,7 +1,8 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatCompact, formatNumber } from '../format.js';
-import { iconFor } from '../config.js';
-import { bindTooltip, tooltipContent } from '../tooltip.js';
+import { bindTooltip } from '../tooltip.js';
+import { band, questPointsIcon, skillGain, skillGainTooltip, questGainTooltip, emptyEntry } from './gains-shared.js';
+import { renderGainsCharts } from './gains-chart.js';
 
 /**
  * The Gains section: levels, xp and quest points gained, for whichever
@@ -81,10 +82,6 @@ export const gainChip = (text, label) =>
     el('span', { class: 'visually-hidden', text: ` ${label}` }),
   ]);
 
-/** A player with nothing gained this period sits out the band entirely — the
- * column stays reserved so the grid doesn't reflow, but shows nothing. */
-const emptyEntry = () => el('div', { class: 'lb-entry lb-entry-empty', 'aria-hidden': 'true' });
-
 /**
  * The "Slacker" ribbon's column: the last row with any gain at all, not
  * necessarily the last column — rows are sorted descending, so a zero-gain
@@ -101,27 +98,6 @@ function graphIcon() {
     svgEl('polyline', { points: '1,16.5 17,16.5', class: 'graph-axis' }),
   );
   return svg;
-}
-
-/** Skill icon plus its gain. The name rides along for screen readers. */
-const skillGain = (entry, className = 'skill-gain') =>
-  el('span', { class: className }, [
-    el('img', { src: iconFor(entry.skill), alt: '', width: 14, height: 14, decoding: 'async' }),
-    el('span', { class: 'visually-hidden', text: `${entry.skill.name} ` }),
-    el('span', { text: `+${formatCompact(entry.gained)}` }),
-  ]);
-
-/**
- * Every skill the player trained in the window, icon-led and ordered by gain.
- * `bySkill` is already sorted descending by computeGains / computeLevelGains.
- */
-function skillBreakdown(bySkill) {
-  if (bySkill.length === 0) return null;
-
-  return el('div', { class: 'tooltip-skills' }, [
-    el('p', { class: 'tooltip-skills-label', text: 'Skills trained' }),
-    el('div', { class: 'tooltip-skills-grid' }, bySkill.map((entry) => skillGain(entry))),
-  ]);
 }
 
 /**
@@ -148,18 +124,7 @@ function skillGainRow(gains, { formatValue, valueLabel }, selectedPlayer, onSele
       onSelect: onSelectPlayer,
     });
 
-    return bindTooltip(node, () =>
-      tooltipContent(
-        row.player.name,
-        [
-          [valueLabel, formatNumber(row.total)],
-          ['Skills trained', formatNumber(row.bySkill.length)],
-          ['Top skill', top ? skillGain(top, 'skill-gain is-top') : '—'],
-        ],
-        row.player.colour,
-        skillBreakdown(row.bySkill),
-      ),
-    );
+    return bindTooltip(node, () => skillGainTooltip(row, valueLabel));
   });
 }
 
@@ -185,35 +150,9 @@ function questsRow(gains, selectedPlayer, onSelectPlayer) {
       onSelect: onSelectPlayer,
     });
 
-    return bindTooltip(node, () =>
-      tooltipContent(row.player.name, [['Quest points gained', formatNumber(row.gained)]], row.player.colour),
-    );
+    return bindTooltip(node, () => questGainTooltip(row));
   });
 }
-
-/** One labelled band — a period name, then that period's ranked five.
- * `label` is usually a string, but may be a node (e.g. questPointsIcon()) for
- * a band identified by icon rather than text. */
-export const band = (label, entries) =>
-  el('div', { class: 'lb-band' }, [
-    el(
-      'div',
-      { class: 'lb-band-head' },
-      [typeof label === 'string' ? el('p', { class: 'lb-band-label', text: label }) : el('p', { class: 'lb-band-label' }, [label])],
-    ),
-    el('div', { class: 'lb-row' }, entries),
-  ]);
-
-/** The quest-points row/band, identified by its game icon rather than a text label. */
-export const questPointsIcon = () =>
-  el('img', {
-    class: 'lb-band-icon',
-    src: 'assets/icons/quest-points.png',
-    alt: 'Quest points',
-    width: 18,
-    height: 18,
-    decoding: 'async',
-  });
 
 const PERIODS = [
   ['day', 'Day'],
@@ -239,6 +178,34 @@ function periodToggle(period, onSelect) {
   );
 }
 
+/** Three ascending bars — a drawn glyph, since "bar chart" has no game asset either. */
+function chartIcon() {
+  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    svgEl('rect', { x: 1.5, y: 9.5, width: 3.5, height: 7, rx: 1 }),
+    svgEl('rect', { x: 7.25, y: 5.5, width: 3.5, height: 11, rx: 1 }),
+    svgEl('rect', { x: 13, y: 2, width: 3.5, height: 14.5, rx: 1 }),
+  );
+  return svg;
+}
+
+/** Grid ⇄ bar-chart, beside the title — the title itself doesn't change, so the
+ * button needs its own pressed state and label. */
+function viewToggle(view, onToggle) {
+  const isChart = view === 'chart';
+  return el(
+    'button',
+    {
+      type: 'button',
+      class: `gains-view-toggle${isChart ? ' is-active' : ''}`,
+      onclick: onToggle,
+      'aria-pressed': isChart ? 'true' : 'false',
+      title: isChart ? 'Showing bar charts — click to show the grid' : 'Showing the grid — click to show bar charts',
+    },
+    [chartIcon(), el('span', { class: 'visually-hidden', text: isChart ? 'Switch to grid view' : 'Switch to bar chart view' })],
+  );
+}
+
 /**
  * One block, three bands (Levels, XP, Quest points), all showing the same
  * selected period. Kept adjacent so the same player can be tracked down the
@@ -249,19 +216,30 @@ function periodToggle(period, onSelect) {
  * @param period 'day' | 'week' | 'month' — which window to show
  * @param onSelectPeriod (period) => void
  * @param selectedPlayer slug of the player currently highlighted in this
- *   grid, or null — see entry()'s `selected`/`onSelect`.
+ *   grid, or null — see entry()'s `selected`/`onSelect`. Ignored in chart view,
+ *   which has no per-cell selection to highlight.
  * @param onSelectPlayer (slug) => void
+ * @param view 'grid' | 'chart' — which body renders below the shared header
+ * @param onToggleView () => void
  */
-export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer) {
+export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onToggleView) {
+  const body =
+    view === 'chart'
+      ? renderGainsCharts(gains, period)
+      : el('div', { class: 'lb-stack' }, [
+          band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
+          band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
+          band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
+        ]);
+
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
-      el('div', { class: 'lb-title' }, [el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })])]),
+      el('div', { class: 'lb-title' }, [
+        el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })]),
+        viewToggle(view, onToggleView),
+      ]),
       periodToggle(period, onSelectPeriod),
     ]),
-    el('div', { class: 'lb-stack' }, [
-      band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
-      band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
-      band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
-    ]),
+    body,
   ]);
 }

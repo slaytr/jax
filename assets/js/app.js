@@ -8,6 +8,7 @@
  */
 
 import { loadGroupData } from './data.js';
+import { loadPrefs, savePrefs } from './prefs.js';
 import {
   computeGains,
   computeLevelGains,
@@ -37,6 +38,11 @@ let state = null;
 
 const setState = (patch) => {
   state = { ...state, ...patch };
+  savePrefs({
+    standingsSelectedPlayer: state.standingsSelectedPlayer,
+    gainsSelectedPlayer: state.gainsSelectedPlayer,
+    gainsView: state.gainsView,
+  });
   render();
 };
 
@@ -86,6 +92,8 @@ function render() {
       (period) => setState({ gainsPeriod: period }),
       state.gainsSelectedPlayer,
       (slug) => setState({ gainsSelectedPlayer: state.gainsSelectedPlayer === slug ? null : slug }),
+      state.gainsView,
+      () => setState({ gainsView: state.gainsView === 'chart' ? 'grid' : 'chart' }),
     ),
     renderMatrix(
       state,
@@ -113,19 +121,29 @@ function renderFatal(message) {
 async function boot() {
   try {
     const data = await loadGroupData();
+    const prefs = loadPrefs();
+    // A pref naming a slug outside this group's current roster (a stale
+    // value from before a roster change) falls back to no selection rather
+    // than highlighting nothing that exists.
+    const validSlug = (slug) => (data.players.some((player) => player.slug === slug) ? slug : null);
+
     // sortedBy: player slug the matrix is ordered around, or null for skill order.
     // invertLeaders: when true, the matrix highlights each row's lowest level
     // instead of its highest.
     // gainsPeriod: which window ('day' | 'week' | 'month') the Gains section shows.
+    // gainsView: 'grid' (the standings-style band) or 'chart' (bar charts) —
+    // toggled from the button beside the "Gains" title. Persisted (see prefs.js).
     // standingsSelectedPlayer / gainsSelectedPlayer: slug highlighted across
     // every cell of that grid, or null — each grid's selection is independent.
+    // Persisted (see prefs.js).
     state = {
       ...data,
       sortedBy: null,
       invertLeaders: false,
       gainsPeriod: 'day',
-      standingsSelectedPlayer: null,
-      gainsSelectedPlayer: null,
+      gainsView: prefs.gainsView === 'chart' ? 'chart' : 'grid',
+      standingsSelectedPlayer: validSlug(prefs.standingsSelectedPlayer),
+      gainsSelectedPlayer: validSlug(prefs.gainsSelectedPlayer),
     };
 
     document.title = `${data.group.name} · Group Ironman hiscores`;
