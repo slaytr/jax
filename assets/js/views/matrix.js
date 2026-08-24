@@ -54,6 +54,24 @@ function matrixCell(cell, skill, levelsGained) {
   );
 }
 
+const LEADS_STAR = () => el('span', { class: 'player-leads-star', 'aria-hidden': 'true', text: '★' });
+
+/** Melooms alone gets the five-star consolation badge on a shutout — everyone
+ * else's zero still reads as "★ 0". */
+const CONSOLATION_STARS_SLUG = 'melooms';
+
+/**
+ * The "N leads" badge beside a player's name — normally one star and a count.
+ * `gold`: whether `.has-leads` (the badge's gold colouring) should apply.
+ */
+function leadsBadge(player, leads) {
+  if (leads === 0 && player.slug === CONSOLATION_STARS_SLUG) {
+    return { nodes: [LEADS_STAR(), LEADS_STAR(), LEADS_STAR(), LEADS_STAR(), LEADS_STAR()], gold: true };
+  }
+
+  return { nodes: [LEADS_STAR(), el('span', { 'aria-hidden': 'true', text: formatNumber(leads) })], gold: leads > 0 };
+}
+
 /**
  * Player column heading. The whole heading is a button: clicking sorts the
  * table by that account — the skills it leads first, then its level descending.
@@ -63,6 +81,7 @@ function matrixCell(cell, skill, levelsGained) {
 function playerHead(player, leads, sortedBy, onSort, invertLeaders) {
   const isSorted = sortedBy === player.slug;
   const verb = invertLeaders ? 'Trails' : 'Leads';
+  const badge = leadsBadge(player, leads);
 
   const button = el(
     'button',
@@ -74,9 +93,8 @@ function playerHead(player, leads, sortedBy, onSort, invertLeaders) {
     },
     [
       el('span', { class: 'player-name' }, [swatch(player.colour), el('span', { class: 'player-name-text', text: player.name })]),
-      el('span', { class: `player-leads${leads > 0 ? ' has-leads' : ''}` }, [
-        el('span', { class: 'player-leads-star', 'aria-hidden': 'true', text: '★' }),
-        el('span', { 'aria-hidden': 'true', text: formatNumber(leads) }),
+      el('span', { class: `player-leads${badge.gold ? ' has-leads' : ''}` }, [
+        ...badge.nodes,
         el('span', { class: 'visually-hidden', text: `${verb} ${formatNumber(leads)} rows` }),
       ]),
       // No visual sort marker: the highlighted column carries it, and aria-sort
