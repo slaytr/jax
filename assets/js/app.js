@@ -12,6 +12,7 @@ import { loadPrefs, savePrefs } from './prefs.js';
 import {
   CALENDAR_DAY,
   computeGains,
+  computeGainsSeries,
   computeLevelGains,
   computeQuestGains,
   computeRankDelta,
@@ -67,6 +68,10 @@ const MONTH_SECONDS = 30 * 86400;
  * at that boundary (see CALENDAR_DAY) — while "week" and "month" are rolling
  * spans (last 7 / 30 days), since resetting those to near-zero right after a
  * calendar week/month boundary reads as broken rather than as a fresh start.
+ *
+ * `series` feeds the line-chart view — same three periods, but a per-player
+ * time series (computeGainsSeries) rather than a single gained-over-the-window
+ * figure, so the line view can plot every snapshot instead of just the ends.
  */
 function computeAllGains() {
   const forEachPeriod = (compute) => ({
@@ -79,6 +84,11 @@ function computeAllGains() {
     levels: forEachPeriod(computeLevelGains),
     xp: forEachPeriod(computeGains),
     quests: forEachPeriod(computeQuestGains),
+    series: {
+      levels: forEachPeriod((snapshots, players, window) => computeGainsSeries(snapshots, players, window, 'level')),
+      xp: forEachPeriod((snapshots, players, window) => computeGainsSeries(snapshots, players, window, 'xp')),
+      quests: forEachPeriod((snapshots, players, window) => computeGainsSeries(snapshots, players, window, 'quests')),
+    },
   };
 }
 
@@ -99,7 +109,7 @@ function render() {
       state.gainsSelectedPlayer,
       (slug) => setState({ gainsSelectedPlayer: state.gainsSelectedPlayer === slug ? null : slug }),
       state.gainsView,
-      () => setState({ gainsView: state.gainsView === 'chart' ? 'grid' : 'chart' }),
+      (view) => setState({ gainsView: view }),
     ),
     renderMatrix(
       state,
@@ -137,17 +147,19 @@ async function boot() {
     // invertLeaders: when true, the matrix highlights each row's lowest level
     // instead of its highest.
     // gainsPeriod: which window ('day' | 'week' | 'month') the Gains section shows.
-    // gainsView: 'grid' (the standings-style band) or 'chart' (bar charts) —
-    // toggled from the button beside the "Gains" title. Persisted (see prefs.js).
+    // gainsView: 'grid' (the standings-style band), 'chart' (bar charts), or
+    // 'line' (a time-series line per player) — picked from the icon tabs
+    // beside the "Gains" title. Persisted (see prefs.js).
     // standingsSelectedPlayer / gainsSelectedPlayer: slug highlighted across
     // every cell of that grid, or null — each grid's selection is independent.
     // Persisted (see prefs.js).
+    const validGainsView = ['chart', 'line'].includes(prefs.gainsView) ? prefs.gainsView : 'grid';
     state = {
       ...data,
       sortedBy: null,
       invertLeaders: false,
       gainsPeriod: 'day',
-      gainsView: prefs.gainsView === 'chart' ? 'chart' : 'grid',
+      gainsView: validGainsView,
       standingsSelectedPlayer: validSlug(prefs.standingsSelectedPlayer),
       gainsSelectedPlayer: validSlug(prefs.gainsSelectedPlayer),
     };

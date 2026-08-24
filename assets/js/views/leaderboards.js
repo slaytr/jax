@@ -3,6 +3,7 @@ import { formatCompact, formatNumber } from '../format.js';
 import { bindTooltip } from '../tooltip.js';
 import { band, questPointsIcon, skillGain, skillGainTooltip, questGainTooltip, emptyEntry } from './gains-shared.js';
 import { renderGainsCharts } from './gains-chart.js';
+import { renderGainsLines } from './gains-line.js';
 
 /**
  * The Gains section: levels, xp and quest points gained, for whichever
@@ -189,20 +190,61 @@ function chartIcon() {
   return svg;
 }
 
-/** Grid ⇄ bar-chart, beside the title — the title itself doesn't change, so the
- * button needs its own pressed state and label. */
-function viewToggle(view, onToggle) {
-  const isChart = view === 'chart';
+/** Four small squares — a drawn glyph for the grid view, same recipe as the
+ * other two toggle icons. */
+function gridIcon() {
+  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    svgEl('rect', { x: 1.5, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 10, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 1.5, y: 10, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 10, y: 10, width: 6.5, height: 6.5, rx: 1 }),
+  );
+  return svg;
+}
+
+/** A zigzag with a dot at each vertex — the line-chart view's icon. */
+function lineViewIcon() {
+  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    svgEl('polyline', { points: '2,14 7,6 11,10 16,3', class: 'toggle-line' }),
+    ...[
+      [2, 14],
+      [7, 6],
+      [11, 10],
+      [16, 3],
+    ].map(([cx, cy]) => svgEl('circle', { cx, cy, r: 1.3 })),
+  );
+  return svg;
+}
+
+const VIEWS = [
+  ['grid', 'the grid', gridIcon],
+  ['chart', 'bar charts', chartIcon],
+  ['line', 'line charts', lineViewIcon],
+];
+
+/** Grid ⇄ bar chart ⇄ line chart, beside the title — a 3-way icon segmented
+ * control, same visual language (and the same shared-border recipe) as the
+ * Day/Week/Month tabs. */
+function viewToggle(view, onSelectView) {
   return el(
-    'button',
-    {
-      type: 'button',
-      class: `gains-view-toggle${isChart ? ' is-active' : ''}`,
-      onclick: onToggle,
-      'aria-pressed': isChart ? 'true' : 'false',
-      title: isChart ? 'Showing bar charts — click to show the grid' : 'Showing the grid — click to show bar charts',
-    },
-    [chartIcon(), el('span', { class: 'visually-hidden', text: isChart ? 'Switch to grid view' : 'Switch to bar chart view' })],
+    'div',
+    { class: 'gains-view-tabs', role: 'tablist', 'aria-label': 'Gains view' },
+    VIEWS.map(([value, label, icon]) =>
+      el(
+        'button',
+        {
+          type: 'button',
+          class: `gains-view-toggle${view === value ? ' is-active' : ''}`,
+          role: 'tab',
+          'aria-selected': view === value ? 'true' : 'false',
+          onclick: () => onSelectView(value),
+          title: `Show ${label}`,
+        },
+        [icon(), el('span', { class: 'visually-hidden', text: `Show ${label}` })],
+      ),
+    ),
   );
 }
 
@@ -211,32 +253,35 @@ function viewToggle(view, onToggle) {
  * selected period. Kept adjacent so the same player can be tracked down the
  * columns, while each band stays independently ranked.
  *
- * @param gains { levels, xp, quests }, each { day, week, month } from
- *   computeLevelGains / computeGains / computeQuestGains
+ * @param gains { levels, xp, quests, series }, each (bar series aside) with
+ *   { day, week, month } from computeLevelGains / computeGains /
+ *   computeQuestGains / computeGainsSeries
  * @param period 'day' | 'week' | 'month' — which window to show
  * @param onSelectPeriod (period) => void
  * @param selectedPlayer slug of the player currently highlighted in this
- *   grid, or null — see entry()'s `selected`/`onSelect`. Ignored in chart view,
- *   which has no per-cell selection to highlight.
+ *   grid, or null — see entry()'s `selected`/`onSelect`. Ignored outside grid
+ *   view, which is the only body with per-cell selection to highlight.
  * @param onSelectPlayer (slug) => void
- * @param view 'grid' | 'chart' — which body renders below the shared header
- * @param onToggleView () => void
+ * @param view 'grid' | 'chart' | 'line' — which body renders below the shared header
+ * @param onSelectView (view) => void
  */
-export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onToggleView) {
+export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onSelectView) {
   const body =
     view === 'chart'
       ? renderGainsCharts(gains, period)
-      : el('div', { class: 'lb-stack' }, [
-          band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
-          band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
-          band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
-        ]);
+      : view === 'line'
+        ? renderGainsLines(gains, period)
+        : el('div', { class: 'lb-stack' }, [
+            band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
+            band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
+            band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
+          ]);
 
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
       el('div', { class: 'lb-title' }, [
         el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })]),
-        viewToggle(view, onToggleView),
+        viewToggle(view, onSelectView),
       ]),
       periodToggle(period, onSelectPeriod),
     ]),

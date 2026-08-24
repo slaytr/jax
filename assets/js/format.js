@@ -36,6 +36,12 @@ export function formatRelativeTime(isoString) {
   return `${amount} ${match.unit}${amount === 1 ? '' : 's'} ago`;
 }
 
+const UTC_DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** "24 Aug, 00:00 UTC" — a Gains line chart's day-mark label. Always reads
+ * midnight since day marks only ever land exactly on a UTC day boundary. */
+export const formatUtcMidnight = (unixSeconds) => `${UTC_DAY.format(new Date(unixSeconds * 1000))}, 00:00 UTC`;
+
 /** Compact age for the metric strip: "18m", "2h", "3d". */
 export function formatShortAge(isoString) {
   const then = Date.parse(isoString);

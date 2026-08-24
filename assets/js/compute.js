@@ -380,6 +380,115 @@ export function computeLevelGains(snapshots, players, window = 86400) {
 }
 
 /**
+ * The value a player's line would show at `targetT`, linearly interpolated
+ * between the two points bracketing it — so a day-mark placed at an exact
+ * UTC-midnight timestamp lands precisely on the drawn (piecewise-linear)
+ * line instead of floating off to whichever real snapshot is nearest. Points
+ * must be ascending by `t`; returns null when `targetT` falls outside their
+ * range.
+ */
+function interpolateAt(points, targetT) {
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (targetT < a.t || targetT > b.t) continue;
+    if (b.t === a.t) return a.value;
+    return a.value + (b.value - a.value) * ((targetT - a.t) / (b.t - a.t));
+  }
+  return null;
+}
+
+/** Every UTC-midnight timestamp from a player's first point through their
+ * last (inclusive) — one per day, regardless of where the real snapshots
+ * happen to fall. */
+function utcMidnightsBetween(firstT, lastT) {
+  const marks = [];
+  let day = utcDayStart(firstT);
+  if (day < firstT) day += 86400;
+  for (; day <= lastT; day += 86400) marks.push(day);
+  return marks;
+}
+
+/**
+ * Per-player time series over a window, for the Gains line-chart view — every
+ * snapshot from the window's baseline onward becomes one point per player, so
+ * a "week" or "month" period carries as many points as there are snapshots in
+ * range (data updates hourly), not one per day. `metric` selects which field
+ * each snapshot contributes: `'xp'` (`p[slug][0]`, the Overall total),
+ * `'level'` (`l[slug][0]`, the total level — same index-0 convention as `p`),
+ * or `'quests'` (`q[slug]`, a scalar). A snapshot missing that field for a
+ * player (tracking predates it) is skipped for that player only.
+ *
+ * Each row also carries `dayMarks`: one point per UTC-midnight boundary
+ * within that player's own range, interpolated onto the line — a fixed,
+ * every-day rhythm of hoverable points independent of the snapshot cadence.
+ *
+ * Both axes are pre-normalised to 0–1: `x` by time across the window, `y` by
+ * value across every player's points in it, so every line in the chart shares
+ * one scale and the view only has to plot what it's given.
+ */
+export function computeGainsSeries(snapshots, players, window, metric) {
+  const valueAt = (snapshot, slug) => {
+    if (metric === 'xp') return snapshot.p?.[slug]?.[0] ?? null;
+    if (metric === 'level') return snapshot.l?.[slug]?.[0] ?? null;
+    if (metric === 'quests') return Number.isFinite(snapshot.q?.[slug]) ? snapshot.q[slug] : null;
+    return null;
+  };
+
+  const current = latestSnapshot(snapshots);
+  if (!current) return { hasSpan: false, spanSeconds: 0, rows: [] };
+
+  const cutoff = resolveCutoff(current.t, window);
+  const baseline = snapshotAtOrBefore(snapshots, cutoff);
+  const windowed = snapshots.filter((snapshot) => snapshot.t >= baseline.t);
+
+  const t0 = windowed[0].t;
+  const spanSeconds = windowed[windowed.length - 1].t - t0;
+
+  const series = players.map((player) => {
+    const points = windowed
+      .map((snapshot) => ({ t: snapshot.t, value: valueAt(snapshot, player.slug) }))
+      .filter((point) => point.value !== null);
+
+    const gained = points.length > 1 ? Math.max(0, points[points.length - 1].value - points[0].value) : 0;
+
+    const dayMarks =
+      points.length > 1
+        ? utcMidnightsBetween(points[0].t, points[points.length - 1].t)
+            .map((t) => ({ t, value: interpolateAt(points, t) }))
+            .filter((mark) => mark.value !== null)
+        : [];
+
+    return { player, points, dayMarks, gained };
+  });
+
+  const allValues = series.flatMap((entry) => entry.points.map((point) => point.value));
+  const minY = allValues.length ? Math.min(...allValues) : 0;
+  const maxY = allValues.length ? Math.max(...allValues) : 1;
+  const spanY = maxY - minY || 1;
+
+  const normalise = (point) => ({
+    t: point.t,
+    value: point.value,
+    x: spanSeconds > 0 ? (point.t - t0) / spanSeconds : 0.5,
+    y: (point.value - minY) / spanY,
+  });
+
+  return {
+    hasSpan: spanSeconds > 0,
+    spanSeconds,
+    rows: series
+      .map((entry) => ({
+        player: entry.player,
+        gained: entry.gained,
+        points: entry.points.map(normalise),
+        dayMarks: entry.dayMarks.map(normalise),
+      }))
+      .sort((a, b) => b.gained - a.gained),
+  };
+}
+
+/**
  * Movement on the competitive ladder over a window (default 24h).
  *
  * A lower rank number is better, so `delta` is positive when the group has

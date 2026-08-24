@@ -453,8 +453,14 @@ body::after {
   gap: 0.9rem;
 }
 
-/* Grid ⇄ bar-chart. Same recipe as .matrix-invert: outlined and muted at
-   rest so it doesn't compete with the title, filled ember when active. */
+/* Grid ⇄ bar chart ⇄ line chart — three icon buttons in a row. */
+.gains-view-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+/* Same recipe as .matrix-invert: outlined and muted at rest so it doesn't
+   compete with the title, filled ember when active. */
 .gains-view-toggle {
   display: inline-flex;
   align-items: center;
@@ -493,6 +499,16 @@ body::after {
   width: 12px;
   height: 12px;
   fill: currentColor;
+}
+
+/* The line-view icon's zigzag: its dots pick up currentColor from
+   .toggle-icon's fill, but the connecting stroke needs its own rule. */
+.toggle-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .lb-head h2 {
@@ -756,6 +772,74 @@ body::after {
   margin: 0;
   color: var(--ink-muted);
   font-size: 0.78rem;
+}
+
+/* Line-chart alternative: one coloured line per player, plotted across every
+   snapshot in the period rather than boiled down to a single before/after
+   figure. The viewBox is 3:1 (300×100, see gains-line.js) and this
+   aspect-ratio matches it exactly, so the SVG's default (uniform) scaling
+   fills the box with no letterboxing and the head dot stays circular. */
+.line-chart-svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  overflow: visible;
+}
+
+.line-chart-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+.line-chart-point {
+  fill: var(--accent);
+  stroke: var(--surface-1);
+  stroke-width: 0.6;
+  cursor: pointer;
+  transition: r 0.16s var(--ease);
+}
+
+.line-chart-point:hover,
+.line-chart-point:focus-visible {
+  r: 3.2;
+}
+
+.line-chart-point:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* Day marks: a secondary reference point at each UTC-midnight, dimmer than
+   the head dot at rest so it doesn't compete with "current value" — but
+   :hover/:focus-visible above still grow it to the same size, so it's just
+   as easy to land on and read. */
+.line-chart-point.is-day-mark {
+  opacity: 0.55;
+  stroke-width: 0.4;
+}
+
+/* A flex-wrap legend rather than .chart-names' fixed-width columns — lines
+   have no per-player column for a name to sit under. */
+.line-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.line-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-2);
 }
 
 /* A <button>, not a div: clicking selects the player (see .is-selected). The
