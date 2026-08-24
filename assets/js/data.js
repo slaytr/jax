@@ -16,9 +16,8 @@ const LATEST_URL = new URL('../../data/latest.json', import.meta.url);
  * file that changed instead of rewriting the group's entire tracking history.
  *
  * The page never needs more than a month of it: the longest Gains period is
- * "month", calendar-aligned to the 1st of the UTC month (see CALENDAR_MONTH
- * in compute.js) — at most ~31 days back. A couple of days' margin keep that
- * baseline lookup covered even right at the edge.
+ * "month", a rolling 30-day window (see compute.js) — a couple of days'
+ * margin keep that baseline lookup covered even right at the edge.
  */
 const HISTORY_WINDOW_DAYS = 33;
 

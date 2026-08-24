@@ -11,8 +11,6 @@ import { loadGroupData } from './data.js';
 import { loadPrefs, savePrefs } from './prefs.js';
 import {
   CALENDAR_DAY,
-  CALENDAR_WEEK,
-  CALENDAR_MONTH,
   computeGains,
   computeLevelGains,
   computeQuestGains,
@@ -60,18 +58,21 @@ function paintMasthead() {
   });
 }
 
+const WEEK_SECONDS = 7 * 86400;
+const MONTH_SECONDS = 30 * 86400;
+
 /**
  * Every Gains band for every period, computed once so switching tabs is
- * instant. Each period is calendar-aligned — since UTC midnight, the most
- * recent Monday 00:00 UTC, or the 1st of the UTC month — and resets to zero
- * at that boundary, rather than a rolling N-day span. See CALENDAR_DAY /
- * CALENDAR_WEEK / CALENDAR_MONTH.
+ * instant. "Day" is calendar-aligned — since UTC midnight, resetting to zero
+ * at that boundary (see CALENDAR_DAY) — while "week" and "month" are rolling
+ * spans (last 7 / 30 days), since resetting those to near-zero right after a
+ * calendar week/month boundary reads as broken rather than as a fresh start.
  */
 function computeAllGains() {
   const forEachPeriod = (compute) => ({
     day: compute(state.snapshots, state.players, CALENDAR_DAY),
-    week: compute(state.snapshots, state.players, CALENDAR_WEEK),
-    month: compute(state.snapshots, state.players, CALENDAR_MONTH),
+    week: compute(state.snapshots, state.players, WEEK_SECONDS),
+    month: compute(state.snapshots, state.players, MONTH_SECONDS),
   });
 
   return {

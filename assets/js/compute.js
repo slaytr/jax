@@ -190,29 +190,18 @@ export function standings(players, metric = 'xp') {
 const latestSnapshot = (snapshots) => snapshots[snapshots.length - 1] ?? null;
 
 /**
- * Sentinels for the Gains periods: each anchors the cutoff to the start of
- * the current UTC day/week/month instead of `latest - N seconds`, so the
- * figure resets to zero at the calendar boundary rather than decaying on a
- * rolling window. Weeks start Monday 00:00 UTC (ISO 8601).
+ * Sentinel for the Gains "day" period: anchors the cutoff to the start of
+ * the current UTC day instead of `latest - 24h`, so the figure resets to
+ * zero at midnight rather than decaying on a rolling window. Week/month
+ * periods stay rolling (7 * 86400 / 30 * 86400 seconds) — unlike a day, "this
+ * week" or "this month" resetting to near-zero right after its calendar
+ * boundary reads as broken rather than as a fresh start.
  */
 export const CALENDAR_DAY = Symbol('calendar-day');
-export const CALENDAR_WEEK = Symbol('calendar-week');
-export const CALENDAR_MONTH = Symbol('calendar-month');
 
 const utcDayStart = (unixSeconds) => {
   const date = new Date(unixSeconds * 1000);
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000);
-};
-
-const utcWeekStart = (unixSeconds) => {
-  const dayStart = utcDayStart(unixSeconds);
-  const mondayIndexedWeekday = (new Date(dayStart * 1000).getUTCDay() + 6) % 7; // Mon=0 .. Sun=6
-  return dayStart - mondayIndexedWeekday * 86400;
-};
-
-const utcMonthStart = (unixSeconds) => {
-  const date = new Date(unixSeconds * 1000);
-  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1000);
 };
 
 /**
@@ -224,8 +213,6 @@ const utcMonthStart = (unixSeconds) => {
  */
 function resolveCutoff(latestSeconds, window) {
   if (window === CALENDAR_DAY) return utcDayStart(latestSeconds);
-  if (window === CALENDAR_WEEK) return utcWeekStart(latestSeconds);
-  if (window === CALENDAR_MONTH) return utcMonthStart(latestSeconds);
   return Number.isFinite(window) ? latestSeconds - window : -Infinity;
 }
 
@@ -241,8 +228,8 @@ function snapshotAtOrBefore(snapshots, cutoff) {
  * XP gained per player over a window. Index 0 of a snapshot vector is Overall,
  * so it is the total; indices 1+ are the individual skills.
  *
- * @param window seconds (a rolling span) or CALENDAR_DAY / CALENDAR_WEEK /
- *   CALENDAR_MONTH (aligned to the start of that UTC calendar period)
+ * @param window seconds (a rolling span) or CALENDAR_DAY (aligned to the
+ *   start of the current UTC day)
  */
 export function computeGains(snapshots, players, window) {
   const current = latestSnapshot(snapshots);

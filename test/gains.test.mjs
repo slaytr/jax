@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { CALENDAR_DAY, CALENDAR_WEEK, CALENDAR_MONTH, computeGains, computeQuestGains, computeLevelGains } from '../assets/js/compute.js';
+import { CALENDAR_DAY, computeGains, computeQuestGains, computeLevelGains } from '../assets/js/compute.js';
+
+const WEEK_SECONDS = 7 * 86400;
+const MONTH_SECONDS = 30 * 86400;
 
 const t = (iso) => Math.floor(new Date(iso).getTime() / 1000);
 const players = [{ slug: 'a', name: 'A' }];
@@ -38,33 +41,30 @@ describe('computeGains with CALENDAR_DAY', () => {
   });
 });
 
-describe('computeGains with CALENDAR_WEEK', () => {
-  it('resets Monday 00:00 UTC (ISO week), not a rolling 7 days', () => {
+describe('computeGains with a rolling week window', () => {
+  it('reaches back a rolling 7 days, not just to the ISO week boundary', () => {
     // 2026-08-24 is a Monday.
     const snapshots = [
-      { t: t('2026-08-20T10:00:00Z'), p: { a: [100] } }, // Thursday, previous week
-      { t: t('2026-08-24T00:00:00Z'), p: { a: [150] } }, // exactly on the boundary — this week
+      { t: t('2026-08-20T10:00:00Z'), p: { a: [100] } }, // Thursday, previous ISO week
+      { t: t('2026-08-24T00:00:00Z'), p: { a: [150] } }, // this ISO week
       { t: t('2026-08-25T05:00:00Z'), p: { a: [170] } }, // "now", Tuesday this week
     ];
 
-    const week = computeGains(snapshots, players, CALENDAR_WEEK);
-    assert.equal(week.rows[0].total, 20, "only this week's gain counts, not last Thursday's too");
-
-    const rolling = computeGains(snapshots, players, 7 * 86400);
-    assert.equal(rolling.rows[0].total, 70, 'a rolling 7 days instead reaches back into last week');
+    const week = computeGains(snapshots, players, WEEK_SECONDS);
+    assert.equal(week.rows[0].total, 70, 'last Thursday is within the last 7 days, so it counts too');
   });
 });
 
-describe('computeGains with CALENDAR_MONTH', () => {
-  it('resets on the 1st of the UTC month, not a rolling 30 days', () => {
+describe('computeGains with a rolling month window', () => {
+  it('reaches back a rolling 30 days, not just to the 1st of the UTC month', () => {
     const snapshots = [
-      { t: t('2026-07-31T10:00:00Z'), p: { a: [1000] } }, // last day of July
-      { t: t('2026-08-01T00:00:00Z'), p: { a: [1050] } }, // exactly on the boundary — August
+      { t: t('2026-07-31T10:00:00Z'), p: { a: [1000] } }, // last day of July, within 30 days
+      { t: t('2026-08-01T00:00:00Z'), p: { a: [1050] } }, // 1st of August
       { t: t('2026-08-15T00:00:00Z'), p: { a: [1200] } }, // "now"
     ];
 
-    const month = computeGains(snapshots, players, CALENDAR_MONTH);
-    assert.equal(month.rows[0].total, 150, "only August's gain counts, not July 31st's too");
+    const month = computeGains(snapshots, players, MONTH_SECONDS);
+    assert.equal(month.rows[0].total, 200, "July 31st's gain counts too, since it's within the last 30 days");
   });
 });
 
