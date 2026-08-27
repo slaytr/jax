@@ -5,8 +5,9 @@ name: Update hiscores
 
 on:
   schedule:
-    # On the hour, every hour.
-    - cron: '0 * * * *'
+    # :13 past the hour, every hour — avoids the top-of-hour congestion
+    # where GitHub's scheduled-workflow queue is most likely to delay/drop runs.
+    - cron: '13 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
