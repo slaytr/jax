@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "bash scripts/railway-update.sh"
+cronSchedule = "0 * * * *"
+restartPolicyType = "NEVER"

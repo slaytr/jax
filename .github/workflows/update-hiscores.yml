@@ -1,13 +1,14 @@
-name: Update hiscores
+name: Update hiscores (ad hoc)
 
 # The RS3 hiscore feed sends no CORS headers, so the browser cannot call it.
 # This job does the fetching server-side and commits the result as static JSON.
+#
+# The hourly schedule now lives on a Railway cron service, since GitHub's
+# scheduled-workflow queue can delay or drop runs under load. This workflow
+# stays around for manual runs and for picking up roster/script changes
+# immediately instead of waiting for the next Railway tick.
 
 on:
-  schedule:
-    # :13 past the hour, every hour — avoids the top-of-hour congestion
-    # where GitHub's scheduled-workflow queue is most likely to delay/drop runs.
-    - cron: '13 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
