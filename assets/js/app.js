@@ -132,11 +132,24 @@ function topWeeklyGainer(result, valueKey, claimed = new Set()) {
 /** Whoever led the most individual days this week for a metric, again
  * skipping anyone already `claimed` — the Ranker/Grind King badges. Null
  * when no unclaimed player outright led any day (every day tied, no history
- * yet, or every qualifying leader is already claimed). */
-function topDailyLeader(snapshots, players, metric, claimed = new Set(), days = 7) {
+ * yet, or every qualifying leader is already claimed).
+ *
+ * The returned `total` is deliberately *not* computeDailyLeaderCounts' own
+ * sum-of-daily-gains figure — that's tallied over UTC-calendar-day buckets,
+ * a different span than the Gains section's rolling exact-7×24h window, so
+ * the two would show different numbers for the same player over what both
+ * call "this week". Looking the winner up in `weeklyResult` instead (the
+ * same computeLevelGains/computeGains `.week` result Gains itself renders)
+ * keeps the figure shown here consistent with what's shown there — only
+ * *who wins* the badge is decided by day-count; the number displayed for
+ * them isn't. */
+function topDailyLeader(snapshots, players, metric, weeklyResult, claimed = new Set(), days = 7) {
   const { rows, validDays } = computeDailyLeaderCounts(snapshots, players, metric, days);
   const top = rows.find((row) => row.days > 0 && !claimed.has(row.player.slug));
-  return top ? { player: top.player, days: top.days, of: validDays, total: top.total } : null;
+  if (!top) return null;
+
+  const total = weeklyResult.rows.find((row) => row.player.slug === top.player.slug)?.total ?? 0;
+  return { player: top.player, days: top.days, of: validDays, total };
 }
 
 /**
@@ -166,10 +179,10 @@ function topDailyLeader(snapshots, players, metric, claimed = new Set(), days = 
 function computeHighlights(gains) {
   const claimed = new Set();
 
-  const level = topDailyLeader(state.snapshots, state.players, 'level', claimed);
+  const level = topDailyLeader(state.snapshots, state.players, 'level', gains.levels.week, claimed);
   if (level) claimed.add(level.player.slug);
 
-  const xp = topDailyLeader(state.snapshots, state.players, 'xp', claimed);
+  const xp = topDailyLeader(state.snapshots, state.players, 'xp', gains.xp.week, claimed);
 
   const winners = {
     level,
