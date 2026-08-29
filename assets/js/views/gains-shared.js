@@ -1,13 +1,14 @@
-import { el } from '../dom.js';
+import { el, svgEl } from '../dom.js';
 import { formatCompact, formatNumber } from '../format.js';
 import { iconFor } from '../config.js';
 import { tooltipContent } from '../tooltip.js';
 
 /**
- * Pieces shared between the Gains grid (leaderboards.js) and its bar-chart
- * alternative (gains-chart.js) — currently just the tooltip content for a
- * skill-driven gain (levels/xp) or a quest-points gain, since the chart is
- * its own visual rather than reusing the grid's row/cell chrome.
+ * Pieces shared between the Gains grid (leaderboards.js) and its line-chart
+ * alternative (gains-line.js), plus the Account Standings section
+ * (standings.js) — tooltip content for a skill-driven gain (levels/xp) or a
+ * quest-points gain, the band layout, and the grid/line view-toggle glyphs
+ * and control shared by both sections' headers.
  */
 
 /** Skill icon plus its gain. The name rides along for screen readers. */
@@ -80,3 +81,57 @@ export const questPointsIcon = () =>
     height: 18,
     decoding: 'async',
   });
+
+/** Four small squares — a drawn glyph for the grid view. */
+export function gridIcon() {
+  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    svgEl('rect', { x: 1.5, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 10, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 1.5, y: 10, width: 6.5, height: 6.5, rx: 1 }),
+    svgEl('rect', { x: 10, y: 10, width: 6.5, height: 6.5, rx: 1 }),
+  );
+  return svg;
+}
+
+/** A zigzag with a dot at each vertex — the line-chart view's icon. */
+export function lineViewIcon() {
+  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    svgEl('polyline', { points: '2,14 7,6 11,10 16,3', class: 'toggle-line' }),
+    ...[
+      [2, 14],
+      [7, 6],
+      [11, 10],
+      [16, 3],
+    ].map(([cx, cy]) => svgEl('circle', { cx, cy, r: 1.3 })),
+  );
+  return svg;
+}
+
+/**
+ * Grid ⇄ line chart, beside a section's title — an icon segmented control
+ * shared by the Gains section and Account Standings. `views` is a list of
+ * `[value, label, icon]` tuples; `label` feeds the screen-reader/title text
+ * ("Show <label>"), `icon` is one of the glyph functions above.
+ */
+export function viewToggle(view, views, onSelectView, ariaLabel) {
+  return el(
+    'div',
+    { class: 'gains-view-tabs', role: 'tablist', 'aria-label': ariaLabel },
+    views.map(([value, label, icon]) =>
+      el(
+        'button',
+        {
+          type: 'button',
+          class: `gains-view-toggle${view === value ? ' is-active' : ''}`,
+          role: 'tab',
+          'aria-selected': view === value ? 'true' : 'false',
+          onclick: () => onSelectView(value),
+          title: `Show ${label}`,
+        },
+        [icon(), el('span', { class: 'visually-hidden', text: `Show ${label}` })],
+      ),
+    ),
+  );
+}

@@ -426,8 +426,15 @@ function utcMidnightsBetween(firstT, lastT) {
  * Both axes are pre-normalised to 0–1: `x` by time across the window, `y` by
  * value across every player's points in it, so every line in the chart shares
  * one scale and the view only has to plot what it's given.
+ *
+ * `relative` (default false) plots each player's gain since the window's
+ * first snapshot instead of their raw total — every line starts at 0 and
+ * rises by however much that player gained over the window, for the Gains
+ * section's line-chart view. Account Standings' line-chart view leaves it
+ * off, plotting raw totals over time to match what the rest of that section
+ * shows.
  */
-export function computeGainsSeries(snapshots, players, window, metric) {
+export function computeGainsSeries(snapshots, players, window, metric, { relative = false } = {}) {
   const valueAt = (snapshot, slug) => {
     if (metric === 'xp') return snapshot.p?.[slug]?.[0] ?? null;
     if (metric === 'level') return snapshot.l?.[slug]?.[0] ?? null;
@@ -446,9 +453,12 @@ export function computeGainsSeries(snapshots, players, window, metric) {
   const spanSeconds = windowed[windowed.length - 1].t - t0;
 
   const series = players.map((player) => {
-    const points = windowed
+    const rawPoints = windowed
       .map((snapshot) => ({ t: snapshot.t, value: valueAt(snapshot, player.slug) }))
       .filter((point) => point.value !== null);
+
+    const baseline = rawPoints.length ? rawPoints[0].value : 0;
+    const points = relative ? rawPoints.map((point) => ({ t: point.t, value: point.value - baseline })) : rawPoints;
 
     const gained = points.length > 1 ? Math.max(0, points[points.length - 1].value - points[0].value) : 0;
 
@@ -486,6 +496,51 @@ export function computeGainsSeries(snapshots, players, window, metric) {
       }))
       .sort((a, b) => b.gained - a.gained),
   };
+}
+
+/**
+ * One player's gain for each of the last `days` UTC calendar days (today
+ * included, oldest first) — the Weekly Highlights row's per-badge hover
+ * breakdown, so "Grind King" can show which days actually built that XP lead
+ * rather than just the week's final total. Mirrors computeGains'
+ * calendar-day windowing, walked back day by day instead of stopping at
+ * "today".
+ *
+ * A day entirely before the group's own tracking history has no real
+ * baseline to diff from, so it reports `gained: null` (shown as "—") rather
+ * than a value computed against a fallback snapshot that isn't actually from
+ * that day.
+ */
+export function computeDailyBreakdown(snapshots, slug, metric, days = 7) {
+  const valueAt = (snapshot) => {
+    if (metric === 'xp') return snapshot?.p?.[slug]?.[0] ?? null;
+    if (metric === 'level') return snapshot?.l?.[slug]?.[0] ?? null;
+    if (metric === 'quests') return Number.isFinite(snapshot?.q?.[slug]) ? snapshot.q[slug] : null;
+    return null;
+  };
+
+  const current = latestSnapshot(snapshots);
+  if (!current) return [];
+
+  const today = utcDayStart(current.t);
+  const earliest = snapshots[0].t;
+  const valueAtOrBefore = (cutoff) => valueAt(snapshotAtOrBefore(snapshots, cutoff));
+
+  const entries = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const dayStart = today - i * 86400;
+    if (dayStart < earliest) {
+      entries.push({ dayStart, gained: null });
+      continue;
+    }
+
+    const dayEnd = Math.min(dayStart + 86400, current.t);
+    const before = valueAtOrBefore(dayStart);
+    const after = valueAtOrBefore(dayEnd);
+    entries.push({ dayStart, gained: before !== null && after !== null ? Math.max(0, after - before) : null });
+  }
+
+  return entries;
 }
 
 /**

@@ -42,6 +42,11 @@ const UTC_DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short
  * midnight since day marks only ever land exactly on a UTC day boundary. */
 export const formatUtcMidnight = (unixSeconds) => `${UTC_DAY.format(new Date(unixSeconds * 1000))}, 00:00 UTC`;
 
+const UTC_WEEKDAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
+
+/** "Mon", "Tue" — a Weekly Highlights badge's per-day breakdown row label. */
+export const formatWeekday = (unixSeconds) => UTC_WEEKDAY.format(new Date(unixSeconds * 1000));
+
 /** Compact age for the metric strip: "18m", "2h", "3d". */
 export function formatShortAge(isoString) {
   const then = Date.parse(isoString);

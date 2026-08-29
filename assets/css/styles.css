@@ -432,6 +432,97 @@ body::after {
   font-size: 0.58rem;
 }
 
+/* -------------------------------------------------- weekly highlights */
+
+.highlights-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.highlights .lb-icon polygon {
+  fill: var(--ember);
+}
+
+/* A left accent stripe in the winner's own colour, same idea as .lb-entry's
+   --accent, rather than tinting the whole card — keeps three different
+   player colours sitting side by side from fighting each other. */
+.highlight-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--accent, var(--hairline-strong));
+  border-radius: var(--radius);
+  transition:
+    background-color 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+
+.highlight-badge:not(.is-empty) {
+  cursor: default;
+}
+
+.highlight-badge:not(.is-empty):hover,
+.highlight-badge:not(.is-empty):focus-visible {
+  background: rgba(217, 89, 38, 0.08);
+}
+
+.highlight-badge:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.highlight-badge.is-empty {
+  opacity: 0.6;
+}
+
+.highlight-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  object-fit: contain;
+}
+
+.highlight-icon-svg path {
+  fill: var(--ember);
+}
+
+.highlight-body {
+  min-width: 0;
+}
+
+.highlight-label {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.highlight-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.highlight-badge.is-empty .highlight-name {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
 /* --------------------------------------------------- leaderboard rows */
 
 .lb {
@@ -453,7 +544,7 @@ body::after {
   gap: 0.9rem;
 }
 
-/* Grid ⇄ bar chart ⇄ line chart — three icon buttons in a row. */
+/* Grid ⇄ line chart — icon buttons in a row. */
 .gains-view-tabs {
   display: inline-flex;
   gap: 0.35rem;
@@ -561,8 +652,13 @@ body::after {
   stroke: var(--ink-muted);
 }
 
-/* Day/Week/Month — a segmented control, one ember-filled tab active at a time. */
+/* Day/Week/Month — a segmented control, one ember-filled tab active at a
+   time. The fill is a separate sliding block (.tabs-indicator) underneath
+   the three equal-width tabs, not a background painted per-button — see
+   periodToggle in leaderboards.js — so it can slide from one tab to another
+   instead of an instant recolour. */
 .tabs {
+  position: relative;
   display: inline-flex;
   flex: none;
   border: 1px solid var(--hairline-strong);
@@ -570,7 +666,25 @@ body::after {
   overflow: hidden;
 }
 
+.tabs-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: calc(100% / 3);
+  background: rgba(217, 89, 38, 0.13);
+  transition: transform 0.22s var(--ease);
+  pointer-events: none;
+}
+
 .tab {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  /* Without this, flex-basis:0 still won't shrink a tab below its own text's
+     content width (min-width defaults to auto) — so "Month" stayed wider than
+     "Day" regardless of equal flex-grow, throwing off the indicator's plain
+     one-third math below. This makes all three tabs genuinely equal width. */
+  min-width: 0;
   padding: 0.3rem 0.7rem;
   border: 0;
   border-left: 1px solid var(--hairline-strong);
@@ -580,11 +694,10 @@ body::after {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  text-align: center;
   color: var(--ink-muted);
   cursor: pointer;
-  transition:
-    color 0.16s var(--ease),
-    background-color 0.16s var(--ease);
+  transition: color 0.16s var(--ease);
 }
 
 .tab:first-child {
@@ -602,7 +715,6 @@ body::after {
 
 .tab.is-active {
   color: #fdf5e7;
-  background: rgba(217, 89, 38, 0.13);
 }
 
 /* The three periods share one bordered block so a player can be followed down
@@ -656,9 +768,8 @@ body::after {
   background: var(--hairline);
 }
 
-/* Bar-chart alternative to the grid: one card per metric, its own visual
-   rather than reusing .lb-band/.lb-row — bars group together on a shared
-   baseline instead of sitting in separate boxed cells. */
+/* Line-chart alternative to the grid: one card per metric, its own visual
+   rather than reusing .lb-band/.lb-row. */
 .chart-section {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -688,84 +799,6 @@ body::after {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink);
-}
-
-/* Fixed plot height so every bar in the card shares one baseline and one
-   scale; the hairline along the bottom is the baseline/axis itself. */
-.chart-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 1.5rem;
-  height: 96px;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--hairline-strong);
-}
-
-.chart-bar-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  width: 62px;
-  height: 100%;
-  flex: none;
-}
-
-.chart-bar-col:focus-visible {
-  outline: 2px solid var(--ember);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-/* Hover/focus lifts the mark itself — there's no per-column box to shade. */
-.chart-bar-col:hover .chart-bar-fill,
-.chart-bar-col:focus-visible .chart-bar-fill {
-  filter: brightness(1.2);
-}
-
-.chart-bar-value {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-/* Grows from the baseline — square there, rounded at the cap, never wider
-   than a thin mark. */
-.chart-bar-fill {
-  width: 16px;
-  min-height: 3px;
-  border-radius: 4px 4px 0 0;
-  background: var(--accent);
-  transition: height 0.5s var(--ease);
-}
-
-/* A parallel row below .chart-bars — same per-column width and gap, so every
-   name lines up under its own bar without needing to nest inside it. */
-.chart-names {
-  display: flex;
-  gap: 1.5rem;
-  padding-top: 0.55rem;
-}
-
-.chart-name-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  width: 62px;
-  flex: none;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--ink-2);
-}
-
-.chart-name-text {
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .chart-empty {
@@ -805,7 +838,7 @@ body::after {
 
 .line-chart-point:hover,
 .line-chart-point:focus-visible {
-  r: 3.2;
+  r: 4.4;
 }
 
 .line-chart-point:focus-visible {
@@ -822,15 +855,29 @@ body::after {
   stroke-width: 0.4;
 }
 
-/* A flex-wrap legend rather than .chart-names' fixed-width columns — lines
-   have no per-player column for a name to sit under. */
-.line-chart-legend {
+/* The head dot's value label, sat in the label strip reserved to the right
+   of the plot area (see PLOT_WIDTH in gains-line.js). A plain px font-size,
+   like the point radii and stroke widths above, is a length in the SVG's own
+   coordinate system rather than a screen pixel, so it scales with the chart
+   instead of staying a fixed screen size. Right-anchored so every label's
+   outer edge sits at the same fixed inset (see headLabel in gains-line.js)
+   regardless of how many digits it has. */
+.line-chart-label {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  fill: var(--accent);
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+
+/* One legend shared by all three cards in a .chart-section, instead of each
+   card repeating the same swatches — a flex-wrap row, centred under the grid. */
+.chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  margin-top: 0.7rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--hairline);
+  justify-content: center;
+  gap: 0.4rem 1.1rem;
+  margin-top: 0.9rem;
 }
 
 .line-chart-legend-item {
@@ -1380,6 +1427,23 @@ body::after {
   gap: 0.25rem 0.9rem;
 }
 
+/* A Weekly Highlights badge's per-day breakdown — same separator/label
+   treatment as .tooltip-skills, its own .tooltip-rows grid for the figures. */
+.tooltip-daily {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.tooltip-daily-label {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
 .skill-gain {
   display: inline-flex;
   align-items: center;
@@ -1592,18 +1656,10 @@ body[data-ready] .loading {
   }
 
   /* Three columns is too tight to be worth it below this width — stack the
-     cards instead; each still scrolls its own bars if they don't fit. */
-  .chart-section {
+     cards instead. */
+  .chart-section,
+  .highlights-row {
     grid-template-columns: 1fr;
-  }
-
-  .chart-bars,
-  .chart-names {
-    gap: 1rem;
-  }
-
-  .chart-bars {
-    height: 76px;
   }
 
   .tabs {
@@ -1743,8 +1799,7 @@ body[data-ready] .loading {
 
   .swatch,
   .cell-rule-fill,
-  .lb-bar-fill,
-  .chart-bar-fill {
+  .lb-bar-fill {
     forced-color-adjust: none;
   }
 }

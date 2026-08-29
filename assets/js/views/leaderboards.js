@@ -1,8 +1,17 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatCompact, formatNumber } from '../format.js';
 import { bindTooltip } from '../tooltip.js';
-import { band, questPointsIcon, skillGain, skillGainTooltip, questGainTooltip, emptyEntry } from './gains-shared.js';
-import { renderGainsCharts } from './gains-chart.js';
+import {
+  band,
+  questPointsIcon,
+  skillGain,
+  skillGainTooltip,
+  questGainTooltip,
+  emptyEntry,
+  gridIcon,
+  lineViewIcon,
+  viewToggle,
+} from './gains-shared.js';
 import { renderGainsLines } from './gains-line.js';
 
 /**
@@ -161,129 +170,100 @@ const PERIODS = [
   ['month', 'Month'],
 ];
 
-/** Day/Week/Month — picks which pre-computed window the three bands show. */
-function periodToggle(period, onSelect) {
+const periodIndex = (period) => PERIODS.findIndex(([value]) => value === period);
+
+/**
+ * Day/Week/Month — picks which pre-computed window the three bands show. The
+ * active tab's ember highlight is a separate sliding block (`.tabs-indicator`)
+ * rather than a background painted on each button, so switching periods can
+ * animate as a slide instead of an instant recolour.
+ *
+ * `previousPeriod` is whatever period was active on the *previous* render —
+ * not just from a tab click here, but also from switching Gains between grid
+ * and line view, since each view now remembers its own period (see app.js's
+ * gainsGridPeriod/gainsLinePeriod). When a view switch silently changes the
+ * period out from under the reader, sliding the indicator over is what makes
+ * that change obvious instead of easy to miss. `null` (the initial render)
+ * skips the animation — there's nothing to slide from yet.
+ */
+function periodToggle(period, onSelect, previousPeriod) {
+  const index = periodIndex(period);
+  const fromIndex = previousPeriod == null ? index : periodIndex(previousPeriod);
+
+  const indicator = el('span', { class: 'tabs-indicator', 'aria-hidden': 'true' });
+  indicator.style.transform = `translateX(${fromIndex * 100}%)`;
+
+  if (fromIndex !== index) {
+    // Let the browser paint the "from" position first — changing the
+    // transform again in the same tick would collapse both into one style
+    // recalculation and skip the transition entirely. Two rAFs (rather than
+    // one) reliably land after that first paint.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        indicator.style.transform = `translateX(${index * 100}%)`;
+      });
+    });
+  }
+
   return el(
     'div',
     { class: 'tabs', role: 'tablist', 'aria-label': 'Gains period' },
-    PERIODS.map(([value, label]) =>
-      el('button', {
-        type: 'button',
-        class: `tab${period === value ? ' is-active' : ''}`,
-        role: 'tab',
-        'aria-selected': period === value ? 'true' : 'false',
-        onclick: () => onSelect(value),
-        text: label,
-      }),
-    ),
+    [
+      indicator,
+      ...PERIODS.map(([value, label]) =>
+        el('button', {
+          type: 'button',
+          class: `tab${period === value ? ' is-active' : ''}`,
+          role: 'tab',
+          'aria-selected': period === value ? 'true' : 'false',
+          onclick: () => onSelect(value),
+          text: label,
+        }),
+      ),
+    ],
   );
-}
-
-/** Three ascending bars — a drawn glyph, since "bar chart" has no game asset either. */
-function chartIcon() {
-  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    svgEl('rect', { x: 1.5, y: 9.5, width: 3.5, height: 7, rx: 1 }),
-    svgEl('rect', { x: 7.25, y: 5.5, width: 3.5, height: 11, rx: 1 }),
-    svgEl('rect', { x: 13, y: 2, width: 3.5, height: 14.5, rx: 1 }),
-  );
-  return svg;
-}
-
-/** Four small squares — a drawn glyph for the grid view, same recipe as the
- * other two toggle icons. */
-function gridIcon() {
-  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    svgEl('rect', { x: 1.5, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
-    svgEl('rect', { x: 10, y: 1.5, width: 6.5, height: 6.5, rx: 1 }),
-    svgEl('rect', { x: 1.5, y: 10, width: 6.5, height: 6.5, rx: 1 }),
-    svgEl('rect', { x: 10, y: 10, width: 6.5, height: 6.5, rx: 1 }),
-  );
-  return svg;
-}
-
-/** A zigzag with a dot at each vertex — the line-chart view's icon. */
-function lineViewIcon() {
-  const svg = svgEl('svg', { class: 'toggle-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    svgEl('polyline', { points: '2,14 7,6 11,10 16,3', class: 'toggle-line' }),
-    ...[
-      [2, 14],
-      [7, 6],
-      [11, 10],
-      [16, 3],
-    ].map(([cx, cy]) => svgEl('circle', { cx, cy, r: 1.3 })),
-  );
-  return svg;
 }
 
 const VIEWS = [
   ['grid', 'the grid', gridIcon],
-  ['chart', 'bar charts', chartIcon],
   ['line', 'line charts', lineViewIcon],
 ];
-
-/** Grid ⇄ bar chart ⇄ line chart, beside the title — a 3-way icon segmented
- * control, same visual language (and the same shared-border recipe) as the
- * Day/Week/Month tabs. */
-function viewToggle(view, onSelectView) {
-  return el(
-    'div',
-    { class: 'gains-view-tabs', role: 'tablist', 'aria-label': 'Gains view' },
-    VIEWS.map(([value, label, icon]) =>
-      el(
-        'button',
-        {
-          type: 'button',
-          class: `gains-view-toggle${view === value ? ' is-active' : ''}`,
-          role: 'tab',
-          'aria-selected': view === value ? 'true' : 'false',
-          onclick: () => onSelectView(value),
-          title: `Show ${label}`,
-        },
-        [icon(), el('span', { class: 'visually-hidden', text: `Show ${label}` })],
-      ),
-    ),
-  );
-}
 
 /**
  * One block, three bands (Levels, XP, Quest points), all showing the same
  * selected period. Kept adjacent so the same player can be tracked down the
  * columns, while each band stays independently ranked.
  *
- * @param gains { levels, xp, quests, series }, each (bar series aside) with
- *   { day, week, month } from computeLevelGains / computeGains /
- *   computeQuestGains / computeGainsSeries
+ * @param gains { levels, xp, quests, series }, each { day, week, month } from
+ *   computeLevelGains / computeGains / computeQuestGains / computeGainsSeries
  * @param period 'day' | 'week' | 'month' — which window to show
  * @param onSelectPeriod (period) => void
  * @param selectedPlayer slug of the player currently highlighted in this
  *   grid, or null — see entry()'s `selected`/`onSelect`. Ignored outside grid
  *   view, which is the only body with per-cell selection to highlight.
  * @param onSelectPlayer (slug) => void
- * @param view 'grid' | 'chart' | 'line' — which body renders below the shared header
+ * @param view 'grid' | 'line' — which body renders below the shared header
  * @param onSelectView (view) => void
+ * @param previousPeriod whatever period was active last render, or null on
+ *   the very first — see periodToggle for why this drives the tab slide.
  */
-export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onSelectView) {
+export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onSelectView, previousPeriod) {
   const body =
-    view === 'chart'
-      ? renderGainsCharts(gains, period)
-      : view === 'line'
-        ? renderGainsLines(gains, period)
-        : el('div', { class: 'lb-stack' }, [
-            band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
-            band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
-            band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
-          ]);
+    view === 'line'
+      ? renderGainsLines(gains, period)
+      : el('div', { class: 'lb-stack' }, [
+          band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
+          band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
+          band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
+        ]);
 
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
       el('div', { class: 'lb-title' }, [
         el('h2', {}, [graphIcon(), el('span', { text: 'Gains' })]),
-        viewToggle(view, onSelectView),
+        viewToggle(view, VIEWS, onSelectView, 'Gains view'),
       ]),
-      periodToggle(period, onSelectPeriod),
+      periodToggle(period, onSelectPeriod, previousPeriod),
     ]),
     body,
   ]);

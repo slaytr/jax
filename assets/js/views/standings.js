@@ -4,7 +4,16 @@ import { standings, questStandings } from '../compute.js';
 import { MAX_TOTAL_LEVEL, MAX_QUEST_POINTS } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 import { entry, gainChip } from './leaderboards.js';
-import { band, questPointsIcon } from './gains-shared.js';
+import { band, questPointsIcon, gridIcon, lineViewIcon, viewToggle } from './gains-shared.js';
+import { renderStandingsLines } from './gains-line.js';
+
+/** Grid ⇄ line chart — Account Standings only offers these two (no bar
+ * chart: a single period's total per player has no "over time" story that a
+ * bar adds beyond the grid's own per-row share bar). */
+const VIEWS = [
+  ['grid', 'the grid', gridIcon],
+  ['line', 'line charts', lineViewIcon],
+];
 
 /** Screen-reader qualifier for the gain chip, matching the Gains section's own wording. */
 const PERIOD_LABEL = { day: 'today', week: 'this week', month: 'this month' };
@@ -113,15 +122,21 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
 
 /**
  * @param gains { levels, xp, quests } from computeAllGains — mined for
- *   state.gainsPeriod's window, so each standings row can carry that same
- *   period's gain as a chip. Mirrors the Gains section directly above it,
- *   so switching Day/Week/Month there updates both at once.
+ *   gainsPeriod's window, so each standings row can carry that same period's
+ *   gain as a chip.
+ * @param gainsPeriod 'day' | 'week' | 'month' — whichever window the Gains
+ *   section is currently showing (its grid and line views each track their
+ *   own, see app.js's currentGainsPeriod), so the chip mirrors what's visible
+ *   in the Gains section directly above.
  * @param onSelectPlayer (slug) => void — toggles state.standingsSelectedPlayer,
  *   read here to tint every cell of the selected player across all three bands.
+ * @param view 'grid' | 'line' — which body renders below the shared header.
+ *   Ignored (grid stays visible) unless explicitly 'line'.
+ * @param onSelectView (view) => void
  */
-export function renderStandings(state, gains, onSelectPlayer) {
+export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view, onSelectView) {
   const selectedPlayer = state.standingsSelectedPlayer;
-  const period = state.gainsPeriod;
+  const period = gainsPeriod;
   const periodLabel = PERIOD_LABEL[period];
 
   const levelGains = gainsBySlug(gains.levels[period].rows, 'total');
@@ -129,29 +144,41 @@ export function renderStandings(state, gains, onSelectPlayer) {
   const questGains = gainsBySlug(gains.quests[period].rows, 'gained');
   const maxXp = Math.max(...state.players.map((player) => player.total?.xp ?? 0), 0);
 
+  const body =
+    view === 'line'
+      ? // Fixed to month, not `period` — Standings has no Day/Week/Month tabs of
+        // its own (that toggle lives in Gains and only drives the grid's gain
+        // chips here), and a month of history reads better as a totals trend
+        // than a single day's near-flat line.
+        renderStandingsLines(gains, 'month')
+      : el('div', { class: 'lb-stack' }, [
+          band(
+            'Total levels',
+            standings(state.players, 'level').map((row) =>
+              levelRow(row, selectedPlayer, onSelectPlayer, levelGains[row.player.slug] ?? 0, periodLabel),
+            ),
+          ),
+          band(
+            'Total XP',
+            standings(state.players, 'xp').map((row) =>
+              xpRow(row, selectedPlayer, onSelectPlayer, xpGains[row.player.slug] ?? 0, periodLabel, maxXp),
+            ),
+          ),
+          band(
+            questPointsIcon(),
+            questStandings(state.players).map((row) =>
+              questRow(row, selectedPlayer, onSelectPlayer, questGains[row.player.slug] ?? 0, periodLabel),
+            ),
+          ),
+        ]);
+
   return el('section', { class: 'lb' }, [
     el('div', { class: 'lb-head' }, [
-      el('h2', {}, [podiumIcon(), el('span', { text: 'Account standings' })]),
+      el('div', { class: 'lb-title' }, [
+        el('h2', {}, [podiumIcon(), el('span', { text: 'Account standings' })]),
+        viewToggle(view, VIEWS, onSelectView, 'Standings view'),
+      ]),
     ]),
-    el('div', { class: 'lb-stack' }, [
-      band(
-        'Total levels',
-        standings(state.players, 'level').map((row) =>
-          levelRow(row, selectedPlayer, onSelectPlayer, levelGains[row.player.slug] ?? 0, periodLabel),
-        ),
-      ),
-      band(
-        'Total XP',
-        standings(state.players, 'xp').map((row) =>
-          xpRow(row, selectedPlayer, onSelectPlayer, xpGains[row.player.slug] ?? 0, periodLabel, maxXp),
-        ),
-      ),
-      band(
-        questPointsIcon(),
-        questStandings(state.players).map((row) =>
-          questRow(row, selectedPlayer, onSelectPlayer, questGains[row.player.slug] ?? 0, periodLabel),
-        ),
-      ),
-    ]),
+    body,
   ]);
 }

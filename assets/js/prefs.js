@@ -1,8 +1,11 @@
 /**
  * Persisted UI state — which player is highlighted in Account Standings and
- * the Gains grid, and whether Gains is showing the grid or the bar charts.
- * Everything else (sort order, the invert toggle, the selected period) resets
- * on reload; these three are the ones worth a reader not having to redo.
+ * the Gains grid, whether each section is showing its grid or line-chart
+ * view, and which Day/Week/Month window Gains' grid and line views were each
+ * last showing (tracked separately per view — see app.js's
+ * gainsGridPeriod/gainsLinePeriod). Everything else (sort order, the invert
+ * toggle) resets on reload; these are the ones worth a reader not having to
+ * redo.
  *
  * localStorage only: per-browser, never sent anywhere. Reads/writes are
  * best-effort — private browsing or a full/blocked store should never break
