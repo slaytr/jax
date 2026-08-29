@@ -54,16 +54,10 @@ export const questGainTooltip = (row) =>
 /**
  * One labelled band — a period name, then that period's ranked five,
  * grid-cell style. Used by the Gains grid and Account Standings.
- * `label` is usually a string, but may be a node (e.g. questPointsIcon()) for
- * a band identified by icon rather than text.
  */
 export const band = (label, entries) =>
   el('div', { class: 'lb-band' }, [
-    el(
-      'div',
-      { class: 'lb-band-head' },
-      [typeof label === 'string' ? el('p', { class: 'lb-band-label', text: label }) : el('p', { class: 'lb-band-label' }, [label])],
-    ),
+    el('div', { class: 'lb-band-head' }, [el('p', { class: 'lb-band-label', text: label })]),
     el('div', { class: 'lb-row' }, entries),
   ]);
 
@@ -71,7 +65,9 @@ export const band = (label, entries) =>
  * — the column stays reserved so the grid doesn't reflow, but shows nothing. */
 export const emptyEntry = () => el('div', { class: 'lb-entry lb-entry-empty', 'aria-hidden': 'true' });
 
-/** The quest-points row/band, identified by its game icon rather than a text label. */
+/** The quest-points band header's game icon, for contexts that still lead
+ * with the glyph instead of the "Quest points" text label (the line-chart
+ * card header — see gains-line.js). */
 export const questPointsIcon = () =>
   el('img', {
     class: 'lb-band-icon',
@@ -81,6 +77,15 @@ export const questPointsIcon = () =>
     height: 18,
     decoding: 'async',
   });
+
+/** The same game icon, small and riding right after a quest-points figure
+ * (a grid cell's headline value, a Quest God badge's total) as that number's
+ * unit — decorative itself, with the unit spelled out for screen readers. */
+export const questPointsMark = () =>
+  el('span', { class: 'lb-value-icon' }, [
+    el('img', { src: 'assets/icons/quest-points.png', alt: '', width: 15, height: 15, decoding: 'async' }),
+    el('span', { class: 'visually-hidden', text: ' quest points' }),
+  ]);
 
 /** Four small squares — a drawn glyph for the grid view. */
 export function gridIcon() {

@@ -3,7 +3,7 @@ import { formatCompact, formatNumber } from '../format.js';
 import { bindTooltip } from '../tooltip.js';
 import {
   band,
-  questPointsIcon,
+  questPointsMark,
   skillGain,
   skillGainTooltip,
   questGainTooltip,
@@ -47,14 +47,16 @@ const RIBBON_CLASS = { Slacker: 'is-crimson', Trying: 'is-green' };
  * player's own colour — e.g. their total level's share of the game's cap.
  * `animate` ('immediate' | 'delayed' | falsy), when set, starts that rule
  * empty and fills it to `share` instead of painting it already full — see
- * `shareBar` for what the two animated variants mean.
+ * `shareBar` for what the two animated variants mean. `valueIcon`, when
+ * given, is a small unit glyph (e.g. `questPointsMark()`) riding right after
+ * the headline value, ahead of `gain`.
  *
  * A real button rather than a div: clicking it selects the player, tinting
  * every cell of theirs in the same grid with their own colour (`--accent`,
  * set here) — see `.lb-entry.is-selected`. `selected` is that state for
  * *this* cell; `onSelect` reports the click back up so the grid can toggle it.
  */
-export function entry({ player, value, sub, gain, share, place, ribbon, selected, onSelect, animate }) {
+export function entry({ player, value, sub, gain, share, place, ribbon, selected, onSelect, animate, valueIcon }) {
   const medal = MEDAL_RIBBON[place];
   const ribbonText = medal ? medal[0] : ribbon;
   const ribbonClass = medal ? ` ${medal[1]}` : RIBBON_CLASS[ribbon] ? ` ${RIBBON_CLASS[ribbon]}` : '';
@@ -72,7 +74,7 @@ export function entry({ player, value, sub, gain, share, place, ribbon, selected
       el('span', { class: 'visually-hidden', text: `${ordinal(place)} place — ` }),
       el('span', { class: 'lb-name' }, [swatch(player.colour), el('span', { text: player.name })]),
       el('span', { class: 'lb-value' }, [
-        el('span', { text: value }),
+        el('span', {}, [value, valueIcon]),
         gain,
         sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
       ]),
@@ -196,6 +198,7 @@ function questsRow(gains, selectedPlayer, onSelectPlayer) {
       player: row.player,
       place,
       value: `+${formatNumber(row.gained)}`,
+      valueIcon: questPointsMark(),
       ribbon: place === slackerPlace ? 'Slacker' : null,
       selected: row.player.slug === selectedPlayer,
       onSelect: onSelectPlayer,
@@ -295,7 +298,7 @@ export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSel
       : el('div', { class: 'lb-stack' }, [
           band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
           band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),
-          band(questPointsIcon(), questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
+          band('Quest points', questsRow(gains.quests[period], selectedPlayer, onSelectPlayer)),
         ]);
 
   return el('section', { class: 'lb' }, [

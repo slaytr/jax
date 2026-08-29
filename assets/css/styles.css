@@ -1022,6 +1022,20 @@ body::after {
   color: var(--ink);
 }
 
+/* Quest points' unit glyph, riding right after a headline value (a grid
+   cell's figure or a Quest God badge's total) rather than sitting in a band
+   header — see questPointsMark in gains-shared.js. */
+.lb-value-icon {
+  display: inline-flex;
+  margin-left: 0.3rem;
+}
+
+.lb-value-icon img {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
 .lb-sub {
   display: inline-flex;
   align-items: center;

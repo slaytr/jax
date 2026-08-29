@@ -4,7 +4,7 @@ import { standings, questStandings } from '../compute.js';
 import { MAX_TOTAL_LEVEL, MAX_QUEST_POINTS } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 import { entry, gainChip } from './leaderboards.js';
-import { band, questPointsIcon, gridIcon, lineViewIcon, viewToggle } from './gains-shared.js';
+import { band, questPointsMark, gridIcon, lineViewIcon, viewToggle } from './gains-shared.js';
 import { renderStandingsLines } from './gains-line.js';
 
 /** Grid ⇄ line chart — Account Standings only offers these two (no bar
@@ -100,6 +100,7 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, anim
     player,
     place: row.place,
     value: known ? formatNumber(player.questPoints) : '—',
+    valueIcon: known ? questPointsMark() : null,
     gain: gained > 0 ? gainChip(`+${formatNumber(gained)}`, `quest points gained ${periodLabel}`) : null,
     share: known ? player.questPoints / MAX_QUEST_POINTS : 0,
     sub: known ? null : 'unavailable',
@@ -179,7 +180,7 @@ export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view,
             ),
           ),
           band(
-            questPointsIcon(),
+            'Quest points',
             questStandings(state.players).map((row) =>
               questRow(row, selectedPlayer, onSelectPlayer, questGains[row.player.slug] ?? 0, periodLabel, animateBars),
             ),

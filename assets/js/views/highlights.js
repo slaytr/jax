@@ -1,6 +1,7 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatNumber, formatCompact, formatWeekday } from '../format.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
+import { questPointsMark } from './gains-shared.js';
 
 /**
  * Weekly Highlights: three superlative badges crowning whoever led Levels,
@@ -33,7 +34,7 @@ function crownIcon() {
 const BADGES = [
   { key: 'level', label: 'Ranker', mode: 'days', formatValue: formatNumber, unit: '' },
   { key: 'xp', label: 'Grind King', mode: 'days', formatValue: formatCompact, unit: ' xp' },
-  { key: 'quests', label: 'Quest God', mode: 'total', formatValue: formatNumber, unit: ' qp' },
+  { key: 'quests', label: 'Quest God', mode: 'total', formatValue: formatNumber, unit: ' qp', valueIcon: questPointsMark },
 ];
 
 /** The metric keys, in the order `renderHighlights` expects — app.js builds
@@ -75,11 +76,13 @@ function dailyBreakdownExtra(breakdown, formatValue) {
  * every day was a tie), in which case the badge shows a muted placeholder
  * and has no tooltip.
  */
-function badge({ label, mode, formatValue, unit }, entry) {
+function badge({ label, mode, formatValue, unit, valueIcon }, entry) {
   const { winner, breakdown } = entry;
 
   const valueNode =
-    winner && mode === 'total' ? el('span', { class: 'highlight-value', text: `+${formatValue(winner.value)}` }) : null;
+    winner && mode === 'total'
+      ? el('span', { class: 'highlight-value' }, [`+${formatValue(winner.value)}`, valueIcon ? valueIcon() : null])
+      : null;
 
   const node = el(
     'div',
