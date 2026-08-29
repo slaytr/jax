@@ -13,15 +13,19 @@ import { questPointsMark } from './gains-shared.js';
  *
  * Ranker and Grind King (`mode: 'days'`) crown whoever finished #1 on the
  * most individual days this week, not whoever ended the week with the
- * single biggest total (see computeDailyLeaderCounts in compute.js) — so
- * they show no figure of their own beside the name, just who's leading and,
- * on hover, how many days and which ones. Quest God (`mode: 'total'`) is
- * still the week's raw total and does show one, since RuneMetrics-sourced
- * quest data is too sparse day-to-day for a daily-leader count to mean much.
+ * single biggest total (see computeDailyLeaderCounts in compute.js) — the
+ * figure shown beside their name is still that weekly total (`winner.total`),
+ * same as Quest God's, but it's a supporting stat rather than the reason
+ * they won; two players could show the same total with different day-counts
+ * deciding between them. The hover tooltip's summary row spells this out
+ * (`totalLabel`, e.g. "Total XP gained"). Quest God (`mode: 'total'`) is
+ * decided by, and shows, the week's raw total directly, since RuneMetrics-
+ * sourced quest data is too sparse day-to-day for a daily-leader count to
+ * mean much.
  *
- * Every badge's hover tooltip still breaks the winner's gain down by the
- * last 7 UTC calendar days (see computeDailyBreakdown in compute.js) — for
- * the daily-leader badges that's *why* they're leading, not just a total.
+ * Every badge's hover tooltip also breaks the winner's gain down by the last
+ * 7 UTC calendar days (see computeDailyBreakdown in compute.js) — for the
+ * daily-leader badges that's *why* they're leading, not just a total.
  */
 
 /** A drawn glyph: "weekly highlights" has no game asset to borrow. */
@@ -32,8 +36,8 @@ function crownIcon() {
 }
 
 const BADGES = [
-  { key: 'level', label: 'Ranker', mode: 'days', formatValue: formatNumber, unit: '' },
-  { key: 'xp', label: 'Grind King', mode: 'days', formatValue: formatCompact, unit: ' xp' },
+  { key: 'level', label: 'Ranker', mode: 'days', formatValue: formatNumber, unit: '', totalLabel: 'Total levels gained' },
+  { key: 'xp', label: 'Grind King', mode: 'days', formatValue: formatCompact, unit: ' xp', totalLabel: 'Total XP gained' },
   { key: 'quests', label: 'Quest God', mode: 'total', formatValue: formatNumber, unit: ' qp', valueIcon: questPointsMark },
 ];
 
@@ -61,28 +65,32 @@ function dailyBreakdownExtra(breakdown, formatValue) {
 }
 
 /**
- * One badge. In `mode: 'total'` it reads literally as "Quest God: PlayerName
- * +23" — a plain bold number, in the same voice as Account Standings' own
+ * One badge, reading literally as "Grind King: PlayerName +8.03M" — a plain
+ * bold number beside the name, in the same voice as Account Standings' own
  * headline totals (.lb-value), not the small green gain chip used elsewhere,
  * since here the number is the whole point of the badge rather than a
- * secondary annotation beside a bigger total. In `mode: 'days'` there's no
- * number beside the name at all ("Grind King: PlayerName") — the win is a
- * count of daily #1 finishes, not a total, so a figure there would read as
- * one when it isn't; the count only shows up in the hover tooltip.
+ * secondary annotation beside a bigger total. For `mode: 'total'` (Quest
+ * God) that number is `winner.value`, the figure the badge was decided by;
+ * for `mode: 'days'` (Ranker/Grind King) it's `winner.total`, the winner's
+ * weekly total — a supporting stat, since day-count (not this total) is what
+ * actually decided the badge. Only `mode: 'total'` gets a `valueIcon` beside
+ * its figure (Quest God's game icon); the other two have none.
  *
  * `entry` is `{ winner, breakdown }` — `winner` is `{ player, value }` for a
- * `'total'` badge or `{ player, days, of }` for a `'days'` one, or null when
- * nobody has a claim on that badge this week (nobody gained anything, or
- * every day was a tie), in which case the badge shows a muted placeholder
- * and has no tooltip.
+ * `'total'` badge or `{ player, days, of, total }` for a `'days'` one, or
+ * null when nobody has a claim on that badge this week (nobody gained
+ * anything, or every day was a tie), in which case the badge shows a muted
+ * placeholder and has no tooltip.
  */
-function badge({ label, mode, formatValue, unit, valueIcon }, entry) {
+function badge({ label, mode, formatValue, unit, valueIcon, totalLabel }, entry) {
   const { winner, breakdown } = entry;
 
-  const valueNode =
-    winner && mode === 'total'
-      ? el('span', { class: 'highlight-value' }, [`+${formatValue(winner.value)}`, valueIcon ? valueIcon() : null])
-      : null;
+  const valueNode = winner
+    ? el('span', { class: 'highlight-value' }, [
+        `+${formatValue(mode === 'total' ? winner.value : winner.total)}`,
+        mode === 'total' && valueIcon ? valueIcon() : null,
+      ])
+    : null;
 
   const node = el(
     'div',
@@ -104,15 +112,11 @@ function badge({ label, mode, formatValue, unit, valueIcon }, entry) {
 
   if (!winner) return node;
 
-  const summary = mode === 'days' ? `${winner.days} of ${winner.of} days` : `+${formatValue(winner.value)}${unit}`;
+  const summaryRow =
+    mode === 'days' ? [totalLabel, `+${formatValue(winner.total)}${unit}`] : [`${label} this week`, `+${formatValue(winner.value)}${unit}`];
 
   return bindTooltip(node, () =>
-    tooltipContent(
-      winner.player.name,
-      [[`${label} this week`, summary]],
-      winner.player.colour,
-      dailyBreakdownExtra(breakdown, formatValue),
-    ),
+    tooltipContent(winner.player.name, [summaryRow], winner.player.colour, dailyBreakdownExtra(breakdown, formatValue)),
   );
 }
 

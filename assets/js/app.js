@@ -119,20 +119,24 @@ function computeAllGains() {
   };
 }
 
-/** The week's top gainer for one metric, or null when nobody gained anything —
- * a 0-value leader (e.g. a brand-new group) isn't a real "winner" to crown. */
-function topWeeklyGainer(result, valueKey) {
-  const top = result.rows[0];
-  return top && top[valueKey] > 0 ? { player: top.player, value: top[valueKey] } : null;
+/** The week's top gainer for one metric, skipping anyone already `claimed`.
+ * Null when nobody unclaimed gained anything (a 0-value leader, e.g. a
+ * brand-new group, isn't a real "winner" to crown either). `claimed`
+ * defaults to empty — pass one only where a badge actually needs to exclude
+ * another badge's winner (see computeHighlights). */
+function topWeeklyGainer(result, valueKey, claimed = new Set()) {
+  const top = result.rows.find((row) => row[valueKey] > 0 && !claimed.has(row.player.slug));
+  return top ? { player: top.player, value: top[valueKey] } : null;
 }
 
-/** Whoever led the most individual days this week for a metric — the
- * Ranker/Grind King badges. `null` when nobody outright led any day (e.g.
- * every day was a tie, or there's no history yet). */
-function topDailyLeader(snapshots, players, metric, days = 7) {
+/** Whoever led the most individual days this week for a metric, again
+ * skipping anyone already `claimed` — the Ranker/Grind King badges. Null
+ * when no unclaimed player outright led any day (every day tied, no history
+ * yet, or every qualifying leader is already claimed). */
+function topDailyLeader(snapshots, players, metric, claimed = new Set(), days = 7) {
   const { rows, validDays } = computeDailyLeaderCounts(snapshots, players, metric, days);
-  const top = rows[0];
-  return top && top.days > 0 ? { player: top.player, days: top.days, of: validDays } : null;
+  const top = rows.find((row) => row.days > 0 && !claimed.has(row.player.slug));
+  return top ? { player: top.player, days: top.days, of: validDays, total: top.total } : null;
 }
 
 /**
@@ -147,15 +151,29 @@ function topDailyLeader(snapshots, players, metric, days = 7) {
  * raw total, since RuneMetrics-sourced quest data is too sparse day-to-day
  * for a daily-leader count to mean much.
  *
+ * Ranker and Grind King are mutually exclusive — one player can't hold both
+ * crowns, so whoever already won Ranker is skipped when picking Grind King
+ * in favour of the next-best candidate. Quest God is independent of the
+ * other two: its winner can also be the Ranker and/or Grind King, since
+ * quest points measure a different kind of effort (breadth of quests done)
+ * than the levels/XP grind the other two badges are about.
+ *
  * Each entry also carries its winner's last-7-days breakdown
  * (computeDailyBreakdown, against the raw snapshots rather than the
  * pre-aggregated `gains` bands) so the badge's hover tooltip can show which
  * days actually built that lead.
  */
 function computeHighlights(gains) {
+  const claimed = new Set();
+
+  const level = topDailyLeader(state.snapshots, state.players, 'level', claimed);
+  if (level) claimed.add(level.player.slug);
+
+  const xp = topDailyLeader(state.snapshots, state.players, 'xp', claimed);
+
   const winners = {
-    level: topDailyLeader(state.snapshots, state.players, 'level'),
-    xp: topDailyLeader(state.snapshots, state.players, 'xp'),
+    level,
+    xp,
     quests: topWeeklyGainer(gains.quests.week, 'gained'),
   };
 
