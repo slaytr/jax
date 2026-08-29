@@ -45,8 +45,9 @@ const RIBBON_CLASS = { Slacker: 'is-crimson', Trying: 'is-green' };
  * `gainChip`) that rides beside the headline value. `share` (0–1), when
  * given, draws a coloured progress rule along the cell's bottom edge in the
  * player's own colour — e.g. their total level's share of the game's cap.
- * `animate`, when true, starts that rule empty and fills it to `share` on
- * the next frame (see `shareBar`) instead of painting it already full.
+ * `animate` ('immediate' | 'delayed' | falsy), when set, starts that rule
+ * empty and fills it to `share` instead of painting it already full — see
+ * `shareBar` for what the two animated variants mean.
  *
  * A real button rather than a div: clicking it selects the player, tinting
  * every cell of theirs in the same grid with their own colour (`--accent`,
@@ -85,11 +86,23 @@ export function entry({ player, value, sub, gain, share, place, ribbon, selected
  * bar stopping sooner reads as "smaller", not just "faster". */
 const SHARE_BAR_FILL_MS = 900;
 
+/** #panel's page-load "rise" animation is a 0.1s delay plus a 0.7s run (see
+ * `body[data-ready] #panel` in styles.css) — a 'delayed' bar waits this long
+ * before it starts filling, so it doesn't visibly move while the grid itself
+ * is still animating up into place. Keep in sync with that CSS rule. */
+const PANEL_RISE_MS = 800;
+
 /**
  * The bottom-edge share rule. `animate` starts it at 0% width and grows it
- * to `share` a frame later, so the CSS `width` transition (`.lb-bar-fill`)
- * plays instead of painting the bar already full — two rAFs, not one,
- * because the browser needs to actually paint the 0% state before the next
+ * to `share`, so the CSS `width` transition (`.lb-bar-fill`) plays instead
+ * of painting the bar already full:
+ *  - 'immediate' fills right away (a fresh view switch — nothing else on
+ *    screen is still animating, so there's no reason to wait).
+ *  - 'delayed' waits out `PANEL_RISE_MS` first (the initial page load, where
+ *    the whole panel is already rising in — see `render()`'s page-load
+ *    detection in app.js).
+ * Either way the width change itself is scheduled two rAFs out, not one,
+ * because the browser needs to actually paint the 0% state before a further
  * width change will transition rather than collapse into one recalculation
  * (same trick as `periodToggle`'s indicator slide, below).
  */
@@ -99,6 +112,7 @@ function shareBar(share, animate) {
 
   if (animate) {
     fill.style.transitionDuration = `${Math.round(Math.max(0, Math.min(1, share)) * SHARE_BAR_FILL_MS)}ms`;
+    fill.style.transitionDelay = animate === 'delayed' ? `${PANEL_RISE_MS}ms` : '0ms';
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         fill.style.width = width;

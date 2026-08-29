@@ -140,13 +140,18 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, anim
  *   null on the very first — grid's share bars fill from empty (see
  *   `entry`'s `animate`) only when the grid is newly appearing (first render,
  *   or switching in from line view), not on every re-render (a player
- *   selection or a Gains period tab click shouldn't replay the fill).
+ *   selection or a Gains period tab click shouldn't replay the fill). The
+ *   very first render (`previousView` null) fills 'delayed', since the whole
+ *   panel is still rising in at that point (see `shareBar`'s `PANEL_RISE_MS`);
+ *   switching in from line view fills 'immediate', since nothing else on
+ *   screen is still moving by then.
  */
 export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view, onSelectView, previousView) {
   const selectedPlayer = state.standingsSelectedPlayer;
   const period = gainsPeriod;
   const periodLabel = PERIOD_LABEL[period];
-  const animateBars = view === 'grid' && previousView !== 'grid';
+  const animateBars =
+    view !== 'grid' || previousView === 'grid' ? null : previousView == null ? 'delayed' : 'immediate';
 
   const levelGains = gainsBySlug(gains.levels[period].rows, 'total');
   const xpGains = gainsBySlug(gains.xp[period].rows, 'total');
