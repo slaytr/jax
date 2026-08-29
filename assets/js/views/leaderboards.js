@@ -290,11 +290,20 @@ const VIEWS = [
  * @param onSelectView (view) => void
  * @param previousPeriod whatever period was active last render, or null on
  *   the very first — see periodToggle for why this drives the tab slide.
+ *   Also feeds the line view's draw-in animation below, alongside
+ *   `previousView`: a Day/Week/Month switch plots an entirely different set
+ *   of lines, so it earns a fresh draw-in the same as opening the view does.
+ * @param previousView whatever view was active on the *previous* render, or
+ *   null on the very first — the line view's lines draw in from left to
+ *   right when the line view is newly appearing (first render already in
+ *   line view, or switching in from grid) or its period just changed, but
+ *   not on every re-render (a player selection shouldn't replay the
+ *   draw-in); see gains-line.js's `animate` param.
  */
-export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onSelectView, previousPeriod) {
+export function renderGains(gains, period, onSelectPeriod, selectedPlayer, onSelectPlayer, view, onSelectView, previousPeriod, previousView) {
   const body =
     view === 'line'
-      ? renderGainsLines(gains, period)
+      ? renderGainsLines(gains, period, previousView !== 'line' || previousPeriod !== period)
       : el('div', { class: 'lb-stack' }, [
           band('Levels', levelsRow(gains.levels[period], selectedPlayer, onSelectPlayer)),
           band('XP', xpRow(gains.xp[period], selectedPlayer, onSelectPlayer)),

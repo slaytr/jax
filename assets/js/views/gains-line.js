@@ -40,6 +40,16 @@ import { questPointsIcon } from './gains-shared.js';
  * `.line-chart-svg`, so the default (uniform) SVG scaling always fills the
  * box exactly — no letterboxing, and every dot stays circular rather than
  * stretching into an ellipse.
+ *
+ * When `animate` is true (see renderGainsLines/renderStandingsLines), every
+ * multi-point line draws in from left to right instead of appearing all at
+ * once — the classic stroke-dasharray/dashoffset trick (see `revealOnAttach`)
+ * — so opening the line view (or switching into it) reads as the chart
+ * coming to life rather than a static image just being swapped in. Every dot
+ * (day marks and the head marker) then fades in once the line has finished
+ * drawing (see `fadeInAfterDraw`) rather than alongside it — a dot appearing
+ * before the line has actually drawn as far as its position would read as
+ * floating ahead of its own line.
  */
 
 const WIDTH = 300;
@@ -48,6 +58,11 @@ const PAD_X = 3;
 const PAD_Y = 8;
 const LABEL_WIDTH = 48;
 const PLOT_WIDTH = WIDTH - PAD_X * 2 - LABEL_WIDTH;
+/** How long a line takes to draw in (see `revealOnAttach`) — also how long
+ * every dot waits before fading in (see `fadeInAfterDraw`), so points never
+ * appear ahead of the line reaching them. One constant, not a duplicated
+ * magic number, since the two have to agree. */
+const LINE_DRAW_MS = 900;
 
 const toX = (x) => (PAD_X + x * PLOT_WIDTH).toFixed(2);
 const toY = (y) => (HEIGHT - PAD_Y - y * (HEIGHT - PAD_Y * 2)).toFixed(2);
@@ -173,6 +188,64 @@ function headLabel(entry, formatValue, signed) {
 }
 
 /**
+ * Draws a polyline in from left to right instead of appearing all at once:
+ * hide the whole stroke behind a dash gap exactly as long as the path, then
+ * transition that gap closed over `LINE_DRAW_MS`. `getTotalLength()` needs
+ * the element actually attached to the document, which it isn't yet here —
+ * `path` has only just been created, and won't be inserted until the whole
+ * page tree this call is part of reaches `replaceChildren` in app.js's
+ * `render()`. Scheduling via `requestAnimationFrame` sidesteps that: render()
+ * finishes inserting everything synchronously before the browser can run any
+ * rAF callback, so by the time this one fires, `path` is already live and
+ * measurable.
+ *
+ * The transition is set inline rather than declared in the stylesheet
+ * because `path` is freshly created each render — there's no earlier style
+ * state for a stylesheet rule to transition from, so an *unconditional* CSS
+ * transition would instead fire on the very first write below (setting
+ * dashoffset to `length`, i.e. "hidden"), transitioning from the browser's
+ * default of 0 (fully drawn) up to `length`: the line would visibly erase
+ * itself backwards before drawing back in, not draw in from a standing
+ * start. The `transition: none` / forced reflow / explicit-duration sequence
+ * makes that first write land instantly, so only the second write —
+ * dashoffset back to 0 — is actually observed as a transition.
+ */
+function revealOnAttach(path) {
+  requestAnimationFrame(() => {
+    const length = path.getTotalLength();
+    path.style.transition = 'none';
+    path.style.strokeDasharray = `${length}`;
+    path.style.strokeDashoffset = `${length}`;
+    path.getBoundingClientRect(); // force the instant "hidden" state above to commit
+    path.style.transition = `stroke-dashoffset ${LINE_DRAW_MS}ms var(--ease)`;
+    path.style.strokeDashoffset = '0';
+  });
+}
+
+/**
+ * Fades every one of a line's dots in together, `LINE_DRAW_MS` after this is
+ * called — timed to land once the line itself (if there is one) has finished
+ * drawing, so points never appear ahead of the line reaching them. Each dot
+ * starts at `opacity:0` baked into its style at creation (see `playerLine`),
+ * before it's ever painted, so there's nothing to transition away from; this
+ * just schedules the later write that `.line-chart-point`'s own (always-on)
+ * opacity transition then animates. Doesn't need to wait for attachment the
+ * way `revealOnAttach` does — an opacity write doesn't depend on the
+ * element's rendered geometry, only a real DOM node existing.
+ *
+ * `dots` pairs each node with its *own* resting opacity rather than fading
+ * everything to a flat 1 — a day-mark dot rests at 0.55 (see `.is-day-mark`
+ * in styles.css, dimmer than the head dot on purpose), and writing 1 to its
+ * inline style would override that class rule (inline beats class
+ * specificity) and leave it permanently brighter than intended.
+ */
+function fadeInAfterDraw(dots) {
+  setTimeout(() => {
+    for (const { node, opacity } of dots) node.style.opacity = `${opacity}`;
+  }, LINE_DRAW_MS);
+}
+
+/**
  * One player's line: a polyline through every point (skipped entirely when
  * there's only one — a lone point has nothing to connect to), a day-mark dot
  * at each UTC-midnight the player has data for, and a head dot on the latest
@@ -180,17 +253,25 @@ function headLabel(entry, formatValue, signed) {
  * text label is drawn separately by the caller, once every row's label
  * position has been decluttered (see `declutterLabels`).
  */
-function playerLine(row, formatValue, valueLabel) {
+function playerLine(row, formatValue, valueLabel, animate) {
   const { points } = row;
   const nodes = [];
+  const dots = [];
   const accent = `--accent:${row.player.colour}`;
+  const dotStyle = animate ? `${accent};opacity:0` : accent;
 
+  let path = null;
   if (points.length > 1) {
     const linePoints = points.map((point) => `${toX(point.x)},${toY(point.y)}`).join(' ');
-    nodes.push(svgEl('polyline', { points: linePoints, class: 'line-chart-path', style: accent }));
+    path = svgEl('polyline', { points: linePoints, class: 'line-chart-path', style: accent });
+    nodes.push(path);
   }
 
-  for (const mark of row.dayMarks) nodes.push(dayMarkPoint(row, mark, formatValue, valueLabel, accent));
+  for (const mark of row.dayMarks) {
+    const dot = dayMarkPoint(row, mark, formatValue, valueLabel, dotStyle);
+    nodes.push(dot);
+    dots.push({ node: dot, opacity: 0.55 });
+  }
 
   const head = points[points.length - 1];
   const marker = svgEl('circle', {
@@ -198,7 +279,7 @@ function playerLine(row, formatValue, valueLabel) {
     cy: toY(head.y),
     r: points.length > 1 ? 3 : 3.6,
     class: 'line-chart-point',
-    style: accent,
+    style: dotStyle,
     tabindex: '0',
   });
 
@@ -213,11 +294,17 @@ function playerLine(row, formatValue, valueLabel) {
     ),
   );
   nodes.push(marker);
+  dots.push({ node: marker, opacity: 1 });
+
+  if (animate) {
+    if (path) revealOnAttach(path);
+    fadeInAfterDraw(dots);
+  }
 
   return { nodes, head, accent };
 }
 
-function lineChart(rows, formatValue, valueLabel, signed) {
+function lineChart(rows, formatValue, valueLabel, signed, animate) {
   const svg = svgEl('svg', {
     viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
     class: 'line-chart-svg',
@@ -226,7 +313,7 @@ function lineChart(rows, formatValue, valueLabel, signed) {
   });
 
   const labelEntries = rows.map((row) => {
-    const { nodes, head, accent } = playerLine(row, formatValue, valueLabel);
+    const { nodes, head, accent } = playerLine(row, formatValue, valueLabel, animate);
     svg.append(...nodes);
     return { row, head, accent, y: Number(toY(head.y)) };
   });
@@ -236,9 +323,9 @@ function lineChart(rows, formatValue, valueLabel, signed) {
   return svg;
 }
 
-function lineCard(label, rows, formatValue, valueLabel, signed) {
+function lineCard(label, rows, formatValue, valueLabel, signed, animate) {
   const body = rows.length
-    ? [lineChart(rows, formatValue, valueLabel, signed)]
+    ? [lineChart(rows, formatValue, valueLabel, signed, animate)]
     : [el('p', { class: 'chart-empty', text: 'No data yet.' })];
 
   return el('section', { class: 'chart-card' }, [
@@ -251,8 +338,11 @@ function lineCard(label, rows, formatValue, valueLabel, signed) {
  * each `{ day, week, month }` of computeGainsSeries rows, plus one legend shared
  * by all three cards. `valueLabels` supplies the per-metric tooltip/axis wording,
  * since that's the one thing (besides `signed`) that differs between a
- * gains-since-baseline series and a raw-totals one. */
-function renderLineCards(series, period, valueLabels, signed) {
+ * gains-since-baseline series and a raw-totals one. `animate` draws every
+ * line in from the left (see playerLine/revealOnAttach) rather than having
+ * it simply appear — the caller passes true only when this line view is
+ * newly appearing on screen, not on every re-render. */
+function renderLineCards(series, period, valueLabels, signed, animate) {
   const levelsRows = series.levels[period].rows.filter((row) => row.points.length > 0);
   const xpRows = series.xp[period].rows.filter((row) => row.points.length > 0);
   const questsRows = series.quests[period].rows.filter((row) => row.points.length > 0);
@@ -261,9 +351,9 @@ function renderLineCards(series, period, valueLabels, signed) {
 
   return el('div', { class: 'chart-section-group' }, [
     el('div', { class: 'chart-section' }, [
-      lineCard('Levels', levelsRows, formatNumber, valueLabels.levels, signed),
-      lineCard('XP', xpRows, formatCompact, valueLabels.xp, signed),
-      lineCard(questPointsIcon(), questsRows, formatNumber, valueLabels.quests, signed),
+      lineCard('Levels', levelsRows, formatNumber, valueLabels.levels, signed, animate),
+      lineCard('XP', xpRows, formatCompact, valueLabels.xp, signed, animate),
+      lineCard(questPointsIcon(), questsRows, formatNumber, valueLabels.quests, signed, animate),
     ]),
     players.length ? el('div', { class: 'chart-legend' }, players.map((player) => legendItem(player))) : null,
   ]);
@@ -272,8 +362,11 @@ function renderLineCards(series, period, valueLabels, signed) {
 /** @param gains { series: { levels, xp, quests } }, each { day, week, month } from
  *   computeGainsSeries with `relative: true` — every line is that player's gain
  *   since the window's start, not their raw total. Head labels are signed
- *   ("+123") to match. */
-export function renderGainsLines(gains, period) {
+ *   ("+123") to match.
+ * @param animate draw every line in from the left rather than having it
+ *   appear instantly — true only when the Gains line view is newly appearing
+ *   (see leaderboards.js's `renderGains`). */
+export function renderGainsLines(gains, period, animate = false) {
   return renderLineCards(
     gains.series,
     period,
@@ -283,14 +376,18 @@ export function renderGainsLines(gains, period) {
       quests: 'Quest points gained',
     },
     true,
+    animate,
   );
 }
 
 /** @param gains { totalsSeries: { levels, xp, quests } }, each { day, week, month }
  *   from computeGainsSeries (default, non-relative) — every line is that player's
  *   raw total over time, matching what the rest of Account Standings shows. Head
- *   labels are unsigned, matching how a total reads everywhere else on the page. */
-export function renderStandingsLines(gains, period) {
+ *   labels are unsigned, matching how a total reads everywhere else on the page.
+ * @param animate draw every line in from the left rather than having it
+ *   appear instantly — true only when Standings' line view is newly appearing
+ *   (see standings.js's `renderStandings`). */
+export function renderStandingsLines(gains, period, animate = false) {
   return renderLineCards(
     gains.totalsSeries,
     period,
@@ -300,5 +397,6 @@ export function renderStandingsLines(gains, period) {
       quests: 'Quest points',
     },
     false,
+    animate,
   );
 }

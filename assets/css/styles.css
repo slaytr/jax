@@ -493,6 +493,17 @@ body::after {
   margin: 0;
 }
 
+/* The two halves of .highlight-text — "Ranker:" and "🔵 Melooms +142" — each
+   its own inline-flex run so they still read as one line at this width; the
+   mobile breakpoint stacks them (see the narrow-viewport rules below). */
+.highlight-title,
+.highlight-answer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .highlight-label {
   font-family: var(--font-display);
   font-size: 1.05rem;
@@ -835,6 +846,11 @@ body::after {
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.8;
+  /* No transition declared here: the draw-in reveal sets one inline, with an
+     explicit duration (LINE_DRAW_MS in gains-line.js), only on the write that
+     should actually animate — see revealOnAttach for why an unconditional
+     rule here would animate the wrong write instead. A line rendered without
+     animation never touches these properties either way. */
 }
 
 .line-chart-point {
@@ -842,7 +858,14 @@ body::after {
   stroke: var(--surface-1);
   stroke-width: 0.6;
   cursor: pointer;
-  transition: r 0.16s var(--ease);
+  /* The opacity half only fires for an animated chart's dots, which start at
+     opacity:0 (baked into their style before first paint — see playerLine)
+     and get written to opacity:1 once the line has finished drawing (see
+     fadeInAfterDraw) — an unanimated dot is simply born at opacity:1 and
+     never has this transition triggered. */
+  transition:
+    r 0.16s var(--ease),
+    opacity 0.3s var(--ease);
 }
 
 .line-chart-point:hover,
@@ -1679,10 +1702,43 @@ body[data-ready] .loading {
   }
 
   /* Three columns is too tight to be worth it below this width — stack the
-     cards instead. */
-  .chart-section,
-  .highlights-row {
+     cards instead. Weekly Highlights is the exception (see below): it stays
+     three-across even here, just squeezed and stripped down, rather than
+     stacking into a tall three-row column of its own. */
+  .chart-section {
     grid-template-columns: 1fr;
+  }
+
+  /* Squeezed to fit three across a phone-width screen: tighter gap/padding,
+     smaller type, and the figure dropped entirely (see .highlight-value
+     below) — there isn't room for "Ranker: 🔵 Melooms +142" on one line, so
+     the badge collapses to a title line over a name line instead. */
+  .highlights-row {
+    gap: 0.4rem;
+  }
+
+  .highlight-badge {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .highlight-text {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+
+  .highlight-label {
+    font-size: 0.74rem;
+  }
+
+  .highlight-name {
+    font-size: 0.68rem;
+  }
+
+  /* The figure is the first thing to go at this width — the title and name
+     alone are the point on a squeezed phone-width row. */
+  .highlight-value {
+    display: none;
   }
 
   .tabs {

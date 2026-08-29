@@ -138,14 +138,16 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, anim
  *   Ignored (grid stays visible) unless explicitly 'line'.
  * @param onSelectView (view) => void
  * @param previousView whatever view was active on the *previous* render, or
- *   null on the very first — grid's share bars fill from empty (see
- *   `entry`'s `animate`) only when the grid is newly appearing (first render,
- *   or switching in from line view), not on every re-render (a player
- *   selection or a Gains period tab click shouldn't replay the fill). The
- *   very first render (`previousView` null) fills 'delayed', since the whole
- *   panel is still rising in at that point (see `shareBar`'s `PANEL_RISE_MS`);
- *   switching in from line view fills 'immediate', since nothing else on
- *   screen is still moving by then.
+ *   null on the very first. Drives two independent "only when this view is
+ *   newly appearing" animations, not on every re-render (a player selection
+ *   or a Gains period tab click shouldn't replay either): the grid's share
+ *   bars fill from empty (see `entry`'s `animate`) when the grid is newly
+ *   appearing (first render, or switching in from line view) — the very
+ *   first render fills 'delayed', since the whole panel is still rising in
+ *   at that point (see `shareBar`'s `PANEL_RISE_MS`), while switching in from
+ *   line view fills 'immediate'. The line view's lines draw in left-to-right
+ *   (see gains-line.js's `animate` param) when *it's* newly appearing
+ *   instead — first render already in line view, or switching in from grid.
  */
 export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view, onSelectView, previousView) {
   const selectedPlayer = state.standingsSelectedPlayer;
@@ -164,8 +166,11 @@ export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view,
       ? // Fixed to month, not `period` — Standings has no Day/Week/Month tabs of
         // its own (that toggle lives in Gains and only drives the grid's gain
         // chips here), and a month of history reads better as a totals trend
-        // than a single day's near-flat line.
-        renderStandingsLines(gains, 'month')
+        // than a single day's near-flat line. `previousView !== 'line'` draws
+        // the lines in left-to-right only when this view is newly appearing —
+        // same reasoning as `animateBars` just above, reusing the same
+        // `previousView` param.
+        renderStandingsLines(gains, 'month', previousView !== 'line')
       : el('div', { class: 'lb-stack' }, [
           band(
             'Total levels',

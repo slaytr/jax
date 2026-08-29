@@ -200,12 +200,14 @@ function computeHighlights(gains) {
   });
 }
 
-// The Gains period, and the Standings view, shown on the *previous* render —
-// tracked outside `state` since both are rendering details (driving the
-// period tabs' slide, and the standings grid's share-bar fill, only when
-// something actually changed on screen), not app state to persist or react
-// to. `null` until the first render happens.
+// The Gains period and view, and the Standings view, shown on the *previous*
+// render — tracked outside `state` since all three are rendering details
+// (driving the period tabs' slide, the standings grid's share-bar fill, and
+// the line-chart views' left-to-right draw-in, only when something actually
+// changed on screen), not app state to persist or react to. `null` until the
+// first render happens.
 let lastGainsPeriod = null;
+let lastGainsView = null;
 let lastStandingsView = null;
 
 function render() {
@@ -213,6 +215,8 @@ function render() {
   const gainsPeriod = currentGainsPeriod();
   const previousGainsPeriod = lastGainsPeriod;
   lastGainsPeriod = gainsPeriod;
+  const previousGainsView = lastGainsView;
+  lastGainsView = state.gainsView;
   const previousStandingsView = lastStandingsView;
   lastStandingsView = state.standingsView;
 
@@ -230,6 +234,7 @@ function render() {
       state.gainsView,
       (view) => setState({ gainsView: view }),
       previousGainsPeriod,
+      previousGainsView,
     ),
     renderStandings(
       state,

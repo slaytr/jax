@@ -92,6 +92,11 @@ function badge({ label, mode, formatValue, unit, valueIcon, totalLabel }, entry)
       ])
     : null;
 
+  // Split into two groups — "Ranker:" and "🔵 PlayerName +142" — rather than
+  // five flat siblings, so a narrow layout can stack them onto their own
+  // lines (see the mobile breakpoint in styles.css) without changing this
+  // markup: at desktop widths the two groups just sit inline next to each
+  // other, reading exactly as one line.
   const node = el(
     'div',
     {
@@ -101,11 +106,17 @@ function badge({ label, mode, formatValue, unit, valueIcon, totalLabel }, entry)
     },
     [
       el('p', { class: 'highlight-text' }, [
-        el('span', { class: 'highlight-label', text: label }),
-        el('span', { class: 'highlight-sep', text: ':' }),
-        ...(winner
-          ? [swatch(winner.player.colour), el('span', { class: 'highlight-name', text: winner.player.name }), valueNode]
-          : [el('span', { class: 'highlight-name', text: 'No gains yet' })]),
+        el('span', { class: 'highlight-title' }, [
+          el('span', { class: 'highlight-label', text: label }),
+          el('span', { class: 'highlight-sep', text: ':' }),
+        ]),
+        el(
+          'span',
+          { class: 'highlight-answer' },
+          winner
+            ? [swatch(winner.player.colour), el('span', { class: 'highlight-name', text: winner.player.name }), valueNode]
+            : [el('span', { class: 'highlight-name', text: 'No gains yet' })],
+        ),
       ]),
     ],
   );
