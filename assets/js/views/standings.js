@@ -39,7 +39,7 @@ function podiumIcon() {
  * from renderLeaderboards.
  */
 
-function levelRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
+function levelRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, animate) {
   const node = entry({
     player: row.player,
     place: row.place,
@@ -49,6 +49,7 @@ function levelRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
     ribbon: row.place === 5 ? 'Trying' : null,
     selected: row.player.slug === selectedPlayer,
     onSelect: onSelectPlayer,
+    animate,
   });
 
   return bindTooltip(node, () =>
@@ -65,7 +66,7 @@ function levelRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
   );
 }
 
-function xpRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, maxXp) {
+function xpRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, maxXp, animate) {
   const node = entry({
     player: row.player,
     place: row.place,
@@ -75,6 +76,7 @@ function xpRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, maxXp) 
     ribbon: row.place === 5 ? 'Trying' : null,
     selected: row.player.slug === selectedPlayer,
     onSelect: onSelectPlayer,
+    animate,
   });
 
   return bindTooltip(node, () =>
@@ -90,7 +92,7 @@ function xpRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, maxXp) 
   );
 }
 
-function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
+function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel, animate) {
   const { player } = row;
   const known = Number.isFinite(player.questPoints);
 
@@ -104,6 +106,7 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
     ribbon: row.place === 5 ? 'Trying' : null,
     selected: player.slug === selectedPlayer,
     onSelect: onSelectPlayer,
+    animate,
   });
 
   return bindTooltip(node, () =>
@@ -133,11 +136,17 @@ function questRow(row, selectedPlayer, onSelectPlayer, gained, periodLabel) {
  * @param view 'grid' | 'line' — which body renders below the shared header.
  *   Ignored (grid stays visible) unless explicitly 'line'.
  * @param onSelectView (view) => void
+ * @param previousView whatever view was active on the *previous* render, or
+ *   null on the very first — grid's share bars fill from empty (see
+ *   `entry`'s `animate`) only when the grid is newly appearing (first render,
+ *   or switching in from line view), not on every re-render (a player
+ *   selection or a Gains period tab click shouldn't replay the fill).
  */
-export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view, onSelectView) {
+export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view, onSelectView, previousView) {
   const selectedPlayer = state.standingsSelectedPlayer;
   const period = gainsPeriod;
   const periodLabel = PERIOD_LABEL[period];
+  const animateBars = view === 'grid' && previousView !== 'grid';
 
   const levelGains = gainsBySlug(gains.levels[period].rows, 'total');
   const xpGains = gainsBySlug(gains.xp[period].rows, 'total');
@@ -155,19 +164,19 @@ export function renderStandings(state, gains, gainsPeriod, onSelectPlayer, view,
           band(
             'Total levels',
             standings(state.players, 'level').map((row) =>
-              levelRow(row, selectedPlayer, onSelectPlayer, levelGains[row.player.slug] ?? 0, periodLabel),
+              levelRow(row, selectedPlayer, onSelectPlayer, levelGains[row.player.slug] ?? 0, periodLabel, animateBars),
             ),
           ),
           band(
             'Total XP',
             standings(state.players, 'xp').map((row) =>
-              xpRow(row, selectedPlayer, onSelectPlayer, xpGains[row.player.slug] ?? 0, periodLabel, maxXp),
+              xpRow(row, selectedPlayer, onSelectPlayer, xpGains[row.player.slug] ?? 0, periodLabel, maxXp, animateBars),
             ),
           ),
           band(
             questPointsIcon(),
             questStandings(state.players).map((row) =>
-              questRow(row, selectedPlayer, onSelectPlayer, questGains[row.player.slug] ?? 0, periodLabel),
+              questRow(row, selectedPlayer, onSelectPlayer, questGains[row.player.slug] ?? 0, periodLabel, animateBars),
             ),
           ),
         ]);

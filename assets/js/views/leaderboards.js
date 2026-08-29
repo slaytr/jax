@@ -45,13 +45,15 @@ const RIBBON_CLASS = { Slacker: 'is-crimson', Trying: 'is-green' };
  * `gainChip`) that rides beside the headline value. `share` (0–1), when
  * given, draws a coloured progress rule along the cell's bottom edge in the
  * player's own colour — e.g. their total level's share of the game's cap.
+ * `animate`, when true, starts that rule empty and fills it to `share` on
+ * the next frame (see `shareBar`) instead of painting it already full.
  *
  * A real button rather than a div: clicking it selects the player, tinting
  * every cell of theirs in the same grid with their own colour (`--accent`,
  * set here) — see `.lb-entry.is-selected`. `selected` is that state for
  * *this* cell; `onSelect` reports the click back up so the grid can toggle it.
  */
-export function entry({ player, value, sub, gain, share, place, ribbon, selected, onSelect }) {
+export function entry({ player, value, sub, gain, share, place, ribbon, selected, onSelect, animate }) {
   const medal = MEDAL_RIBBON[place];
   const ribbonText = medal ? medal[0] : ribbon;
   const ribbonClass = medal ? ` ${medal[1]}` : RIBBON_CLASS[ribbon] ? ` ${RIBBON_CLASS[ribbon]}` : '';
@@ -73,13 +75,38 @@ export function entry({ player, value, sub, gain, share, place, ribbon, selected
         gain,
         sub ? el('span', { class: 'lb-sub' }, [sub]) : null,
       ]),
-      Number.isFinite(share)
-        ? el('span', { class: 'lb-bar', role: 'presentation' }, [
-            el('span', { class: 'lb-bar-fill', style: { width: `${Math.min(100, share * 100).toFixed(1)}%` } }),
-          ])
-        : null,
+      Number.isFinite(share) ? shareBar(share, animate) : null,
     ],
   );
+}
+
+/** Full width (share = 1) takes this long to fill; smaller shares scale down
+ * from it linearly, so every bar fills at the same constant rate — a small
+ * bar stopping sooner reads as "smaller", not just "faster". */
+const SHARE_BAR_FILL_MS = 900;
+
+/**
+ * The bottom-edge share rule. `animate` starts it at 0% width and grows it
+ * to `share` a frame later, so the CSS `width` transition (`.lb-bar-fill`)
+ * plays instead of painting the bar already full — two rAFs, not one,
+ * because the browser needs to actually paint the 0% state before the next
+ * width change will transition rather than collapse into one recalculation
+ * (same trick as `periodToggle`'s indicator slide, below).
+ */
+function shareBar(share, animate) {
+  const width = `${Math.min(100, share * 100).toFixed(1)}%`;
+  const fill = el('span', { class: 'lb-bar-fill', style: { width: animate ? '0%' : width } });
+
+  if (animate) {
+    fill.style.transitionDuration = `${Math.round(Math.max(0, Math.min(1, share)) * SHARE_BAR_FILL_MS)}ms`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fill.style.width = width;
+      });
+    });
+  }
+
+  return el('span', { class: 'lb-bar', role: 'presentation' }, [fill]);
 }
 
 /** A green "+N" chip — same voice as the matrix's per-skill gain chip

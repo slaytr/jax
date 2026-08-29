@@ -12,6 +12,7 @@ import { loadPrefs, savePrefs } from './prefs.js';
 import {
   CALENDAR_DAY,
   computeDailyBreakdown,
+  computeDailyLeaderCounts,
   computeGains,
   computeGainsSeries,
   computeLevelGains,
@@ -125,18 +126,36 @@ function topWeeklyGainer(result, valueKey) {
   return top && top[valueKey] > 0 ? { player: top.player, value: top[valueKey] } : null;
 }
 
+/** Whoever led the most individual days this week for a metric — the
+ * Ranker/Grind King badges. `null` when nobody outright led any day (e.g.
+ * every day was a tie, or there's no history yet). */
+function topDailyLeader(snapshots, players, metric, days = 7) {
+  const { rows, validDays } = computeDailyLeaderCounts(snapshots, players, metric, days);
+  const top = rows[0];
+  return top && top.days > 0 ? { player: top.player, days: top.days, of: validDays } : null;
+}
+
 /**
  * The Weekly Highlights row's three badges — always the *week* window
  * regardless of whatever period the Gains section itself is showing, same
- * reasoning as Account Standings' line view being pinned to month. Each
- * entry also carries its winner's last-7-days breakdown (computeDailyBreakdown,
- * against the raw snapshots rather than the pre-aggregated `gains` bands, since
- * that's a per-player figure the week-level totals don't carry).
+ * reasoning as Account Standings' line view being pinned to month.
+ *
+ * Ranker (levels) and Grind King (XP) crown whoever finished #1 on the most
+ * individual days this week (computeDailyLeaderCounts), not whoever ended
+ * the week with the single biggest total — four days spent in the lead reads
+ * as more impressive than one huge session. Quest God is still the week's
+ * raw total, since RuneMetrics-sourced quest data is too sparse day-to-day
+ * for a daily-leader count to mean much.
+ *
+ * Each entry also carries its winner's last-7-days breakdown
+ * (computeDailyBreakdown, against the raw snapshots rather than the
+ * pre-aggregated `gains` bands) so the badge's hover tooltip can show which
+ * days actually built that lead.
  */
 function computeHighlights(gains) {
   const winners = {
-    level: topWeeklyGainer(gains.levels.week, 'total'),
-    xp: topWeeklyGainer(gains.xp.week, 'total'),
+    level: topDailyLeader(state.snapshots, state.players, 'level'),
+    xp: topDailyLeader(state.snapshots, state.players, 'xp'),
     quests: topWeeklyGainer(gains.quests.week, 'gained'),
   };
 
@@ -150,17 +169,21 @@ function computeHighlights(gains) {
   });
 }
 
-// The Gains period shown on the *previous* render, tracked outside `state` —
-// it's a rendering detail (driving the period tabs' slide animation when a
-// view switch changes the effective period), not app state to persist or
-// react to. `null` until the first render happens.
+// The Gains period, and the Standings view, shown on the *previous* render —
+// tracked outside `state` since both are rendering details (driving the
+// period tabs' slide, and the standings grid's share-bar fill, only when
+// something actually changed on screen), not app state to persist or react
+// to. `null` until the first render happens.
 let lastGainsPeriod = null;
+let lastStandingsView = null;
 
 function render() {
   const gains = computeAllGains();
   const gainsPeriod = currentGainsPeriod();
   const previousGainsPeriod = lastGainsPeriod;
   lastGainsPeriod = gainsPeriod;
+  const previousStandingsView = lastStandingsView;
+  lastStandingsView = state.standingsView;
 
   paintMasthead();
 
@@ -184,6 +207,7 @@ function render() {
       (slug) => setState({ standingsSelectedPlayer: state.standingsSelectedPlayer === slug ? null : slug }),
       state.standingsView,
       (view) => setState({ standingsView: view }),
+      previousStandingsView,
     ),
     renderMatrix(
       state,

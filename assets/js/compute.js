@@ -544,6 +544,69 @@ export function computeDailyBreakdown(snapshots, slug, metric, days = 7) {
 }
 
 /**
+ * How many of the last `days` UTC calendar days each player finished #1 in
+ * for a metric — the basis for the Weekly Highlights row's Ranker (levels)
+ * and Grind King (XP) badges, which crown whoever led the most individual
+ * days rather than whoever ended the week with the single biggest total.
+ *
+ * A day where nobody gained anything, or where the day's top gain is tied
+ * between two or more players, crowns nobody for that day — a genuine tie
+ * isn't "led" by any one person, and awarding it to both would let ties
+ * quietly inflate a count that's supposed to mean "outright first".
+ *
+ * `validDays` is how many of those `days` the group's history actually
+ * reaches back to (see computeDailyBreakdown's own null handling for a day
+ * before tracking began) — the caller reports a leader's tally against this,
+ * not a flat `days`, so a young group doesn't read as "led 4 of 7" when only
+ * 4 days of history exist at all.
+ */
+export function computeDailyLeaderCounts(snapshots, players, metric, days = 7) {
+  const perPlayer = players.map((player) => ({ player, breakdown: computeDailyBreakdown(snapshots, player.slug, metric, days) }));
+  const dayCount = perPlayer[0]?.breakdown.length ?? 0;
+
+  const tally = new Map(players.map((player) => [player.slug, 0]));
+  let validDays = 0;
+
+  for (let i = 0; i < dayCount; i += 1) {
+    let leaderSlug = null;
+    let leaderValue = 0;
+    let tied = false;
+    let dayHasData = false;
+
+    for (const { player, breakdown } of perPlayer) {
+      const gained = breakdown[i]?.gained;
+      if (gained === null || gained === undefined) continue;
+      dayHasData = true;
+      if (gained <= 0) continue;
+
+      if (gained > leaderValue) {
+        leaderValue = gained;
+        leaderSlug = player.slug;
+        tied = false;
+      } else if (gained === leaderValue) {
+        tied = true;
+      }
+    }
+
+    if (dayHasData) validDays += 1;
+    if (leaderSlug && !tied) tally.set(leaderSlug, tally.get(leaderSlug) + 1);
+  }
+
+  const totals = new Map(
+    perPlayer.map(({ player, breakdown }) => [player.slug, breakdown.reduce((sum, day) => sum + (day.gained ?? 0), 0)]),
+  );
+
+  return {
+    validDays,
+    // Ties in day-count fall back to the week's raw total — a reasonable,
+    // deterministic tiebreaker rather than roster order.
+    rows: players
+      .map((player) => ({ player, days: tally.get(player.slug), total: totals.get(player.slug) }))
+      .sort((a, b) => b.days - a.days || b.total - a.total),
+  };
+}
+
+/**
  * Movement on the competitive ladder over a window (default 24h).
  *
  * A lower rank number is better, so `delta` is positive when the group has

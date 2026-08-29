@@ -480,47 +480,56 @@ body::after {
   opacity: 0.6;
 }
 
-.highlight-icon {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  object-fit: contain;
-}
-
-.highlight-icon-svg path {
-  fill: var(--ember);
-}
-
-.highlight-body {
+/* "Grind King: PlayerName +8.03M xp" — the title is the whole point of the
+   badge, so it carries the visual weight (the display font, same family as
+   the wordmark) while the winner's name and figure read as a plain answer to
+   it, not a second headline competing for attention. */
+.highlight-text {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   min-width: 0;
+  margin: 0;
 }
 
 .highlight-label {
-  margin: 0 0 0.2rem;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fdf5e7;
+  white-space: nowrap;
+}
+
+.highlight-sep {
   color: var(--ink-muted);
 }
 
 .highlight-name {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  margin: 0;
+  gap: 0.35rem;
   overflow: hidden;
   font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--ink);
+  color: var(--ink-2);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .highlight-badge.is-empty .highlight-name {
-  font-weight: 400;
   color: var(--ink-muted);
+}
+
+/* The gain figure, in the same voice as Account Standings' own headline
+   totals (.lb-value) — a plain bold number, not the small green gain chip
+   used everywhere else a gain rides beside a bigger total. */
+.highlight-value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
 }
 
 /* --------------------------------------------------- leaderboard rows */
