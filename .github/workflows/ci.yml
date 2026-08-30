@@ -17,3 +17,11 @@ jobs:
         with:
           node-version: '20'
       - run: npm test
+      - name: Check stats/ pages are current
+        run: |
+          npm run stats
+          if [ -n "$(git status --porcelain stats)" ]; then
+            echo "stats/ is out of date with data/players.json — run 'npm run stats' and commit the result."
+            git status --porcelain stats
+            exit 1
+          fi

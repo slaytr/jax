@@ -193,12 +193,55 @@ body::after {
   color: var(--ink);
 }
 
-.identity-sub .dot {
+.identity-sub .warn {
+  color: var(--warn);
+}
+
+/* "Personal stat pages: Name · Name · Name…" — sits inline with the title block
+   (.identity), on its own wrapped line beneath the tagline, same voice as
+   .identity-sub rather than the numeric metric strip: this is a way to
+   leave the page, not one more figure being relayed. */
+.identity-stats {
+  margin: 0.15rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.identity-stats-label {
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.identity-stats .dot {
   color: var(--hairline-strong);
 }
 
-.identity-sub .warn {
-  color: var(--warn);
+/* Each roster member's link — plain text (a swatch carries identity, never
+   the link's own colour; see playerNavItem, masthead.js), brightening to
+   var(--ink) on hover/focus rather than the player's own hue, so it never
+   competes with `.wordmark`'s glow. */
+.player-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.player-nav-item:hover,
+.player-nav-item:focus-visible {
+  color: var(--ink);
+}
+
+.player-nav-item:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* Metric strip — the numbers the scoreboard exists to relay.
@@ -264,12 +307,12 @@ body::after {
   letter-spacing: 0;
 }
 
-.delta.is-up {
+.delta.is-better {
   color: #8fd0a4;
   background: rgba(25, 158, 112, 0.16);
 }
 
-.delta.is-down {
+.delta.is-worse {
   color: #efa08a;
   background: rgba(217, 89, 38, 0.16);
 }
@@ -845,6 +888,21 @@ body::after {
   overflow: visible;
 }
 
+/* Recessive — one step off the surface, hairline, solid (never dashed) —
+   the line chart's y-axis (drawYAxis, gains-line.js). Same treatment as the
+   bar chart's own .bar-chart-gridline/.bar-chart-axis-label. */
+.line-chart-gridline {
+  stroke: var(--hairline);
+  stroke-width: 0.5;
+}
+
+.line-chart-axis-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  fill: var(--ink-muted);
+  dominant-baseline: middle;
+}
+
 .line-chart-path {
   fill: none;
   stroke: var(--accent);
@@ -1363,6 +1421,429 @@ body::after {
   color: var(--medal-gold);
 }
 
+/* -------------------------------------------------- player stats page */
+
+/* /stats/<slug>/ — a back link above the masthead's own .topbar (reused
+   as-is from the group page), then the skill grid and Gains bar chart
+   side by side below. */
+.back-link {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.back-link a {
+  color: var(--ink-2);
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.back-link a:hover,
+.back-link a:focus-visible {
+  color: var(--ink);
+}
+
+/* Skills (fixed 200px) and Gains (its three chart cards) on one row — wraps
+   to stack Gains beneath Skills once the viewport can no longer fit both
+   side by side, rather than squeezing either narrower than designed. */
+.player-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.player-row .lb {
+  margin-bottom: 0;
+}
+
+/* The Gains column (second child — Skills' own fixed-200px .skill-grid
+   already gives the first its width). Without a flex-basis a block child
+   sized to fill its parent (.chart-section's grid cells, .bar-chart-svg)
+   collapses to its text's min-content instead of actually growing to fill
+   the row; the min-width keeps its three cards from squeezing past
+   legibility before wrapping below Skills instead. */
+.player-row .lb:nth-child(2) {
+  flex: 1 1 620px;
+  min-width: 620px;
+}
+
+/* The 3×10 skill grid (29 cells; the spare 30th slot is left empty) — one
+   cell per RS3 skill, in the game's own skills-tab order (see SKILL_GRID in
+   config.js), each cell reusing the group matrix's own figure/bar anatomy
+   (.cell-primary, .cell-rule/.cell-rule-fill) so it reads as the same visual
+   language, just one column of players instead of five. The bar's *meaning*
+   differs from the matrix's own, though: here it's progress to the cell's
+   next level (xpProgress, xp-table.js), not share of the skill's level cap
+   — a near-full bar means "about to level up". No skill name and no gain
+   chip — the icon is the identifier (the name surfaces on hover/focus via
+   the tooltip, same as the matrix's own cells do for xp/rank), and how much
+   a skill has gained lives in the Gains section above rather than repeating
+   across every cell. Fixed at 200px rather than stretched to the panel's
+   width — this is a compact "where do I stand" glance, not a section that
+   benefits from filling the page. */
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 200px;
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* A real <button> (site convention: a click target is a button, not a div
+   with a handler) — the reset properties below are only needed because of
+   that; everything from justify-content down is the cell's own look,
+   unchanged from when this was a plain div. */
+.skill-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 0.35rem;
+  padding: 0.4rem 0.3rem 0.55rem;
+  border: 0;
+  background: var(--surface-1);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.14s var(--ease);
+}
+
+.skill-cell:hover {
+  background: var(--surface-2);
+}
+
+.skill-cell:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.skill-cell.is-empty .cell-primary {
+  color: var(--ink-muted);
+  opacity: 0.55;
+}
+
+/* Clicked — every Levels/XP chart in the Gains section is now filtered to
+   this one skill (player-gains.js's selectedSkill). --accent is this
+   player's own colour (set once on the whole grid's section, renderPlayer
+   Skills), so the highlight matches the same per-player colour language as
+   everything else on the page rather than one flat highlight for everyone. */
+.skill-cell.is-selected {
+  background: color-mix(in srgb, var(--accent) 26%, var(--surface-1));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.skill-cell.is-selected:hover {
+  background: color-mix(in srgb, var(--accent) 34%, var(--surface-1));
+}
+
+.skill-cell-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: none;
+}
+
+/* Scoped overrides of the shared .cell-primary/.cell-rule this cell reuses
+   from the group matrix — this grid's columns are much tighter (200px ÷ 3),
+   so the matrix's own (larger) figure size and rule inset would read as
+   oversized text and a stub of a bar rather than tracking this cell's own
+   padding. Deliberately independent of whatever size the matrix itself
+   uses, so a change there (see the skill-matrix section above) never
+   quietly resizes this grid too. */
+.skill-cell .cell-primary {
+  font-size: 0.84rem;
+}
+
+/* Hidden for now — the progress-to-next-level bar reads as noise at this
+   size; may bring it back once it has room to read cleanly. The markup and
+   xpProgress wiring stay in player-skills.js so this is a one-line revert. */
+.skill-cell .cell-rule {
+  display: none;
+}
+
+/* Week/Month — a 2-tab variant of the shared .tabs segmented control (see
+   Day/Week/Month above), sized for two equal-width tabs instead of the
+   base .tabs-indicator's one-third. */
+.tabs-2up .tabs-indicator {
+  width: 50%;
+}
+
+/* The active chart at 2× the width of the two stacked beside it — since
+   every chart shares one aspect-ratio (.bar-chart-svg below), doubling the
+   width doubles its rendered height too, with no separate "big" geometry
+   to maintain. Explicit grid placement (rather than DOM order) puts the
+   comparison card directly under the active chart, in its own column,
+   while the stack spans both rows beside them. */
+.bar-chart-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.bar-chart-layout > .bar-chart-card.is-active {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.bar-chart-layout > .player-compare-card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.bar-chart-layout > .bar-chart-stack {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.bar-chart-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* Smaller stacked cards get a tighter version of .chart-card's own padding
+   and headline size — otherwise both read oversized at roughly half the
+   active card's width. */
+.bar-chart-stack .bar-chart-card {
+  padding: 0.75rem 0.85rem 0.65rem;
+}
+
+.bar-chart-stack .bar-chart-total {
+  font-size: 1rem;
+}
+
+/* The active card's header is plain text (nothing to click — it's already
+   big); an inactive one is a real button (site convention: a click target
+   is a button, not a div with a handler) that promotes it, so its own
+   button-reset styling has to still read as the same header, not a control. */
+.bar-chart-header {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.bar-chart-activate {
+  cursor: pointer;
+}
+
+.bar-chart-activate:hover .chart-card-label,
+.bar-chart-activate:focus-visible .chart-card-label {
+  color: #fdf5e7;
+}
+
+.bar-chart-activate:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.bar-chart-total {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.bar-chart-total-label {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+/* 300×110 to match the SVG viewBox (gains-line.js's own charts are 300×100;
+   the extra 10 here is PAD_BOTTOM, the week view's weekday-label strip). */
+.bar-chart-svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 300 / 110;
+  overflow: visible;
+}
+
+.bar-chart-bar {
+  fill: var(--accent);
+  opacity: 0.85;
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.16s var(--ease);
+}
+
+.bar-chart-bar:hover,
+.bar-chart-bar:focus-visible {
+  opacity: 1;
+}
+
+/* Every bar takes focus on click (it's how the comparison chart's
+   click-to-pin works, and how the tooltip responds to keyboard nav) —
+   without the `outline: none` above, a plain click would leave the
+   browser's default focus ring sitting on the bar. :focus-visible still
+   draws this ember ring for real keyboard navigation. */
+.bar-chart-bar:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* The comparison chart's other-players' bars (player-gains.js) — dimmed so
+   this page's own player still reads first in a five-wide cluster, full
+   opacity on hover/focus like any bar since the tooltip is about to name
+   them anyway. The hover/focus selector is repeated at this class's own
+   specificity rather than relying on the plain .bar-chart-bar rule above to
+   win by source order, so this keeps working regardless of stylesheet order. */
+.bar-chart-bar.is-other-player {
+  opacity: 0.1;
+}
+
+.bar-chart-bar.is-other-player:hover,
+.bar-chart-bar.is-other-player:focus-visible {
+  opacity: 1;
+}
+
+/* Click-to-pin (player-gains.js): clicking any bar toggles its whole player
+   in and out of this state, so their bars read at the normal resting
+   opacity even without the pointer over them — the same 0.85 every other
+   bar (the subject's own included) already sits at, not hover's 1, so a
+   pinned player reads as "just another normal bar" rather than staying
+   artificially spotlit. Higher specificity than the plain .is-other-player
+   rule above (three classes vs two) so it wins regardless of source order. */
+.bar-chart-bar.is-other-player.is-emphasized {
+  opacity: 0.85;
+}
+
+.bar-chart-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  fill: var(--ink-muted);
+}
+
+/* Recessive — one step off the surface, hairline, solid (never dashed) —
+   the active chart's own y-axis (barChart's `showAxis`, player-gains.js).
+   The 0 line doubles as the baseline the bars themselves sit on. */
+.bar-chart-gridline {
+  stroke: var(--hairline);
+  stroke-width: 0.5;
+}
+
+.bar-chart-axis-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  fill: var(--ink-muted);
+  dominant-baseline: middle;
+}
+
+/* The comparison card's per-player show/hide chips — a pill row above its
+   chart, one per bar. Hiding a player dims its chip and strikes its name
+   rather than removing the chip, so it stays a one-click toggle back on. */
+.player-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.8rem;
+}
+
+.player-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    opacity 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+
+.player-toggle:hover,
+.player-toggle:focus-visible {
+  border-color: var(--ink-muted);
+}
+
+.player-toggle:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.player-toggle.is-hidden {
+  opacity: 0.4;
+}
+
+.player-toggle.is-hidden > span:last-child {
+  text-decoration: line-through;
+}
+
+/* Mobile: no "active" chart — all three Gains cards stack in one column,
+   equal-sized, instead of one big chart beside a 2-across mini stack. The
+   Skills section gets the row entirely to itself once Gains drops below it
+   (same width-fight .player-row already resolves at wider widths), so its
+   fixed-200px grid can centre in that width instead of sitting flush left. */
+@media (max-width: 720px) {
+  /* Skills' own <section> — fixed-200px .skill-grid needed something wider
+     than itself to centre within; without this it stayed shrink-to-fit and
+     `margin: auto` below had no spare width to distribute. */
+  .player-row > .lb:first-child {
+    width: 100%;
+  }
+
+  .skill-grid {
+    margin: 0 auto;
+  }
+
+  /* The 620px floor existed only to keep three cramped columns legible
+     beside Skills; single-column stacking needs no minimum; the row's own
+     full width is already enough for a card this well below the desktop
+     "how much room does the 2-across mini stack need" threshold. */
+  .player-row .lb:nth-child(2) {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  /* Drop the 2fr:1fr grid (and with it every explicit grid-column/row
+     placement on its children below — inert once the container isn't
+     display:grid) for a plain one-column stack, in DOM order: the chart
+     that was "active", then the comparison card, then .bar-chart-stack's
+     own two cards continuing the same stack at the same gap, so all four
+     read as one continuous list rather than a separate leftover group.
+     The desktop rule's `align-items: start` (sizing each card to its own
+     shrink-to-fit content, needed there so the grid's row-1 column doesn't
+     stretch to its tallest cell) has to be overridden back to `stretch`
+     here — otherwise every card wanders to its own different width instead
+     of all four lining up like the comparison card's own full-width one. */
+  .bar-chart-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+  }
+
+  /* No more "active" card standing out at 2× size — the desktop-only
+     compact padding/headline size for the stacked pair (above) is reset
+     back to the same values every other card already uses at this width,
+     so no one chart reads as more important than the rest. */
+  .bar-chart-stack .bar-chart-card {
+    padding: 1rem 1.1rem 0.9rem;
+  }
+
+  .bar-chart-stack .bar-chart-total {
+    font-size: 1.4rem;
+  }
+}
 
 /* ------------------------------------------------------------ empty/error */
 

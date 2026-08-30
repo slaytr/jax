@@ -49,8 +49,21 @@ export const SKILLS = Object.freeze(
   RAW_SKILLS.map((skill) => Object.freeze({ ...skill, slug: skillSlug(skill.name) })),
 );
 
-/** Committed locally rather than hotlinked — see scripts/fetch-icons.mjs. */
-export const iconFor = (skill) => `assets/icons/${skill.slug}.png`;
+/**
+ * Committed locally rather than hotlinked — see scripts/fetch-icons.mjs.
+ *
+ * Resolved off this module's own URL (like data.js's LATEST_URL) rather than
+ * document-relative, so it still finds the file from a page nested under
+ * /stats/<slug>/ — a document-relative "assets/icons/…" from that depth would
+ * resolve against the page's own URL and 404.
+ */
+export const iconFor = (skill) => new URL(`../icons/${skill.slug}.png`, import.meta.url).href;
+
+/** Same module-relative reasoning as iconFor, for the two non-skill icons
+ * used outside the matrix (the quest-points glyph, and Total level's stand-in
+ * for the id-0 "Overall" row, which has no skill icon of its own). */
+export const QUEST_POINTS_ICON = new URL('../icons/quest-points.png', import.meta.url).href;
+export const TOTAL_LEVEL_ICON = new URL('../icons/stats.png', import.meta.url).href;
 
 /**
  * When the update job is scheduled to run, in UTC — on the hour, every hour.
@@ -65,6 +78,32 @@ export const UPDATE_SCHEDULE = Object.freeze({ minute: 0, hours: Array.from({ le
 
 /** Every skill except the synthetic "Overall" row. */
 export const TRACKED_SKILLS = Object.freeze(SKILLS.filter((skill) => skill.id !== 0));
+
+/**
+ * The 29 tracked skills laid out the way RS3's own in-game skills tab does —
+ * 3 columns × 10 rows, `Attack · Constitution · Mining` across the top —
+ * rather than hiscore-feed id order, for the per-player stats page's skill
+ * grid. `null` fills the one cell 29 skills leaves spare (bottom-right); the
+ * caller puts Total level there. A row is `[skill, skill, skill]` of ids.
+ */
+const SKILL_GRID_IDS = [
+  [1, 4, 15],
+  [3, 17, 14],
+  [2, 16, 11],
+  [5, 18, 8],
+  [6, 13, 12],
+  [7, 10, 9],
+  [21, 19, 20],
+  [23, 22, 24],
+  [25, 26, 27],
+  [28, 29, null],
+];
+
+const skillById = new Map(SKILLS.map((skill) => [skill.id, skill]));
+
+export const SKILL_GRID = Object.freeze(
+  SKILL_GRID_IDS.map((row) => Object.freeze(row.map((id) => (id === null ? null : skillById.get(id))))),
+);
 
 /**
  * Current RS3 caps, for scaling the Account Standings progress bars. Not

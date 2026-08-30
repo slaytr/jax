@@ -38,9 +38,12 @@ export function formatRelativeTime(isoString) {
 
 const UTC_DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
+/** "24 Aug" — the per-player bar chart's x-axis label (player-gains.js). */
+export const formatShortDate = (unixSeconds) => UTC_DAY.format(new Date(unixSeconds * 1000));
+
 /** "24 Aug, 00:00 UTC" — a Gains line chart's day-mark label. Always reads
  * midnight since day marks only ever land exactly on a UTC day boundary. */
-export const formatUtcMidnight = (unixSeconds) => `${UTC_DAY.format(new Date(unixSeconds * 1000))}, 00:00 UTC`;
+export const formatUtcMidnight = (unixSeconds) => `${formatShortDate(unixSeconds)}, 00:00 UTC`;
 
 const UTC_WEEKDAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
 

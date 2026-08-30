@@ -510,11 +510,18 @@ export function computeGainsSeries(snapshots, players, window, metric, { relativ
  * baseline to diff from, so it reports `gained: null` (shown as "—") rather
  * than a value computed against a fallback snapshot that isn't actually from
  * that day.
+ *
+ * `skillId` (default 0, "Overall") picks which slot of the snapshot's
+ * per-skill xp/level vector to read — the per-player stats page's skill
+ * grid uses this to filter a metric down to one skill (player-gains.js);
+ * every other caller leaves it at the default and gets the same totals as
+ * before. Quest points have no per-skill breakdown, so `skillId` is simply
+ * ignored for that metric.
  */
-export function computeDailyBreakdown(snapshots, slug, metric, days = 7) {
+export function computeDailyBreakdown(snapshots, slug, metric, days = 7, skillId = 0) {
   const valueAt = (snapshot) => {
-    if (metric === 'xp') return snapshot?.p?.[slug]?.[0] ?? null;
-    if (metric === 'level') return snapshot?.l?.[slug]?.[0] ?? null;
+    if (metric === 'xp') return snapshot?.p?.[slug]?.[skillId] ?? null;
+    if (metric === 'level') return snapshot?.l?.[slug]?.[skillId] ?? null;
     if (metric === 'quests') return Number.isFinite(snapshot?.q?.[slug]) ? snapshot.q[slug] : null;
     return null;
   };

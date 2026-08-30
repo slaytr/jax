@@ -48,6 +48,33 @@ describe('computeDailyBreakdown', () => {
     assert.deepEqual(quests.map((day) => day.gained), [1, 2]);
   });
 
+  it('reads a specific skill slot when skillId is given, not just Overall', () => {
+    const snapshots = [
+      { t: t('2026-08-23T00:00:00Z'), l: { a: [500, 10] }, p: { a: [50000, 1000] } },
+      { t: t('2026-08-23T12:00:00Z'), l: { a: [510, 11] }, p: { a: [51000, 1400] } },
+      { t: t('2026-08-24T06:00:00Z'), l: { a: [520, 12] }, p: { a: [52000, 1900] } }, // "now"
+    ];
+
+    const totalLevels = computeDailyBreakdown(snapshots, 'a', 'level', 2);
+    const skillLevels = computeDailyBreakdown(snapshots, 'a', 'level', 2, 1);
+    assert.deepEqual(totalLevels.map((day) => day.gained), [10, 10], 'default skillId (0) is unchanged — Overall');
+    assert.deepEqual(skillLevels.map((day) => day.gained), [1, 1], 'skillId 1 reads that skill\'s own level slot instead');
+
+    const skillXp = computeDailyBreakdown(snapshots, 'a', 'xp', 2, 1);
+    assert.deepEqual(skillXp.map((day) => day.gained), [400, 500]);
+  });
+
+  it('ignores skillId for quest points — there is no per-skill breakdown to read', () => {
+    const snapshots = [
+      { t: t('2026-08-23T00:00:00Z'), q: { a: 5 } },
+      { t: t('2026-08-24T06:00:00Z'), q: { a: 8 } }, // "now"
+    ];
+
+    const withSkillId = computeDailyBreakdown(snapshots, 'a', 'quests', 1, 3);
+    const withoutSkillId = computeDailyBreakdown(snapshots, 'a', 'quests', 1);
+    assert.deepEqual(withSkillId, withoutSkillId);
+  });
+
   it('caps the final day at "now" instead of assuming it ran a full 24h', () => {
     const snapshots = [
       { t: t('2026-08-23T00:00:00Z'), p: { a: [100] } },

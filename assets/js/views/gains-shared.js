@@ -1,6 +1,6 @@
 import { el, svgEl } from '../dom.js';
 import { formatCompact, formatNumber } from '../format.js';
-import { iconFor } from '../config.js';
+import { iconFor, QUEST_POINTS_ICON } from '../config.js';
 import { tooltipContent } from '../tooltip.js';
 
 /**
@@ -71,7 +71,7 @@ export const emptyEntry = () => el('div', { class: 'lb-entry lb-entry-empty', 'a
 export const questPointsIcon = () =>
   el('img', {
     class: 'lb-band-icon',
-    src: 'assets/icons/quest-points.png',
+    src: QUEST_POINTS_ICON,
     alt: 'Quest points',
     width: 18,
     height: 18,
@@ -83,7 +83,7 @@ export const questPointsIcon = () =>
  * unit — decorative itself, with the unit spelled out for screen readers. */
 export const questPointsMark = () =>
   el('span', { class: 'lb-value-icon' }, [
-    el('img', { src: 'assets/icons/quest-points.png', alt: '', width: 15, height: 15, decoding: 'async' }),
+    el('img', { src: QUEST_POINTS_ICON, alt: '', width: 15, height: 15, decoding: 'async' }),
     el('span', { class: 'visually-hidden', text: ' quest points' }),
   ]);
 

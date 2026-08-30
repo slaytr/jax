@@ -81,6 +81,7 @@ Commit the change and the update workflow re-runs automatically.
 
 ```bash
 npm run update   # fetch live data into data/
+npm run stats    # regenerate stats/<slug>/index.html from data/players.json
 npm run serve    # preview at http://localhost:4173
 npm test         # unit tests, no dependencies
 ```
@@ -99,6 +100,7 @@ exactly as committed.
 | `scripts/history-store.mjs` | Reads/writes the sharded `data/history/YYYY-MM/DD.json` files |
 | `scripts/update.mjs` | Orchestrates a run and writes `data/` |
 | `scripts/fetch-icons.mjs` | One-off: downloads skill icons into `assets/icons/` |
+| `scripts/build-stats-pages.mjs` | Writes `stats/<slug>/index.html` from `data/players.json` — see [Per-player stats pages](#per-player-stats-pages) |
 
 Three deliberate robustness choices:
 
@@ -189,6 +191,20 @@ Clicking a player's column heading **sorts by that account**: the skills it lead
 first, then its own level high to low. Clicking the same column again resets to
 skill order. Each account's totals sit in a pinned **Total** row at the foot of
 the table rather than crowding the column headings.
+
+## Per-player stats pages
+
+Each roster player also gets their own page at `/stats/<slug>/` — headline
+figures, Day/Week/Month gains, an XP-over-time chart, and the skill grid laid
+out the way RS3's own skills tab does it (3 columns × 10 rows, `Attack ·
+Constitution · Mining` across the top).
+
+These are **generated static files**, not a client-side router: GitHub Pages
+has no server-side routing, so `scripts/build-stats-pages.mjs` writes one real
+`stats/<slug>/index.html` per player (`npm run stats`), each a near-copy of
+`index.html` pointed at `assets/js/stats.js` instead of `app.js`. They're
+committed like everything else and regenerated whenever the roster changes;
+CI fails if `stats/` drifts from `data/players.json`.
 
 ## Layout notes
 

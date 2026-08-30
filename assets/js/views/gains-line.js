@@ -30,7 +30,8 @@ import { questPointsIcon } from './gains-shared.js';
  * with up to five players and thirty marks apiece on a Month chart, that many
  * labels would overlap into noise. The plot area (`PLOT_WIDTH`) is narrower
  * than the chart itself, reserving a strip on the right for these labels to
- * sit in without overlapping the lines.
+ * sit in without overlapping the lines, and a narrower strip on the left
+ * (`PAD_LEFT_AXIS`) for the y-axis tick labels drawn by `drawYAxis`.
  *
  * The label carries a value but no name — the player/colour legend drawn once
  * beneath all three cards is what ties a coloured line back to a name,
@@ -56,16 +57,65 @@ const WIDTH = 300;
 const HEIGHT = 100;
 const PAD_X = 3;
 const PAD_Y = 8;
+const PAD_LEFT_AXIS = 26; // room for y-axis tick labels, left of the plot area
 const LABEL_WIDTH = 48;
-const PLOT_WIDTH = WIDTH - PAD_X * 2 - LABEL_WIDTH;
+const PLOT_WIDTH = WIDTH - PAD_LEFT_AXIS - PAD_X - LABEL_WIDTH;
+const PLOT_RIGHT = PAD_LEFT_AXIS + PLOT_WIDTH; // plot's own right edge — short of the label strip, so gridlines don't run under the value labels
+const AXIS_TICKS = 4; // gridlines at 4 evenly spaced "nice" values, same density as player-gains.js's bar charts
 /** How long a line takes to draw in (see `revealOnAttach`) — also how long
  * every dot waits before fading in (see `fadeInAfterDraw`), so points never
  * appear ahead of the line reaching them. One constant, not a duplicated
  * magic number, since the two have to agree. */
 const LINE_DRAW_MS = 900;
 
-const toX = (x) => (PAD_X + x * PLOT_WIDTH).toFixed(2);
+const toX = (x) => (PAD_LEFT_AXIS + x * PLOT_WIDTH).toFixed(2);
 const toY = (y) => (HEIGHT - PAD_Y - y * (HEIGHT - PAD_Y * 2)).toFixed(2);
+
+/** A "nice" gridline step (1/2/5/10 × a power of ten) for a given span — same
+ * trick as niceStep in player-gains.js, so tick values read as round numbers
+ * (0, 50K, 100K…) instead of whatever fraction the data's own range produces. */
+function niceStep(span, tickCount) {
+  if (span <= 0) return 1;
+  const rawStep = span / tickCount;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const residual = rawStep / magnitude;
+  const niceResidual = residual > 5 ? 10 : residual > 2 ? 5 : residual > 1 ? 2 : 1;
+  return niceResidual * magnitude;
+}
+
+/**
+ * Recessive horizontal gridlines plus tick labels at "nice" round values,
+ * spanning every row's actual min/max — unlike a bar chart's axis (always
+ * 0-based), Account Standings' totals rarely sit anywhere near 0, so this
+ * picks tick values that fall *within* [minValue, maxValue] rather than
+ * stretching the axis down to zero. Ticks are placed using the exact same
+ * min/max the caller normalised every point's `y` against (computeGainsSeries
+ * in compute.js), so a tick's screen position always lines up with the data
+ * points at that value rather than drifting off to a separately-rounded axis
+ * range.
+ */
+function drawYAxis(svg, minValue, maxValue, formatValue) {
+  if (minValue === maxValue) {
+    const y = toY(0);
+    svg.append(svgEl('line', { x1: PAD_LEFT_AXIS, x2: PLOT_RIGHT, y1: y, y2: y, class: 'line-chart-gridline' }));
+    const tick = svgEl('text', { x: PAD_LEFT_AXIS - 4, y, class: 'line-chart-axis-label', 'text-anchor': 'end' });
+    tick.textContent = formatValue(minValue);
+    svg.append(tick);
+    return;
+  }
+
+  const span = maxValue - minValue;
+  const step = niceStep(span, AXIS_TICKS);
+  const first = Math.ceil(minValue / step) * step;
+
+  for (let value = first; value <= maxValue + step * 0.001; value += step) {
+    const y = toY((value - minValue) / span);
+    svg.append(svgEl('line', { x1: PAD_LEFT_AXIS, x2: PLOT_RIGHT, y1: y, y2: y, class: 'line-chart-gridline' }));
+    const tick = svgEl('text', { x: PAD_LEFT_AXIS - 4, y, class: 'line-chart-axis-label', 'text-anchor': 'end' });
+    tick.textContent = formatValue(value);
+    svg.append(tick);
+  }
+}
 
 const legendItem = (player) =>
   el('span', { class: 'line-chart-legend-item' }, [swatch(player.colour), el('span', { class: 'chart-name-text', text: player.name })]);
@@ -311,6 +361,9 @@ function lineChart(rows, formatValue, valueLabel, signed, animate) {
     role: 'img',
     'aria-label': `${valueLabel} over time, one line per player`,
   });
+
+  const allValues = rows.flatMap((row) => row.points.map((point) => point.value));
+  drawYAxis(svg, Math.min(...allValues), Math.max(...allValues), formatValue);
 
   const labelEntries = rows.map((row) => {
     const { nodes, head, accent } = playerLine(row, formatValue, valueLabel, animate);

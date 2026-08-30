@@ -1,7 +1,7 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatRank } from '../format.js';
 import { buildMatrix, buildTotalsRow, leaderCounts, TOTAL_MEASURE } from '../compute.js';
-import { iconFor } from '../config.js';
+import { iconFor, TOTAL_LEVEL_ICON } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 
 /**
@@ -160,7 +160,7 @@ const skillHead = (skill) =>
 function totalsRow(totalsData, totalLevelGainFor) {
   return el('tr', { class: 'row-total' }, [
     el('th', { scope: 'row', class: 'skill-head' }, [
-      el('img', { class: 'skill-icon', src: 'assets/icons/stats.png', alt: '', width: 18, height: 18, decoding: 'async' }),
+      el('img', { class: 'skill-icon', src: TOTAL_LEVEL_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'skill-name', text: 'Total' }),
     ]),
     ...totalsData.cells.map((cell) => matrixCell(cell, TOTAL_MEASURE, totalLevelGainFor(cell.player.slug))),
