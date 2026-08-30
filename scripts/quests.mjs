@@ -1,9 +1,11 @@
 /**
- * Quest points, from the RuneMetrics API.
+ * Quest points and completion state, from the RuneMetrics API.
  *
- * The hiscore feed does not expose quest points at all — its activities list
- * carries RuneScore and clue counts, but nothing about quests. RuneMetrics does,
- * as a per-quest list, so the total is summed from completed entries.
+ * The hiscore feed does not expose quests at all — its activities list carries
+ * RuneScore and clue counts, but nothing about quests. RuneMetrics does, as a
+ * per-quest list, so the point total is summed from completed entries and the
+ * completed titles are kept as-is for display — this is a current snapshot
+ * only, not tracked over time the way skills/xp are.
  *
  * RuneMetrics honours the in-game privacy setting: a player who has hidden their
  * profile returns {"error":"PROFILE_PRIVATE"}. That is a normal outcome, not a
@@ -16,7 +18,7 @@ const USER_AGENT = 'jax-hiscores (github.com/slaytr/jax)';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Sums questPoints across completed quests. Exported for testing. */
+/** Sums questPoints across completed quests and lists their titles. Exported for testing. */
 export function questPointsFrom(payload) {
   if (payload?.error) return { ok: false, error: `RuneMetrics: ${payload.error}` };
   if (!Array.isArray(payload?.quests)) return { ok: false, error: 'RuneMetrics returned no quest list' };
@@ -24,7 +26,13 @@ export function questPointsFrom(payload) {
   const completed = payload.quests.filter((quest) => quest?.status === 'COMPLETED');
   const points = completed.reduce((sum, quest) => sum + (Number(quest.questPoints) || 0), 0);
 
-  return { ok: true, questPoints: points, questsComplete: completed.length, questsTotal: payload.quests.length };
+  return {
+    ok: true,
+    questPoints: points,
+    questsComplete: completed.length,
+    questsTotal: payload.quests.length,
+    completedQuests: completed.map((quest) => quest.title),
+  };
 }
 
 async function fetchOne(name) {

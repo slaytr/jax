@@ -21,6 +21,7 @@ describe('questPointsFrom', () => {
     assert.equal(result.questPoints, 3);
     assert.equal(result.questsComplete, 2);
     assert.equal(result.questsTotal, 4);
+    assert.deepEqual(result.completedQuests, ["Cook's Assistant", 'Dragon Slayer']);
   });
 
   it('treats a missing questPoints value as zero rather than NaN', () => {
@@ -59,28 +60,31 @@ describe('mergePlayers with quest points', () => {
 
   it('attaches quest points when the lookup succeeded', () => {
     const [player] = mergePlayers(roster, [hiscoreOk], [], {
-      a: { ok: true, questPoints: 159, questsComplete: 107 },
+      a: { ok: true, questPoints: 159, questsComplete: 107, completedQuests: ['Dragon Slayer'] },
     });
 
     assert.equal(player.questPoints, 159);
     assert.equal(player.questsComplete, 107);
+    assert.deepEqual(player.completedQuests, ['Dragon Slayer']);
     assert.equal(player.questsStale, false);
   });
 
-  it('keeps the previous quest points when the profile turns private', () => {
-    const previous = [{ slug: 'a', name: 'A', questPoints: 159, questsComplete: 107 }];
+  it('keeps the previous completed-quests list when the profile turns private', () => {
+    const previous = [{ slug: 'a', name: 'A', questPoints: 159, questsComplete: 107, completedQuests: ['Dragon Slayer'] }];
     const [player] = mergePlayers(roster, [hiscoreOk], previous, {
       a: { ok: false, error: 'RuneMetrics: PROFILE_PRIVATE' },
     });
 
     assert.equal(player.questPoints, 159, 'a private profile must not zero the column');
+    assert.deepEqual(player.completedQuests, ['Dragon Slayer']);
     assert.equal(player.questsStale, true);
   });
 
-  it('reports null quest points when there is nothing to carry forward', () => {
+  it('reports null quest points and an empty completed-quests list when there is nothing to carry forward', () => {
     const [player] = mergePlayers(roster, [hiscoreOk], [], { a: { ok: false, error: 'boom' } });
 
     assert.equal(player.questPoints, null);
+    assert.deepEqual(player.completedQuests, []);
     assert.equal(player.questsStale, true);
   });
 
