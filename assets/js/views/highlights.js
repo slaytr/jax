@@ -114,9 +114,14 @@ function badge({ label, mode, formatValue, unit, valueIcon, totalLabel }, entry)
           'span',
           { class: 'highlight-answer' },
           winner
-            ? [swatch(winner.player.colour), el('span', { class: 'highlight-name', text: winner.player.name }), valueNode]
+            ? [swatch(winner.player.colour), el('span', { class: 'highlight-name', text: winner.player.name })]
             : [el('span', { class: 'highlight-name', text: 'No gains yet' })],
         ),
+        // Pinned to the card's far edge with margin-left: auto (see
+        // .highlight-value) rather than nested inside .highlight-answer,
+        // so the figure reads as its own right-hand column instead of
+        // trailing the name.
+        valueNode,
       ]),
     ],
   );

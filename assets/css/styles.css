@@ -486,6 +486,7 @@ body::after {
    it, not a second headline competing for attention. */
 .highlight-text {
   display: flex;
+  flex: 1 1 auto;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -534,8 +535,13 @@ body::after {
 
 /* The gain figure, in the same voice as Account Standings' own headline
    totals (.lb-value) — a plain bold number, not the small green gain chip
-   used everywhere else a gain rides beside a bigger total. */
+   used everywhere else a gain rides beside a bigger total. Pinned to the
+   card's far edge rather than trailing the name, via the auto left margin
+   (a sibling of .highlight-title/.highlight-answer within .highlight-text,
+   not nested inside .highlight-answer — see highlights.js). */
 .highlight-value {
+  margin-left: auto;
+  padding-left: 0.5rem;
   font-family: var(--font-mono);
   font-size: 1.1rem;
   font-weight: 500;
