@@ -55,6 +55,45 @@ const PAGE_TABS = [
  */
 const STATS_STATE_KEY = 'jax:stats-state';
 
+/**
+ * A handful of query-string params seed the very first render, so a URL is
+ * enough to hand someone else (or your own future self) a link straight to
+ * a particular spot on this page — read once, in boot(), never written back
+ * to the address bar as a viewer clicks around afterward. All optional;
+ * absent or unmatched, the page falls back to its usual persisted-state
+ * behaviour (loadStatsState) exactly as if none of this existed.
+ *
+ * - `?tab=stats|quests|goals` — which PAGE_TABS entry opens first, same
+ *   values the tab strip itself uses. Beats the persisted tab if both are
+ *   present.
+ * - `?quest=<slug>` — Quests tab, anchors the dependency map on this one
+ *   quest (quest-data's own `slug`), same as clicking its list row.
+ * - `?series=<name>` — Quests tab, anchors the map on this whole questline
+ *   instead (quest-data's own `series`, e.g. `Mahjarrat%20Mysteries`), same
+ *   as clicking its quest-series-links.js chip. Ignored if `quest` is also
+ *   given (a single quest is a stricter pick, so it wins).
+ * - `?node=<slug>` — only meaningful alongside `series`: additionally
+ *   highlights one particular member of that questline (onHighlightNode's
+ *   own effect) rather than just anchoring the map on the questline as a
+ *   whole.
+ *
+ * `quest`/`series` implicitly open the Quests tab even without an explicit
+ * `tab=quests` — there's no reason to link someone to one of those and land
+ * them on Stats instead. Applied once quest-data itself has actually
+ * loaded (applyQuestLinkParams, called from ensureQuestsLoaded) since
+ * resolving a slug/series name needs the real list; an unmatched slug or
+ * name is silently ignored rather than left half-applied or erroring.
+ */
+function readLinkParams() {
+  const params = new URLSearchParams(location.search);
+  return {
+    tab: params.get('tab'),
+    questSlug: params.get('quest'),
+    seriesName: params.get('series'),
+    nodeSlug: params.get('node'),
+  };
+}
+
 function loadStatsState() {
   try {
     const raw = localStorage.getItem(STATS_STATE_KEY);
@@ -149,7 +188,13 @@ async function boot() {
     // never need — requested on first switch to that tab (or, below, right
     // away if a persisted tab choice already opens straight onto it).
     const savedState = loadStatsState();
-    let activeTab = oneOf(PAGE_TABS, savedState.tab, PAGE_TABS[0][0]);
+    const linkParams = readLinkParams();
+    const wantsQuestsTabFromLink = Boolean(linkParams.questSlug || linkParams.seriesName);
+    let activeTab = oneOf(
+      PAGE_TABS,
+      linkParams.tab,
+      wantsQuestsTabFromLink ? 'quests' : oneOf(PAGE_TABS, savedState.tab, PAGE_TABS[0][0]),
+    );
     let previousTab = null;
     let questsState = { status: 'loading' };
     let questsRequested = false;
@@ -159,8 +204,10 @@ async function boot() {
     let questSkillFilter = oneOf(SKILL_OPTIONS, savedState.questSkillReq, SKILL_OPTIONS[0][0]);
     let questlinesCollapsed = savedState.questlinesCollapsed === true;
     // Which quest the dependency map beside the list is anchored on — set
-    // only by clicking a list row (see render()). Nothing below is
-    // persisted; all of it always starts fresh.
+    // by clicking a list row (see render()), or seeded once from a
+    // ?quest=<slug> link (applyQuestLinkParams, once quest-data itself has
+    // loaded). Nothing below is persisted to localStorage; a reload with no
+    // link param always starts fresh.
     let selectedQuestSlug = null;
     // Which questline is anchored instead — set only by clicking a
     // quest-series-links.js chip. Mutually exclusive with selectedQuestSlug
@@ -186,6 +233,56 @@ async function boot() {
     // nothing in another's.
     let highlightedQuestName = null;
 
+    // Shared by onSelectQuest/onSelectSeries (render(), Quests tab body) and
+    // applyQuestLinkParams (query-param deep links) below: every branch from
+    // every name in `targetNames`, expanded until (and including) the first
+    // quest this player's already completed — what they still have left to
+    // do, already unfolded, rather than a lone collapsed node (or, for a
+    // questline, several) they'd have to click their way down from scratch
+    // every time (initialExpansionFor, quest-graph.js). Takes `quests`
+    // explicitly rather than closing over it since applyQuestLinkParams
+    // calls this before questsState itself is ever set.
+    function expandForTargets(quests, targetNames) {
+      if (!quests) return new Set();
+      const byName = new Map(quests.map((candidate) => [candidate.name, candidate]));
+      const completedSet = new Set(player.completedQuests ?? []);
+      const startedSet = new Set(player.startedQuests ?? []);
+      const isCompleted = (name) => {
+        const match = byName.get(name);
+        return match ? statusOf(match, completedSet, startedSet) === 'completed' : false;
+      };
+      return initialExpansionFor(quests, targetNames, isCompleted);
+    }
+
+    // Applies linkParams.questSlug/seriesName/nodeSlug (readLinkParams,
+    // above) once quest-data has actually loaded (ensureQuestsLoaded) —
+    // seeds the same selectedQuestSlug/selectedSeriesName/
+    // expandedQuestNames/highlightedQuestName a click would, so a shared
+    // link opens straight onto whatever it pointed at instead of needing a
+    // second click once the page catches up. Only ever runs once (guarded
+    // by ensureQuestsLoaded's own questsRequested), so there's no risk of
+    // re-applying the link over a viewer's own later clicks.
+    function applyQuestLinkParams(quests) {
+      if (linkParams.questSlug) {
+        const quest = quests.find((candidate) => candidate.slug === linkParams.questSlug);
+        if (quest) {
+          selectedQuestSlug = quest.slug;
+          expandedQuestNames = expandForTargets(quests, [quest.name]);
+        }
+        return;
+      }
+      if (linkParams.seriesName) {
+        const members = quests.filter((quest) => quest.series === linkParams.seriesName);
+        if (members.length === 0) return;
+        selectedSeriesName = linkParams.seriesName;
+        expandedQuestNames = expandForTargets(quests, members.map((quest) => quest.name));
+        if (linkParams.nodeSlug) {
+          const node = members.find((quest) => quest.slug === linkParams.nodeSlug);
+          if (node) highlightedQuestName = node.name;
+        }
+      }
+    }
+
     // Goals are checked against this player's skills once, right after
     // loading them — skills don't change again for the rest of the visit
     // (only a real reload pulls fresh data), so there's nothing to gain by
@@ -207,10 +304,13 @@ async function boot() {
     // reasoning as the other two goal dialogs above.
     let questGoalDraftQuest = null;
     // Group titles currently collapsed in the Goals tab's own list
-    // (renderGoalsList) — a plain in-memory Set, not persisted, same as
-    // expandedQuestNames on the Quests tab: a "how I've got this arranged
-    // right now" convenience, not a durable preference worth a storage key.
-    let collapsedGoalGroups = new Set();
+    // (renderGoalsList) — persisted (unlike expandedQuestNames on the Quests
+    // tab, which stays in-memory-only): a viewer who's collapsed a finished
+    // questline's goal group to get it out of the way wants it to *stay*
+    // out of the way on the next visit, not reappear on every reload.
+    // Stored as an array (saveStatsState only ever writes plain JSON) and
+    // rebuilt into a Set here.
+    let collapsedGoalGroups = new Set(Array.isArray(savedState.collapsedGoalGroups) ? savedState.collapsedGoalGroups : []);
 
     // The label registry (name -> colour), separate from goals themselves —
     // see goal-labels-storage.js. Creating a new label from inside the "new
@@ -234,6 +334,7 @@ async function boot() {
         questSkillReq: questSkillFilter,
         questlinesCollapsed,
         goalLabelFilter,
+        collapsedGoalGroups: [...collapsedGoalGroups],
       });
     }
 
@@ -243,6 +344,7 @@ async function boot() {
       loadQuests()
         .then((quests) => {
           questsState = { status: 'ready', quests };
+          applyQuestLinkParams(quests);
           render();
         })
         .catch((error) => {
@@ -318,6 +420,7 @@ async function boot() {
                   if (next.has(title)) next.delete(title);
                   else next.add(title);
                   collapsedGoalGroups = next;
+                  persistStatsState();
                   render();
                 },
               }),
@@ -326,24 +429,6 @@ async function boot() {
           ? (() => {
               const quests = questsState.status === 'ready' ? questsState.quests : null;
               const selectedQuest = quests?.find((quest) => quest.slug === selectedQuestSlug) ?? null;
-              // Shared by onSelectQuest and onSelectSeries below: every
-              // branch from every name in `targetNames`, expanded until
-              // (and including) the first quest this player's already
-              // completed — what they still have left to do, already
-              // unfolded, rather than a lone collapsed node (or, for a
-              // questline, several) they'd have to click their way down
-              // from scratch every time (initialExpansionFor, quest-graph.js).
-              const expandForTargets = (targetNames) => {
-                if (!quests) return new Set();
-                const byName = new Map(quests.map((candidate) => [candidate.name, candidate]));
-                const completedSet = new Set(player.completedQuests ?? []);
-                const startedSet = new Set(player.startedQuests ?? []);
-                const isCompleted = (name) => {
-                  const match = byName.get(name);
-                  return match ? statusOf(match, completedSet, startedSet) === 'completed' : false;
-                };
-                return initialExpansionFor(quests, targetNames, isCompleted);
-              };
               const onSelectQuest = (quest) => {
                 // Same click-to-toggle shape as the Skills grid's own
                 // cells: clicking the already-selected quest deselects it.
@@ -351,7 +436,7 @@ async function boot() {
                 selectedQuestSlug = reselecting ? null : quest.slug;
                 // Picking a single quest always leaves questline mode.
                 selectedSeriesName = null;
-                expandedQuestNames = reselecting ? new Set() : expandForTargets([quest.name]);
+                expandedQuestNames = reselecting ? new Set() : expandForTargets(quests, [quest.name]);
                 // A highlight from whatever was previously selected (or a
                 // different target's chain entirely) means nothing here.
                 highlightedQuestName = null;
@@ -363,7 +448,7 @@ async function boot() {
                 selectedSeriesName = reselecting ? null : seriesName;
                 selectedQuestSlug = null;
                 const memberNames = reselecting || !quests ? [] : quests.filter((quest) => quest.series === seriesName).map((quest) => quest.name);
-                expandedQuestNames = reselecting ? new Set() : expandForTargets(memberNames);
+                expandedQuestNames = reselecting ? new Set() : expandForTargets(quests, memberNames);
                 highlightedQuestName = null;
                 render();
               };
@@ -549,8 +634,15 @@ async function boot() {
           })
         : null;
 
+      // questGoalDraftQuest can only ever be set by a click inside the
+      // dependency map itself (quest-dependency-graph.js's "⚑" button),
+      // which only renders once questsState is 'ready' — so recomputing the
+      // same list here (rather than threading the Quests tab's own `quests`
+      // constant out of its block) is always the real list, never null, by
+      // the time this dialog actually opens.
+      const quests = questsState.status === 'ready' ? questsState.quests : null;
       const questGoalDialog = questGoalDraftQuest
-        ? renderQuestGoalDialog(questGoalDraftQuest, player, {
+        ? renderQuestGoalDialog(questGoalDraftQuest, player, quests, {
             onConfirm: (drafts) => {
               goals = [...goals, ...drafts];
               saveGoals(player.slug, goals);
