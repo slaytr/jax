@@ -86,10 +86,25 @@ export function refreshGoals(goals, player) {
 
 const startValueOf = (goal) => (goal.targetType === 'level' ? goal.startLevel : goal.startXp);
 
-function progressFraction(goal, currentValue) {
-  const span = goal.targetValue - startValueOf(goal);
+/** A goal's own target, in xp — an `xp`-type goal's targetValue already is
+ * xp; a `level`-type goal's targetValue is a level number, resolved
+ * through the skill's own curve (xp-table.js). Falls back to `currentXp`
+ * on an out-of-range level (xpForLevel past the top of its table) rather
+ * than propagating undefined into the arithmetic below — reads as "done"
+ * for a broken target instead of crashing the render. */
+const targetXpOf = (goal, skill, currentXp) =>
+  (goal.targetType === 'xp' ? goal.targetValue : xpForLevel(skill, goal.targetValue)) ?? currentXp;
+
+/** Fraction of the way from `fromXp` to `toXp` that `currentXp` has
+ * reached, clamped 0-1 — xp throughout, never level. A level-type goal's
+ * own *level* only moves in big integer jumps, so measuring progress in
+ * level terms would leave a goal like "level 74 to 75" reading a flat 0%
+ * for the entire grind and jumping straight to 100% the instant the
+ * level-up lands, rather than tracking the real xp earned along the way. */
+function xpProgressFraction(fromXp, currentXp, toXp) {
+  const span = toXp - fromXp;
   if (span <= 0) return 1;
-  return Math.min(1, Math.max(0, (currentValue - startValueOf(goal)) / span));
+  return Math.min(1, Math.max(0, (currentXp - fromXp) / span));
 }
 
 const goalTargetLabel = (goal) => (goal.targetType === 'level' ? `Level ${formatNumber(goal.targetValue)}` : `${formatNumber(goal.targetValue)} xp`);
@@ -188,17 +203,22 @@ function labelChips(goal, labelsByName) {
  * (compactSkillGoalRow) — icon, name, progress bar, then target and
  * percent, delete last — reusing their `.goal-subgoal-*` classes so every
  * skill goal's bar lines up at the same fixed width everywhere on the
- * page, nested or not. Progress here stays since-start (progressFraction),
- * unlike a quest requirement's current/target: this is a personal
- * milestone the viewer chose from wherever they were standing, not a fixed
- * floor they were already partway to. Labels (label-picker, unlike a quest
- * requirement which never carries any) still get their own row underneath
- * when present — labelChips already returns null otherwise, so a
- * label-less goal stays a single line. */
+ * page, nested or not. Progress here stays since-start (xpProgressFraction
+ * from goal.startXp), unlike a quest requirement's current/target: this is
+ * a personal milestone the viewer chose from wherever they were standing,
+ * not a fixed floor they were already partway to. Always measured in xp,
+ * even for a `level`-type goal (targetXpOf) — a level number alone only
+ * moves in big jumps, so a goal like "level 74 to 75" would otherwise sit
+ * at a flat 0% for the whole grind rather than crawling up with real xp
+ * gained. Labels (label-picker, unlike a quest requirement which never
+ * carries any) still get their own row underneath when present —
+ * labelChips already returns null otherwise, so a label-less goal stays a
+ * single line. */
 function activeSkillGoalCard(goal, skill, player, labelsByName, onDelete) {
   const value = player.skillById?.[goal.skillId];
-  const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
-  const fraction = progressFraction(goal, currentValue);
+  const currentXp = value?.xp ?? goal.startXp;
+  const targetXp = targetXpOf(goal, skill, currentXp);
+  const fraction = xpProgressFraction(goal.startXp, currentXp, targetXp);
   const percent = Math.round(fraction * 100);
 
   return el('li', { class: 'goal-card' }, [
@@ -325,17 +345,24 @@ const orderByStatus = (goals) => {
  * close their actual level is to the requirement — not how much they've
  * gained since this tracker happened to be added, which reads a
  * one-level-away requirement as 0% (and the gradient below as plain grey)
- * right up until their very next xp drop. `startValue` still shows as a
- * `.goal-subgoal-start-mark` tick on the track and in the figures text —
- * useful context — it just no longer drives the colour or the percent. */
+ * right up until their very next xp drop. Measured in xp (targetXpOf/
+ * xpProgressFraction, from 0), same reasoning as activeSkillGoalCard's own
+ * since-start xp measure: a level-type requirement's raw level position
+ * alone barely moves within a level, so "74 out of a 75 requirement" would
+ * otherwise always read as a misleadingly high ~99% even at the very start
+ * of level 74's own xp grind. `startValue` (still a level/xp number, not
+ * xp-normalised) shows as a `.goal-subgoal-start-mark` tick on the track
+ * and in the figures text — useful context — it just doesn't drive the
+ * colour or the percent. */
 function compactSkillGoalRow(goal, skill, player, onDelete) {
   const value = player.skillById?.[goal.skillId];
   const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
+  const currentXp = value?.xp ?? goal.startXp;
   const startValue = startValueOf(goal);
+  const targetXp = targetXpOf(goal, skill, currentXp);
 
-  const target = goal.targetValue || 1;
-  const startFraction = Math.min(1, Math.max(0, startValue / target));
-  const currentFraction = goal.completedAt ? 1 : Math.min(1, Math.max(0, currentValue / target));
+  const startFraction = xpProgressFraction(0, goal.startXp, targetXp);
+  const currentFraction = goal.completedAt ? 1 : xpProgressFraction(0, currentXp, targetXp);
   const percent = Math.round(currentFraction * 100);
 
   return el('li', { class: `goal-subgoal-row${goal.completedAt ? ' is-complete' : ''}` }, [
