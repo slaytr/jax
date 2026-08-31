@@ -6,31 +6,42 @@
  * Two views over the same underlying requirement graph, both laid out into
  * layers suitable for a left-to-right flow chart (layer 0 is whatever has no
  * requirements *shown*, and each further layer sits strictly to the right
- * of everything it requires):
+ * of everything it requires). Both take `targetNames` — an *array*, not a
+ * single name: one quest selected from the list is just a one-element array,
+ * while a questline chip (quest-series-links.js) passes every quest tagged
+ * with that `series` at once, so the map can show a whole questline as
+ * nodes even though its members don't all sit on one connected chain — a
+ * side branch, an alternate path, anything nothing else in the series
+ * requires still gets its own node (and its own `isTarget`) rather than
+ * being silently dropped for not being anyone's ancestor. Nothing about the
+ * layering (layoutNodes) assumes a single root or one connected tree to
+ * begin with, so a genuinely disconnected member just renders as its own
+ * little island:
  *
- *  - `dependencyGraphFor(quests, targetName)` walks *every* quest
- *    transitively required to start a given quest — not just its own direct
- *    `questRequirements`, but theirs too, all the way back to whichever
- *    quests need nothing at all. Used only for the map's own "N
- *    prerequisite quests lead to X" summary now — showing all of a
- *    126-quest chain (Sliske's Endgame, the game's biggest) at once is too
- *    much to take in, so the interactive map itself is built from
- *    `visibleDependencyGraph` instead.
- *  - `visibleDependencyGraph(quests, targetName, expandedNames)` is just the
- *    currently-expanded portion: the target alone until it's expanded, then
- *    (for every name in `expandedNames`) that quest's own direct
+ *  - `dependencyGraphFor(quests, targetNames)` walks *every* quest
+ *    transitively required to start each of `targetNames` — not just their
+ *    own direct `questRequirements`, but theirs too, all the way back to
+ *    whichever quests need nothing at all — unioned into one graph. Used
+ *    only for the map's own "N prerequisite quests lead to X" summary now —
+ *    showing all of a 126-quest chain (Sliske's Endgame, the game's
+ *    biggest) at once is too much to take in, so the interactive map itself
+ *    is built from `visibleDependencyGraph` instead.
+ *  - `visibleDependencyGraph(quests, targetNames, expandedNames)` is just the
+ *    currently-expanded portion: every target alone until it's expanded,
+ *    then (for every name in `expandedNames`) that quest's own direct
  *    requirements, recursively for whichever of *those* are themselves
  *    expanded. Clicking a node in the map toggles its membership in
  *    `expandedNames` (stats.js) rather than jumping to a whole new chart, so
  *    exploring one branch never costs you the others.
  *
- * `initialExpansionFor(quests, targetName, isCompleted)` picks a starting
- * `expandedNames` for a newly-selected target: expand every quest down each
- * branch until (and including) the first one `isCompleted` reports true for
- * — a completed quest's own prerequisites are, in practice, always complete
- * too, so there's nothing useful left to reveal past it. The result is "what
- * do I still need to do", already unfolded, rather than a lone collapsed
- * node a viewer has to click their way down from scratch every time.
+ * `initialExpansionFor(quests, targetNames, isCompleted)` picks a starting
+ * `expandedNames` for a newly-made selection: expand every quest down each
+ * branch, from every target independently, until (and including) the first
+ * one `isCompleted` reports true for — a completed quest's own prerequisites
+ * are, in practice, always complete too, so there's nothing useful left to
+ * reveal past it. The result is "what do I still need to do", already
+ * unfolded, rather than a lone collapsed node a viewer has to click their
+ * way down from scratch every time.
  *
  * `ancestorNames(edges, name)` is the odd one out — generic over *any* edge
  * list rather than quest-data specific, since quest-dependency-graph.js
@@ -144,9 +155,14 @@ function orderLayers(layers, edges) {
  * a quest's own full requirement list, so a node with real prerequisites
  * that just aren't part of this particular edge set (visibleDependencyGraph,
  * before it's expanded) still lands at layer 0 — correct for "nothing
- * shown above it *yet*", which is what a renderer needs either way.
+ * shown above it *yet*", which is what a renderer needs either way. Doesn't
+ * assume a single connected tree: a node that's neither reachable from nor
+ * reaches any other still gets a layer (0, having no incoming edges) and
+ * renders as its own little island — deliberate, not a gap in the algorithm,
+ * since `targetSet` (a `Set`, for `.has` rather than `Array.includes`) can
+ * now name more than one root (dependencyGraphForTargets and friends below).
  */
-function layoutNodes(nodeNames, edges, byName, targetName) {
+function layoutNodes(nodeNames, edges, byName, targetSet) {
   const incomingByNode = new Map();
   for (const edge of edges) {
     if (!incomingByNode.has(edge.to)) incomingByNode.set(edge.to, []);
@@ -172,7 +188,7 @@ function layoutNodes(nodeNames, edges, byName, targetName) {
   orderLayers(layers, edges);
 
   const nodes = layers.flatMap((names, layer) =>
-    names.map((name, order) => ({ name, quest: byName.get(name) ?? null, layer, order, isTarget: name === targetName })),
+    names.map((name, order) => ({ name, quest: byName.get(name) ?? null, layer, order, isTarget: targetSet.has(name) })),
   );
 
   return {
@@ -184,30 +200,39 @@ function layoutNodes(nodeNames, edges, byName, targetName) {
 
 /**
  * @param quests the full quest-data/quests.json list (quest-data.js).
- * @param targetName the quest whose prerequisite chain to build — matched
- *   against `quest.name` exactly, same convention questRequirements itself
- *   uses (see quest-data/README.md).
- * @returns null when `targetName` doesn't match a real quest, otherwise
+ * @param targetNames the quests whose prerequisite chains to build, unioned
+ *   into one graph — matched against `quest.name` exactly, same convention
+ *   questRequirements itself uses (see quest-data/README.md). A single quest
+ *   selection is just a one-element array; a questline selection (every
+ *   member of one `quest.series`, quest-dependency-graph.js) is the whole
+ *   series at once — each name becomes its own node regardless of whether
+ *   any other requires it, so a series member with no bearing on the rest
+ *   of the story still shows up rather than being silently dropped for not
+ *   being anyone's ancestor.
+ * @returns null when *none* of `targetNames` match a real quest (a lone bad
+ *   name among otherwise-valid ones is simply skipped, not fatal), otherwise
  *   `{ nodes, edges, layerCount, maxLayerWidth }`:
  *    - `nodes`: `{ name, quest, layer, order, isTarget }[]`, one per quest in
- *      the chain (`targetName` included). `quest` is the full quest-data
- *      record, or null for a requirement name with no matching quest — see
- *      quest-data/README.md's `unresolvedQuestRefs` (a couple of tutorial
- *      areas gate a handful of miniquests); these are dead-end leaves, never
- *      a source of further edges.
+ *      the union (every valid `targetNames` entry included). `quest` is the
+ *      full quest-data record, or null for a requirement name with no
+ *      matching quest — see quest-data/README.md's `unresolvedQuestRefs` (a
+ *      couple of tutorial areas gate a handful of miniquests); these are
+ *      dead-end leaves, never a source of further edges.
  *    - `edges`: `{ from, to, relation }[]`, both ends node `name`s.
  *    - `layerCount`/`maxLayerWidth`: the tallest/widest a renderer needs to
  *      lay out, so it doesn't have to re-derive them from `nodes`.
  */
-export function dependencyGraphFor(quests, targetName) {
+export function dependencyGraphFor(quests, targetNames) {
   const byName = new Map(quests.map((quest) => [quest.name, quest]));
-  if (!byName.has(targetName)) return null;
+  const validTargets = targetNames.filter((name) => byName.has(name));
+  if (validTargets.length === 0) return null;
 
-  // Every quest reachable by walking requirements backward from the target,
-  // target included. Visit order doesn't matter for correctness — only
-  // membership does — so a plain LIFO worklist is enough.
-  const nodeNames = new Set([targetName]);
-  const worklist = [targetName];
+  // Every quest reachable by walking requirements backward from any target,
+  // every target included regardless of whether it's reachable from any
+  // other. Visit order doesn't matter for correctness — only membership
+  // does — so a plain LIFO worklist is enough.
+  const nodeNames = new Set(validTargets);
+  const worklist = [...validTargets];
   while (worklist.length > 0) {
     const quest = byName.get(worklist.pop());
     if (!quest) continue; // an unresolved ref — a dead end, nothing further to walk
@@ -226,34 +251,37 @@ export function dependencyGraphFor(quests, targetName) {
     for (const req of requirementsOf(quest, byName)) edges.push({ from: req.name, to: name, relation: req.relation });
   }
 
-  const { nodes, layerCount, maxLayerWidth } = layoutNodes(nodeNames, edges, byName, targetName);
+  const { nodes, layerCount, maxLayerWidth } = layoutNodes(nodeNames, edges, byName, new Set(validTargets));
   return { nodes, edges, layerCount, maxLayerWidth };
 }
 
 /**
  * @param quests the full quest-data/quests.json list (quest-data.js).
- * @param targetName the quest anchoring the map — matched against
- *   `quest.name` exactly, same as dependencyGraphFor.
+ * @param targetNames the quests anchoring the map — matched against
+ *   `quest.name` exactly, same as dependencyGraphFor (including the
+ *   one-quest-is-a-one-element-array, questline-is-every-member reasoning
+ *   there).
  * @param expandedNames a `Set` of quest names whose own direct requirements
  *   should be revealed (quest-dependency-graph.js toggles a node's own
- *   membership in this set on click). The target is included automatically
+ *   membership in this set on click). Every target is included automatically
  *   only as a node, never auto-expanded — it starts alone, same as any
  *   other quest, until something expands it.
- * @returns null when `targetName` doesn't match a real quest, otherwise the
- *   same shape as dependencyGraphFor's, with two additions per node:
+ * @returns null when *none* of `targetNames` match a real quest, otherwise
+ *   the same shape as dependencyGraphFor's, with two additions per node:
  *    - `isExpanded`: whether this node's own name is in `expandedNames`.
  *    - `hasRequirements`: whether this quest has *any* requirement at all,
  *      independent of expansion — lets a renderer tell "genuinely no
  *      prerequisites" apart from "collapsed, but there's more behind it".
  *      Always false for an unresolved requirement (`quest: null`).
  */
-export function visibleDependencyGraph(quests, targetName, expandedNames) {
+export function visibleDependencyGraph(quests, targetNames, expandedNames) {
   const byName = new Map(quests.map((quest) => [quest.name, quest]));
-  if (!byName.has(targetName)) return null;
+  const validTargets = targetNames.filter((name) => byName.has(name));
+  if (validTargets.length === 0) return null;
 
-  const nodeNames = new Set([targetName]);
+  const nodeNames = new Set(validTargets);
   const edges = [];
-  const worklist = [targetName];
+  const worklist = [...validTargets];
   while (worklist.length > 0) {
     const name = worklist.pop();
     if (!expandedNames.has(name)) continue; // collapsed — its own requirements stay hidden
@@ -268,7 +296,7 @@ export function visibleDependencyGraph(quests, targetName, expandedNames) {
     }
   }
 
-  const { nodes, layerCount, maxLayerWidth } = layoutNodes(nodeNames, edges, byName, targetName);
+  const { nodes, layerCount, maxLayerWidth } = layoutNodes(nodeNames, edges, byName, new Set(validTargets));
   const withExpansion = nodes.map((node) => ({
     ...node,
     isExpanded: expandedNames.has(node.name),
@@ -280,7 +308,7 @@ export function visibleDependencyGraph(quests, targetName, expandedNames) {
 
 /**
  * @param quests the full quest-data/quests.json list (quest-data.js).
- * @param targetName the quest about to be selected — matched against
+ * @param targetNames the quests about to be selected — matched against
  *   `quest.name` exactly, same as dependencyGraphFor/visibleDependencyGraph.
  * @param isCompleted (name) => boolean — whether the player has completed
  *   the named quest. Takes a plain predicate rather than a Set so the
@@ -289,20 +317,21 @@ export function visibleDependencyGraph(quests, targetName, expandedNames) {
  *   caller's concern; this file only ever compares quest-data names to each
  *   other.
  * @returns a `Set` of quest names suitable as `visibleDependencyGraph`'s own
- *   `expandedNames` — empty when `targetName` doesn't match a real quest.
- *   The target itself is always included (expanded regardless of its own
+ *   `expandedNames` — empty when none of `targetNames` match a real quest.
+ *   Every target is always included (expanded regardless of its own
  *   completion — a viewer picked it to look at, so its own direct
- *   requirements should be visible up front); each further branch stops
- *   expanding at the first quest `isCompleted` accepts, which is still
- *   included as a node (via the edge into it) even though its own
- *   requirements stay hidden.
+ *   requirements should be visible up front); each further branch, from
+ *   every target independently, stops expanding at the first quest
+ *   `isCompleted` accepts, which is still included as a node (via the edge
+ *   into it) even though its own requirements stay hidden.
  */
-export function initialExpansionFor(quests, targetName, isCompleted) {
+export function initialExpansionFor(quests, targetNames, isCompleted) {
   const byName = new Map(quests.map((quest) => [quest.name, quest]));
-  if (!byName.has(targetName)) return new Set();
+  const validTargets = targetNames.filter((name) => byName.has(name));
+  if (validTargets.length === 0) return new Set();
 
   const expanded = new Set();
-  const worklist = [targetName];
+  const worklist = [...validTargets];
   while (worklist.length > 0) {
     const name = worklist.pop();
     if (expanded.has(name)) continue;

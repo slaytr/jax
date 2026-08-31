@@ -18,6 +18,7 @@ import { renderPlayerGains } from './views/player-gains.js';
 import { renderPlayerSkills } from './views/player-skills.js';
 import { renderPlayerQuestList, SORT_OPTIONS, STATUS_OPTIONS, SKILL_OPTIONS, statusOf } from './views/player-quests.js';
 import { renderQuestDependencyGraph } from './views/quest-dependency-graph.js';
+import { renderQuestSeriesLinks } from './views/quest-series-links.js';
 import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, refreshGoals } from './views/player-goals.js';
 import { tabToggle } from './views/tabs.js';
 import { loadGoals, saveGoals } from './goals-storage.js';
@@ -156,18 +157,26 @@ async function boot() {
     let questSort = oneOf(SORT_OPTIONS, savedState.questSort, SORT_OPTIONS[0][0]);
     let questStatusFilter = oneOf(STATUS_OPTIONS, savedState.questStatus, STATUS_OPTIONS[0][0]);
     let questSkillFilter = oneOf(SKILL_OPTIONS, savedState.questSkillReq, SKILL_OPTIONS[0][0]);
+    let questlinesCollapsed = savedState.questlinesCollapsed === true;
     // Which quest the dependency map beside the list is anchored on — set
     // only by clicking a list row (see render()). Nothing below is
     // persisted; all of it always starts fresh.
     let selectedQuestSlug = null;
+    // Which questline is anchored instead — set only by clicking a
+    // quest-series-links.js chip. Mutually exclusive with selectedQuestSlug
+    // (onSelectQuest/onSelectSeries below each clear the other): the map
+    // shows either one quest's own chain or a whole questline's members at
+    // once (quest-graph.js's multi-target dependencyGraphFor/
+    // visibleDependencyGraph), never both.
+    let selectedSeriesName = null;
     // Quest *names* (not slugs — quest-graph.js's own node identity)
     // currently expanded within that map, revealing their own direct
     // requirements (quest-dependency-graph.js's own "+"/"–" button).
-    // Recomputed from scratch whenever a different quest is selected
-    // (initialExpansionFor, quest-graph.js) rather than inheriting some
-    // other chain's expansion state — every branch starts already unfolded
-    // down to what this player still has left to do, not a lone collapsed
-    // node.
+    // Recomputed from scratch whenever a different quest or questline is
+    // selected (initialExpansionFor, quest-graph.js — seeded from every
+    // member at once for a questline) rather than inheriting some other
+    // chain's expansion state — every branch starts already unfolded down
+    // to what this player still has left to do, not a lone collapsed node.
     let expandedQuestNames = new Set();
     // Which single quest name is selected for highlighting within that same
     // map (clicking anywhere on a node besides its "+"/"–" button) — dims
@@ -223,6 +232,7 @@ async function boot() {
         questSort,
         questStatus: questStatusFilter,
         questSkillReq: questSkillFilter,
+        questlinesCollapsed,
         goalLabelFilter,
       });
     }
@@ -316,32 +326,44 @@ async function boot() {
           ? (() => {
               const quests = questsState.status === 'ready' ? questsState.quests : null;
               const selectedQuest = quests?.find((quest) => quest.slug === selectedQuestSlug) ?? null;
+              // Shared by onSelectQuest and onSelectSeries below: every
+              // branch from every name in `targetNames`, expanded until
+              // (and including) the first quest this player's already
+              // completed — what they still have left to do, already
+              // unfolded, rather than a lone collapsed node (or, for a
+              // questline, several) they'd have to click their way down
+              // from scratch every time (initialExpansionFor, quest-graph.js).
+              const expandForTargets = (targetNames) => {
+                if (!quests) return new Set();
+                const byName = new Map(quests.map((candidate) => [candidate.name, candidate]));
+                const completedSet = new Set(player.completedQuests ?? []);
+                const startedSet = new Set(player.startedQuests ?? []);
+                const isCompleted = (name) => {
+                  const match = byName.get(name);
+                  return match ? statusOf(match, completedSet, startedSet) === 'completed' : false;
+                };
+                return initialExpansionFor(quests, targetNames, isCompleted);
+              };
               const onSelectQuest = (quest) => {
                 // Same click-to-toggle shape as the Skills grid's own
                 // cells: clicking the already-selected quest deselects it.
                 const reselecting = selectedQuestSlug === quest.slug;
                 selectedQuestSlug = reselecting ? null : quest.slug;
-                // A newly-picked quest's map starts already unfolded down
-                // to what this player still has left to do — every branch
-                // expanded until (and including) the first quest they've
-                // completed, rather than a lone collapsed node they'd have
-                // to click their way down from scratch every time (see
-                // initialExpansionFor, quest-graph.js). A deselect has
-                // nothing to expand either way.
-                if (reselecting || !quests) {
-                  expandedQuestNames = new Set();
-                } else {
-                  const byName = new Map(quests.map((candidate) => [candidate.name, candidate]));
-                  const completedSet = new Set(player.completedQuests ?? []);
-                  const startedSet = new Set(player.startedQuests ?? []);
-                  const isCompleted = (name) => {
-                    const match = byName.get(name);
-                    return match ? statusOf(match, completedSet, startedSet) === 'completed' : false;
-                  };
-                  expandedQuestNames = initialExpansionFor(quests, quest.name, isCompleted);
-                }
+                // Picking a single quest always leaves questline mode.
+                selectedSeriesName = null;
+                expandedQuestNames = reselecting ? new Set() : expandForTargets([quest.name]);
                 // A highlight from whatever was previously selected (or a
                 // different target's chain entirely) means nothing here.
+                highlightedQuestName = null;
+                render();
+              };
+              const onSelectSeries = (seriesName) => {
+                // Same click-to-toggle shape as onSelectQuest.
+                const reselecting = selectedSeriesName === seriesName;
+                selectedSeriesName = reselecting ? null : seriesName;
+                selectedQuestSlug = null;
+                const memberNames = reselecting || !quests ? [] : quests.filter((quest) => quest.series === seriesName).map((quest) => quest.name);
+                expandedQuestNames = reselecting ? new Set() : expandForTargets(memberNames);
                 highlightedQuestName = null;
                 render();
               };
@@ -358,6 +380,11 @@ async function boot() {
                 highlightedQuestName = highlightedQuestName === name ? null : name;
                 render();
               };
+              const onToggleQuestlinesCollapsed = () => {
+                questlinesCollapsed = !questlinesCollapsed;
+                persistStatsState();
+                render();
+              };
               // Every quest name that already anchors a goal-group — hides
               // a not-started node's own "track as a goal" button once
               // there's already one, so the dialog can't be used twice on
@@ -365,54 +392,74 @@ async function boot() {
               const existingQuestGoalNames = new Set(
                 goals.filter((goal) => goal.kind === 'quest').map((goal) => goal.questName),
               );
+              // What the dependency map itself is currently anchored on —
+              // see quest-dependency-graph.js's own `selection` doc comment.
+              // selectedSeriesName/selectedQuestSlug are already kept
+              // mutually exclusive by onSelectQuest/onSelectSeries above, so
+              // only one branch here is ever non-null at a time.
+              const selection = selectedSeriesName
+                ? { kind: 'series', seriesName: selectedSeriesName }
+                : selectedQuest
+                  ? { kind: 'quest', quest: selectedQuest }
+                  : null;
 
-              return el('div', { class: 'player-row' }, [
-                renderPlayerQuestList(
-                  player,
-                  questsState,
-                  {
-                    search: questSearch,
-                    onSearchChange: (value) => {
-                      questSearch = value;
-                      persistStatsState();
-                      render();
-                    },
-                    sort: questSort,
-                    onSortChange: (value) => {
-                      questSort = value;
-                      persistStatsState();
-                      render();
-                    },
-                    status: questStatusFilter,
-                    onStatusChange: (value) => {
-                      questStatusFilter = value;
-                      persistStatsState();
-                      render();
-                    },
-                    skillReq: questSkillFilter,
-                    onSkillReqChange: (value) => {
-                      questSkillFilter = value;
-                      persistStatsState();
-                      render();
-                    },
-                  },
-                  selectedQuestSlug,
-                  onSelectQuest,
-                ),
-                renderQuestDependencyGraph({
+              return el('div', {}, [
+                renderQuestSeriesLinks(
                   quests,
                   player,
-                  targetQuest: selectedQuest,
-                  expandedNames: expandedQuestNames,
-                  onToggleExpand,
-                  highlightedName: highlightedQuestName,
-                  onHighlightNode,
-                  existingQuestGoalNames,
-                  onCreateQuestGoal: (quest) => {
-                    questGoalDraftQuest = quest;
-                    render();
-                  },
-                }),
+                  selectedSeriesName,
+                  questlinesCollapsed,
+                  onToggleQuestlinesCollapsed,
+                  onSelectSeries,
+                ),
+                el('div', { class: 'player-row' }, [
+                  renderPlayerQuestList(
+                    player,
+                    questsState,
+                    {
+                      search: questSearch,
+                      onSearchChange: (value) => {
+                        questSearch = value;
+                        persistStatsState();
+                        render();
+                      },
+                      sort: questSort,
+                      onSortChange: (value) => {
+                        questSort = value;
+                        persistStatsState();
+                        render();
+                      },
+                      status: questStatusFilter,
+                      onStatusChange: (value) => {
+                        questStatusFilter = value;
+                        persistStatsState();
+                        render();
+                      },
+                      skillReq: questSkillFilter,
+                      onSkillReqChange: (value) => {
+                        questSkillFilter = value;
+                        persistStatsState();
+                        render();
+                      },
+                    },
+                    selectedQuestSlug,
+                    onSelectQuest,
+                  ),
+                  renderQuestDependencyGraph({
+                    quests,
+                    player,
+                    selection,
+                    expandedNames: expandedQuestNames,
+                    onToggleExpand,
+                    highlightedName: highlightedQuestName,
+                    onHighlightNode,
+                    existingQuestGoalNames,
+                    onCreateQuestGoal: (quest) => {
+                      questGoalDraftQuest = quest;
+                      render();
+                    },
+                  }),
+                ]),
               ]);
             })()
           : el('div', { class: 'player-row' }, [

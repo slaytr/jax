@@ -7,13 +7,17 @@ const SKILL_BY_NAME = new Map(SKILLS.map((skill) => [skill.name, skill]));
 
 /**
  * The Quests tab's second column: a left-to-right flow chart of whichever
- * quest is currently selected in the list beside it, built up by expanding
- * one quest at a time rather than dumping its entire transitive chain at
- * once (quest-graph.js's `visibleDependencyGraph` does the actual
- * traversal/layout — this file only turns that into positioned nodes and
- * connecting curves). Layer 0 (nothing shown above it yet) sits on the
- * left; the selected quest itself is always the single rightmost node,
- * since every other visible node is one of its ancestors.
+ * quest (or whole questline — see `selection` below) is currently selected
+ * beside it, built up by expanding one quest at a time rather than dumping
+ * its entire transitive chain at once (quest-graph.js's
+ * `visibleDependencyGraph` does the actual traversal/layout — this file
+ * only turns that into positioned nodes and connecting curves). Layer 0
+ * (nothing shown above it yet) sits on the left; every selected quest is
+ * always a rightmost-or-later node (`isTarget`), since every other visible
+ * node is one of its ancestors — for a single quest that's exactly one
+ * node; for a questline it's every member at once, which need not all sit
+ * on one connected chain (a side quest nothing else in the series requires
+ * still gets its own node, off to the side, rather than being dropped).
  *
  * A quest starts alone, collapsed, the moment it's selected. Two separate
  * click targets share each node, deliberately not one:
@@ -136,10 +140,17 @@ function nodeStatus(node, completedSet, startedSet) {
 const hasSkillRequirements = (node) => (node.quest?.skillRequirements ?? []).length > 0;
 const isExpandable = (node) => node.hasRequirements || hasSkillRequirements(node);
 
-function nodeTitle(node, status) {
+/** `targetCount` (how many nodes in the whole graph are `isTarget`, not just
+ * this one) picks the wording for a target node: "selected" reads fine for
+ * the ordinary one-quest case, but a questline selection marks *every*
+ * series member as a target at once (quest-graph.js's own targetNames), so
+ * "selected" for all of them would overstate it — a viewer picked the
+ * questline, not each quest individually. */
+function nodeTitle(node, status, targetCount) {
   if (!node.quest) return `${node.name} — not tracked as a quest (e.g. a tutorial area)`;
   const statusLabel = status === 'in-progress' ? 'in progress' : status;
-  return `${node.name} — ${statusLabel}${node.isTarget ? ' — selected' : ''} — click to highlight its branch`;
+  const targetSuffix = node.isTarget ? (targetCount > 1 ? ' — in this questline' : ' — selected') : '';
+  return `${node.name} — ${statusLabel}${targetSuffix} — click to highlight its branch`;
 }
 
 const expandButtonTitle = (node) => (node.isExpanded ? 'Collapse' : 'Expand');
@@ -192,6 +203,7 @@ function graphNode({
   skillLevels,
   isDimmed,
   isHighlighted,
+  targetCount,
   existingQuestGoalNames,
   onToggleExpand,
   onHighlightNode,
@@ -230,7 +242,12 @@ function graphNode({
           : el('span', { class: 'quest-graph-node-expand-btn is-empty', 'aria-hidden': 'true' }),
         el(
           'button',
-          { type: 'button', class: 'quest-graph-node-select', title: nodeTitle(node, status), onclick: () => onHighlightNode(node.name) },
+          {
+            type: 'button',
+            class: 'quest-graph-node-select',
+            title: nodeTitle(node, status, targetCount),
+            onclick: () => onHighlightNode(node.name),
+          },
           [
             STATUS_MARKER[status] ? el('span', { class: 'quest-graph-node-check', 'aria-hidden': 'true', text: STATUS_MARKER[status] }) : null,
             el('span', { class: 'quest-graph-node-name', text: node.name }),
@@ -310,6 +327,7 @@ function graphCanvas(graph, player, highlightedName, existingQuestGoalNames, onT
   const startedSet = new Set(player.startedQuests ?? []);
   const skillLevels = skillLevelsByName(player);
   const highlightSet = highlightSetFor(graph, highlightedName);
+  const targetCount = graph.nodes.filter((node) => node.isTarget).length;
 
   const svg = svgEl('svg', { class: 'quest-graph-edges', width, height });
   const defs = svgEl('defs', {});
@@ -330,6 +348,7 @@ function graphCanvas(graph, player, highlightedName, existingQuestGoalNames, onT
       skillLevels,
       isDimmed: highlightSet ? !highlightSet.has(node.name) : false,
       isHighlighted: node.name === highlightedName,
+      targetCount,
       existingQuestGoalNames,
       onToggleExpand,
       onHighlightNode,
@@ -340,19 +359,35 @@ function graphCanvas(graph, player, highlightedName, existingQuestGoalNames, onT
   return el('div', { class: 'quest-graph-canvas', style: { width: `${width}px`, height: `${height}px` } }, [svg, ...nodes]);
 }
 
-/** `N prerequisite quest(s) lead to <name>` — `totalAncestorCount` comes
- * from dependencyGraphFor's full transitive walk, independent of whatever's
- * currently expanded, so the figure (and whether to invite expanding at
- * all) never changes as a viewer clicks around. Reads correctly at 0 too
- * ("No prerequisites — <name> is a starting point"), the common case for
- * plain early-game quests (see quest-graph.js's own size stats: roughly a
- * third of all quests need nothing else) — and skips the "click to expand"
- * invitation then, since there's nothing to expand. */
-function graphCaption(totalAncestorCount, targetName) {
+/** `N prerequisite quest(s) lead to <name>` for a single quest, or a
+ * questline summary when `selection.kind` is 'series' — either way, the
+ * counts come from `totalGraph`'s full transitive walk (dependencyGraphFor,
+ * every `targetNames` entry unioned), independent of whatever's currently
+ * expanded, so the figures (and whether to invite expanding at all) never
+ * change as a viewer clicks around.
+ *
+ * For a series, `additional` (totalGraph's own node count minus the
+ * series' own member count) never double-counts a member that also happens
+ * to be another member's ancestor — dependencyGraphFor's union already
+ * de-duplicates that. Omitted entirely when it's 0 (every member needs
+ * nothing outside the series itself), same as the single-quest case
+ * reading "No prerequisites" rather than "0 prerequisite quests lead to…"
+ * when there's nothing to report. */
+function graphCaption(totalGraph, targetNames, selection) {
+  const additional = totalGraph.nodes.length - targetNames.length;
+  const hint = '"+" expands a quest, click its name to highlight its branch.';
+
+  if (selection.kind === 'series') {
+    const memberCount = targetNames.length;
+    const membersPart = `${memberCount} quest${memberCount === 1 ? '' : 's'} in the ${selection.seriesName} questline`;
+    const additionalPart = additional > 0 ? `, plus ${additional} additional prerequisite quest${additional === 1 ? '' : 's'}` : '';
+    return el('p', { class: 'quest-graph-caption', text: `${membersPart}${additionalPart} — ${hint}` });
+  }
+
   const text =
-    totalAncestorCount === 0
-      ? `No prerequisites — ${targetName} is a starting point.`
-      : `${totalAncestorCount} prerequisite quest${totalAncestorCount === 1 ? '' : 's'} lead to ${targetName} — "+" expands a quest, click its name to highlight its branch.`;
+    additional === 0
+      ? `No prerequisites — ${selection.quest.name} is a starting point.`
+      : `${additional} prerequisite quest${additional === 1 ? '' : 's'} lead to ${selection.quest.name} — ${hint}`;
   return el('p', { class: 'quest-graph-caption', text });
 }
 
@@ -402,6 +437,18 @@ function graphLegend() {
   ]);
 }
 
+/** The quest names a `selection` resolves to — a one-element array for a
+ * single quest, or every quest tagged with that `quest.series` (quest-data's
+ * own field) for a questline, in whatever order `quests` itself lists them
+ * (dependencyGraphFor/visibleDependencyGraph don't care about order, just
+ * membership). Derived here rather than passed in by stats.js: `quests` is
+ * already a prop this file receives, so there's no reason to make the
+ * caller duplicate the same filter. */
+function targetNamesFor(quests, selection) {
+  if (selection.kind === 'series') return quests.filter((quest) => quest.series === selection.seriesName).map((quest) => quest.name);
+  return [selection.quest.name];
+}
+
 /**
  * @param quests the full quest-data/quests.json list (quest-data.js), or
  *   null while it's still loading/failed — the caller (stats.js) only ever
@@ -409,8 +456,12 @@ function graphLegend() {
  *   defensive null still renders the empty prompt rather than throwing.
  * @param player the viewed player (data.js) — its completedQuests/
  *   startedQuests colour each node by this player's own progress.
- * @param targetQuest whichever quest the list's own selection currently
- *   points at, or null before anything's been picked.
+ * @param selection what the list/questline chips currently have picked, or
+ *   null before anything has: `{ kind: 'quest', quest }` (a list row) or
+ *   `{ kind: 'series', seriesName }` (a questline chip, quest-series-links.js
+ *   — every quest sharing that `quest.series` becomes its own node, even
+ *   ones that are nobody's ancestor within the series itself; see
+ *   quest-graph.js's own multi-target reasoning).
  * @param expandedNames a `Set` of quest names currently expanded within
  *   this chart (stats.js) — passed straight through to
  *   visibleDependencyGraph.
@@ -434,7 +485,7 @@ function graphLegend() {
 export function renderQuestDependencyGraph({
   quests,
   player,
-  targetQuest,
+  selection,
   expandedNames,
   onToggleExpand,
   highlightedName,
@@ -443,16 +494,18 @@ export function renderQuestDependencyGraph({
   onCreateQuestGoal,
 }) {
   const body = (() => {
-    if (!targetQuest || !quests) {
+    if (!selection || !quests) {
       return el('p', { class: 'chart-empty', text: 'Click a quest on the left to see its dependency chain.' });
     }
-    const totalGraph = dependencyGraphFor(quests, targetQuest.name);
-    const visibleGraph = visibleDependencyGraph(quests, targetQuest.name, expandedNames);
+    const targetNames = targetNamesFor(quests, selection);
+    const totalGraph = dependencyGraphFor(quests, targetNames);
+    const visibleGraph = visibleDependencyGraph(quests, targetNames, expandedNames);
     if (!totalGraph || !visibleGraph) {
-      return el('p', { class: 'chart-empty', text: `Couldn't find "${targetQuest.name}" in the quest data.` });
+      const label = selection.kind === 'series' ? `the "${selection.seriesName}" questline` : `"${selection.quest.name}"`;
+      return el('p', { class: 'chart-empty', text: `Couldn't find ${label} in the quest data.` });
     }
     return el('div', {}, [
-      graphCaption(totalGraph.nodes.length - 1, targetQuest.name),
+      graphCaption(totalGraph, targetNames, selection),
       el('div', { class: 'quest-graph-scroll' }, [
         graphCanvas(visibleGraph, player, highlightedName, existingQuestGoalNames, onToggleExpand, onHighlightNode, onCreateQuestGoal),
       ]),

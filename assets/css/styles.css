@@ -1626,6 +1626,113 @@ body::after {
   margin-bottom: 1rem;
 }
 
+/* Quest series quick-links (quest-series-links.js) — its own .lb card
+   above the list/dependency-map row, so it's full-width rather than
+   squeezed into the 200px Skills-grid column every other Quests-tab card
+   inherits. */
+.quest-series-card {
+  margin-bottom: 1.25rem;
+}
+
+.quest-series-card.is-collapsed {
+  margin-bottom: 0.75rem;
+}
+
+/* A real <button> around the whole heading (site convention — see
+   .goal-group-title), so collapsing the chip row away is one click on the
+   heading itself rather than needing a separate icon target. Doesn't
+   restyle the h2 it wraps — that keeps .lb-head h2's own look — just resets
+   its own button chrome and lays chevron/heading/count out in a row. */
+.quest-series-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.quest-series-toggle:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.quest-series-chevron {
+  flex: none;
+  width: 0.6em;
+  border-style: solid;
+  border-width: 0.3em 0 0.3em 0.45em;
+  border-color: transparent transparent transparent currentColor;
+  color: var(--ink-muted);
+  transition: transform 0.14s var(--ease);
+}
+
+.quest-series-card.is-collapsed .quest-series-chevron {
+  transform: rotate(0deg);
+}
+
+.quest-series-card:not(.is-collapsed) .quest-series-chevron {
+  transform: rotate(90deg);
+}
+
+.quest-series-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.quest-series-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.quest-series-link {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    color 0.16s var(--ease),
+    border-color 0.16s var(--ease),
+    background-color 0.16s var(--ease);
+}
+
+.quest-series-link:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.quest-series-link:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* Same "this is the dependency map's current target" tint as the matching
+   .quest-list-item.is-selected row, so a series chip and its own quest in
+   the list always agree on how "selected" looks. */
+.quest-series-link.is-selected {
+  border-color: var(--ember);
+  background: rgba(217, 89, 38, 0.13);
+  color: #fdf5e7;
+}
+
+/* Every quest in the series completed (its own completed/total, not just
+   the selected state above) — same green the quest list's own completed
+   rows and status markers use elsewhere on this page. */
+.quest-series-link.is-done:not(.is-selected) {
+  border-color: var(--gain-bg);
+  color: var(--gain);
+}
+
 /* Quests tab: the Skills grid's replacement, same 200px width as
    .skill-grid so switching tabs never reflows anything beside it — plus a
    filter/sort toolbar above the list itself (below), which is why the

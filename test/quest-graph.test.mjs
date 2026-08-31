@@ -19,12 +19,12 @@ const nodeNamesByLayer = (graph) => {
 
 describe('dependencyGraphFor', () => {
   it('returns null for a quest name with no matching record', () => {
-    assert.equal(dependencyGraphFor([quest('Cook\'s Assistant')], 'Not A Real Quest'), null);
+    assert.equal(dependencyGraphFor([quest('Cook\'s Assistant')], ['Not A Real Quest']), null);
   });
 
   it('is a single node with no edges for a quest with no requirements', () => {
     const quests = [quest("Cook's Assistant")];
-    const graph = dependencyGraphFor(quests, "Cook's Assistant");
+    const graph = dependencyGraphFor(quests, ["Cook's Assistant"]);
 
     assert.equal(graph.nodes.length, 1);
     assert.equal(graph.nodes[0].isTarget, true);
@@ -36,7 +36,7 @@ describe('dependencyGraphFor', () => {
   it('layers a diamond so both middle quests sit strictly between the shared root and the target', () => {
     // A requires B and C; B and C both require D.
     const quests = [quest('D'), quest('B', ['D']), quest('C', ['D']), quest('A', ['B', 'C'])];
-    const graph = dependencyGraphFor(quests, 'A');
+    const graph = dependencyGraphFor(quests, ['A']);
 
     assert.equal(graph.nodes.length, 4, 'D is only counted once despite being required twice');
     assert.equal(graph.layerCount, 3);
@@ -56,7 +56,7 @@ describe('dependencyGraphFor', () => {
     // Guthix" — the "(quest)" suffix should still resolve to it rather than
     // falling back to an external/unresolved leaf.
     const quests = [quest('Tears of Guthix'), quest('While Guthix Sleeps', ['Tears of Guthix (quest)'])];
-    const graph = dependencyGraphFor(quests, 'While Guthix Sleeps');
+    const graph = dependencyGraphFor(quests, ['While Guthix Sleeps']);
 
     assert.equal(graph.nodes.length, 2, 'the suffixed name resolves to the same node, not a second one');
     const resolved = graph.nodes.find((node) => node.name === 'Tears of Guthix');
@@ -70,7 +70,7 @@ describe('dependencyGraphFor', () => {
 
   it('gives an unresolved requirement (no matching quest) a leaf node instead of throwing', () => {
     const quests = [quest('Miniquest', ['Some Tutorial Area'])];
-    const graph = dependencyGraphFor(quests, 'Miniquest');
+    const graph = dependencyGraphFor(quests, ['Miniquest']);
 
     const leaf = graph.nodes.find((node) => node.name === 'Some Tutorial Area');
     assert.ok(leaf, 'the unresolved name still gets a node');
@@ -82,7 +82,7 @@ describe('dependencyGraphFor', () => {
   it('walks requirements transitively, arbitrarily deep', () => {
     // A chain E <- D <- C <- B <- A: A's full ancestry is D, C, B, E.
     const quests = [quest('E'), quest('D', ['E']), quest('C', ['D']), quest('B', ['C']), quest('A', ['B'])];
-    const graph = dependencyGraphFor(quests, 'A');
+    const graph = dependencyGraphFor(quests, ['A']);
 
     assert.equal(graph.nodes.length, 5);
     assert.equal(graph.layerCount, 5);
@@ -96,7 +96,7 @@ describe('dependencyGraphFor', () => {
     // A's full_completion bar additionally needs C, which is also a plain
     // questRequirement of A — should not produce two C nodes or two edges.
     const quests = [quest('C'), quest('B', ['C']), quest('A', ['B', 'C'], ['C'])];
-    const graph = dependencyGraphFor(quests, 'A');
+    const graph = dependencyGraphFor(quests, ['A']);
 
     assert.equal(graph.nodes.filter((node) => node.name === 'C').length, 1);
     assert.equal(graph.edges.filter((edge) => edge.from === 'C' && edge.to === 'A').length, 1);
@@ -104,7 +104,7 @@ describe('dependencyGraphFor', () => {
 
   it('only ever visits a shared requirement once, however many dependents share it', () => {
     const quests = [quest('Root'), quest('X', ['Root']), quest('Y', ['Root']), quest('Z', ['Root']), quest('Top', ['X', 'Y', 'Z'])];
-    const graph = dependencyGraphFor(quests, 'Top');
+    const graph = dependencyGraphFor(quests, ['Top']);
 
     assert.equal(graph.nodes.filter((node) => node.name === 'Root').length, 1);
     assert.equal(graph.edges.filter((edge) => edge.from === 'Root').length, 3);
@@ -117,11 +117,11 @@ describe('visibleDependencyGraph', () => {
   const quests = [quest('D'), quest('C'), quest('B', ['D']), quest('A', ['B', 'C'])];
 
   it('returns null for a quest name with no matching record', () => {
-    assert.equal(visibleDependencyGraph([quest('X')], 'Not A Real Quest', new Set()), null);
+    assert.equal(visibleDependencyGraph([quest('X')], ['Not A Real Quest'], new Set()), null);
   });
 
   it('shows only the target, with no edges, when nothing is expanded', () => {
-    const graph = visibleDependencyGraph(quests, 'A', new Set());
+    const graph = visibleDependencyGraph(quests, ['A'], new Set());
 
     assert.equal(graph.nodes.length, 1);
     assert.equal(graph.nodes[0].name, 'A');
@@ -131,24 +131,24 @@ describe('visibleDependencyGraph', () => {
   });
 
   it('flags hasRequirements independently of expansion state', () => {
-    const collapsed = visibleDependencyGraph(quests, 'A', new Set());
+    const collapsed = visibleDependencyGraph(quests, ['A'], new Set());
     const target = collapsed.nodes.find((node) => node.name === 'A');
     assert.equal(target.hasRequirements, true, 'A has requirements even though none are shown yet');
 
-    const expanded = visibleDependencyGraph(quests, 'A', new Set(['A']));
+    const expanded = visibleDependencyGraph(quests, ['A'], new Set(['A']));
     const leaf = expanded.nodes.find((node) => node.name === 'C');
     assert.equal(leaf.hasRequirements, false, 'C genuinely has none, once revealed');
   });
 
   it('reveals one more level for each name added to expandedNames', () => {
-    const oneLevel = visibleDependencyGraph(quests, 'A', new Set(['A']));
+    const oneLevel = visibleDependencyGraph(quests, ['A'], new Set(['A']));
     assert.deepEqual(
       oneLevel.nodes.map((node) => node.name).sort(),
       ['A', 'B', 'C'],
       'expanding A reveals its direct requirements, not B\'s',
     );
 
-    const twoLevels = visibleDependencyGraph(quests, 'A', new Set(['A', 'B']));
+    const twoLevels = visibleDependencyGraph(quests, ['A'], new Set(['A', 'B']));
     assert.deepEqual(twoLevels.nodes.map((node) => node.name).sort(), ['A', 'B', 'C', 'D']);
     assert.equal(twoLevels.nodes.find((node) => node.name === 'B').isExpanded, true);
     assert.equal(twoLevels.nodes.find((node) => node.name === 'C').isExpanded, false);
@@ -157,7 +157,7 @@ describe('visibleDependencyGraph', () => {
   it('ignores an expanded name that is unreachable from the current target', () => {
     // Stale expansion state from a previously-viewed, unrelated quest chain
     // should never leak stray nodes into this one.
-    const graph = visibleDependencyGraph(quests, 'A', new Set(['A', 'Some Other Quest']));
+    const graph = visibleDependencyGraph(quests, ['A'], new Set(['A', 'Some Other Quest']));
     assert.deepEqual(graph.nodes.map((node) => node.name).sort(), ['A', 'B', 'C']);
   });
 
@@ -165,11 +165,11 @@ describe('visibleDependencyGraph', () => {
     // Before B is expanded, D sits behind it and isn't shown at all — B
     // itself must read as layer 0 (nothing shown above it yet), not as
     // though D's own layer were already known.
-    const oneLevel = visibleDependencyGraph(quests, 'A', new Set(['A']));
+    const oneLevel = visibleDependencyGraph(quests, ['A'], new Set(['A']));
     assert.equal(oneLevel.nodes.find((node) => node.name === 'B').layer, 0);
     assert.equal(oneLevel.layerCount, 2);
 
-    const twoLevels = visibleDependencyGraph(quests, 'A', new Set(['A', 'B']));
+    const twoLevels = visibleDependencyGraph(quests, ['A'], new Set(['A', 'B']));
     assert.equal(twoLevels.nodes.find((node) => node.name === 'D').layer, 0);
     assert.equal(twoLevels.nodes.find((node) => node.name === 'B').layer, 1);
     assert.equal(twoLevels.layerCount, 3);
@@ -180,12 +180,12 @@ describe('initialExpansionFor', () => {
   const none = () => false;
 
   it('returns an empty set for a quest name with no matching record', () => {
-    assert.deepEqual(initialExpansionFor([quest('X')], 'Not A Real Quest', none), new Set());
+    assert.deepEqual(initialExpansionFor([quest('X')], ['Not A Real Quest'], none), new Set());
   });
 
   it('always expands the target itself, regardless of completion', () => {
     const quests = [quest('A')];
-    assert.deepEqual(initialExpansionFor(quests, 'A', () => true), new Set(['A']));
+    assert.deepEqual(initialExpansionFor(quests, ['A'], () => true), new Set(['A']));
   });
 
   it('expands every quest along a chain when nothing is completed, root leaf included', () => {
@@ -195,7 +195,7 @@ describe('initialExpansionFor', () => {
     // and processes it (harmlessly — visibleDependencyGraph just finds no
     // further requirements there), so it lands in the set the same as
     // anything else the walk didn't stop short of.
-    assert.deepEqual(initialExpansionFor(quests, 'A', none), new Set(['A', 'B', 'C', 'D', 'E']));
+    assert.deepEqual(initialExpansionFor(quests, ['A'], none), new Set(['A', 'B', 'C', 'D', 'E']));
   });
 
   it('stops expanding a branch at the first completed quest, but keeps it in the set up to there', () => {
@@ -203,7 +203,7 @@ describe('initialExpansionFor', () => {
     const quests = [quest('E'), quest('D', ['E']), quest('C', ['D']), quest('B', ['C']), quest('A', ['B'])];
     const isCompleted = (name) => name === 'C';
 
-    const expanded = initialExpansionFor(quests, 'A', isCompleted);
+    const expanded = initialExpansionFor(quests, ['A'], isCompleted);
     assert.deepEqual(expanded, new Set(['A', 'B']), 'B is expanded (revealing C), but C itself is not');
   });
 
@@ -212,7 +212,7 @@ describe('initialExpansionFor', () => {
     const quests = [quest('XX'), quest('YY'), quest('X', ['XX']), quest('Y', ['YY']), quest('A', ['X', 'Y'])];
     const isCompleted = (name) => name === 'X';
 
-    const expanded = initialExpansionFor(quests, 'A', isCompleted);
+    const expanded = initialExpansionFor(quests, ['A'], isCompleted);
     // X (completed) is never processed at all — its own requirement XX is
     // never even discovered. Y (not completed) keeps unfolding, reaching
     // YY too.
@@ -221,12 +221,12 @@ describe('initialExpansionFor', () => {
 
   it('never expands past an unresolved requirement (no matching quest record)', () => {
     const quests = [quest('Miniquest', ['Some Tutorial Area'])];
-    assert.deepEqual(initialExpansionFor(quests, 'Miniquest', none), new Set(['Miniquest']));
+    assert.deepEqual(initialExpansionFor(quests, ['Miniquest'], none), new Set(['Miniquest']));
   });
 
   it('only ever expands a shared prerequisite once, however many branches reach it', () => {
     const quests = [quest('Root'), quest('X', ['Root']), quest('Y', ['Root']), quest('Top', ['X', 'Y'])];
-    const expanded = initialExpansionFor(quests, 'Top', none);
+    const expanded = initialExpansionFor(quests, ['Top'], none);
     assert.deepEqual(expanded, new Set(['Top', 'X', 'Y', 'Root']));
   });
 });
@@ -259,5 +259,61 @@ describe('ancestorNames', () => {
   it('ignores edges unrelated to the traced node', () => {
     const edges = [edge('B', 'A'), edge('D', 'C')];
     assert.deepEqual(ancestorNames(edges, 'A'), new Set(['A', 'B']));
+  });
+});
+
+// A questline chip (quest-series-links.js) passes every quest in a series
+// at once — these cover that "more than one target, not necessarily one
+// connected tree" case across all three functions that take targetNames.
+describe('multiple targets (questlines)', () => {
+  // A requires B; C and D have nothing to do with A or B, or each other —
+  // two genuinely disconnected quests alongside a two-quest chain, all
+  // three named as targets at once.
+  const quests = [quest('B'), quest('A', ['B']), quest('C'), quest('D')];
+
+  it('dependencyGraphFor includes every target as its own node, connected or not', () => {
+    const graph = dependencyGraphFor(quests, ['A', 'C', 'D']);
+    assert.deepEqual(
+      graph.nodes.map((node) => node.name).sort(),
+      ['A', 'B', 'C', 'D'],
+      'B is pulled in as A\'s requirement; C and D need nothing and nothing needs them, but still appear',
+    );
+  });
+
+  it('marks every target isTarget, not just one', () => {
+    const graph = dependencyGraphFor(quests, ['A', 'C', 'D']);
+    const targets = graph.nodes.filter((node) => node.isTarget).map((node) => node.name).sort();
+    assert.deepEqual(targets, ['A', 'C', 'D']);
+    assert.equal(graph.nodes.find((node) => node.name === 'B').isTarget, false);
+  });
+
+  it('gives a disconnected target its own layer 0 island rather than dropping it', () => {
+    const graph = dependencyGraphFor(quests, ['A', 'C', 'D']);
+    assert.equal(graph.nodes.find((node) => node.name === 'C').layer, 0);
+    assert.equal(graph.nodes.find((node) => node.name === 'D').layer, 0);
+    assert.equal(graph.nodes.find((node) => node.name === 'B').layer, 0);
+    assert.equal(graph.nodes.find((node) => node.name === 'A').layer, 1);
+  });
+
+  it('skips a target name with no matching quest but keeps the rest', () => {
+    const graph = dependencyGraphFor(quests, ['A', 'Not A Real Quest', 'C']);
+    assert.deepEqual(graph.nodes.map((node) => node.name).sort(), ['A', 'B', 'C']);
+  });
+
+  it('returns null only when none of the target names resolve', () => {
+    assert.equal(dependencyGraphFor(quests, ['Not A Real Quest', 'Also Not Real']), null);
+  });
+
+  it('visibleDependencyGraph shows every target immediately, before any expansion', () => {
+    const graph = visibleDependencyGraph(quests, ['A', 'C', 'D'], new Set());
+    assert.deepEqual(graph.nodes.map((node) => node.name).sort(), ['A', 'C', 'D'], 'B stays hidden until A is expanded');
+  });
+
+  it('initialExpansionFor seeds from every target independently', () => {
+    // E <- B <- A (A is a target); C is a standalone target with its own
+    // requirement F.
+    const chained = [quest('E'), quest('B', ['E']), quest('A', ['B']), quest('F'), quest('C', ['F'])];
+    const expanded = initialExpansionFor(chained, ['A', 'C'], () => false);
+    assert.deepEqual(expanded, new Set(['A', 'B', 'E', 'C', 'F']));
   });
 });
