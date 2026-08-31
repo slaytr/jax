@@ -54,6 +54,21 @@ const xpTableFor = (skill) => (skill.name === 'Invention' ? INVENTION_XP_TABLE :
  * `undefined` past the table's top (the skill's real level cap). */
 export const xpForLevel = (skill, level) => xpTableFor(skill)[level];
 
+/** The reverse of xpForLevel: the highest level whose own xp threshold is
+ * at or below `xp` — level 1 for any xp below the table's own level-2 entry
+ * (there's no level 0), and never above the table's own top level, however
+ * far `xp` climbs past it. Used to keep a goal dialog's Level and XP inputs
+ * in sync as a viewer edits either one directly (player-goals.js). */
+export function levelForXp(skill, xp) {
+  const table = xpTableFor(skill);
+  let level = 1;
+  for (let candidate = 2; candidate < table.length; candidate += 1) {
+    if (table[candidate] > xp) break;
+    level = candidate;
+  }
+  return level;
+}
+
 /**
  * How far `xp` sits between `level` and `level + 1`, as a 0–1 share — the
  * skill grid's progress-to-next-level bar. `level` is already at the top of

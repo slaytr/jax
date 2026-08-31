@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { STANDARD_XP_TABLE, INVENTION_XP_TABLE, xpProgress } from '../assets/js/xp-table.js';
+import { STANDARD_XP_TABLE, INVENTION_XP_TABLE, xpProgress, levelForXp } from '../assets/js/xp-table.js';
 
 const skill = (name, max = 99) => ({ name, max });
 
@@ -75,5 +75,34 @@ describe('xpProgress', () => {
   it('never exceeds 1 or drops below 0 even with an inconsistent reading', () => {
     assert.equal(xpProgress(skill('Attack'), 10, 0), 0);
     assert.equal(xpProgress(skill('Attack'), 10, Number.MAX_SAFE_INTEGER), 1);
+  });
+});
+
+describe('levelForXp', () => {
+  it('is the exact inverse of xpForLevel, at every level boundary', () => {
+    for (let level = 1; level <= 99; level += 1) {
+      assert.equal(levelForXp(skill('Attack'), STANDARD_XP_TABLE[level]), level, `level ${level}`);
+    }
+  });
+
+  it('reads as the lower level anywhere strictly between two boundaries', () => {
+    const at = STANDARD_XP_TABLE[10];
+    const next = STANDARD_XP_TABLE[11];
+    assert.equal(levelForXp(skill('Attack'), at + (next - at) / 2), 10);
+    assert.equal(levelForXp(skill('Attack'), next - 1), 10);
+  });
+
+  it('is 1 for zero xp — there is no level 0', () => {
+    assert.equal(levelForXp(skill('Attack'), 0), 1);
+  });
+
+  it('caps at the table\'s own top level for xp far past it', () => {
+    assert.equal(levelForXp(skill('Attack', 99), Number.MAX_SAFE_INTEGER), 120);
+  });
+
+  it('uses the Invention table for Invention specifically, not the standard one', () => {
+    assert.equal(levelForXp(skill('Invention'), INVENTION_XP_TABLE[10]), 10);
+    // The same xp read against the standard table lands on a different level.
+    assert.notEqual(levelForXp(skill('Attack'), INVENTION_XP_TABLE[10]), 10);
   });
 });
