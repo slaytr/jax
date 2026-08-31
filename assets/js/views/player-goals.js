@@ -3,7 +3,7 @@ import { formatNumber, formatCompact, formatSpan, formatRelativeTime } from '../
 import { xpForLevel, levelForXp } from '../xp-table.js';
 import { SKILLS, iconFor, QUEST_POINTS_ICON } from '../config.js';
 import { statusOf } from './player-quests.js';
-import { notMetSkillRequirements, skillValuesByName, buildQuestGoalDrafts } from '../quest-goal.js';
+import { notMetSkillRequirements, treeSkillRequirements, skillValuesByName, buildQuestGoalDrafts } from '../quest-goal.js';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
@@ -909,6 +909,26 @@ export function renderDeleteConfirmDialog(goal, skill, { onConfirm, onClose }) {
   return dialog;
 }
 
+/** Same {skill, level} shape, same entries — order aside — iff `a` and `b'
+ * came from the identical requirement set. Used only to decide whether
+ * offering "include the tree" would actually change anything: a quest with
+ * no prerequisite quests, or whose prerequisites add no skill requirement
+ * beyond its own, has nothing for the checkbox to add, so it stays hidden
+ * rather than presenting a toggle that does nothing either way. */
+function sameRequirements(a, b) {
+  if (a.length !== b.length) return false;
+  const levelBySkill = new Map(b.map((req) => [req.skill, req.level]));
+  return a.every((req) => levelBySkill.get(req.skill) === req.level);
+}
+
+function requirementListItem(req) {
+  const skill = SKILLS.find((candidate) => candidate.name === req.skill);
+  return el('li', { class: 'quest-goal-dialog-req' }, [
+    skill ? el('img', { src: iconFor(skill), alt: '', width: 14, height: 14, decoding: 'async' }) : null,
+    el('span', { text: `${req.skill} ${req.level}` }),
+  ]);
+}
+
 /**
  * The "track this quest as a goal?" confirmation the dependency map's own
  * per-node "add goal" button opens (quest-dependency-graph.js, not-started
@@ -923,36 +943,61 @@ export function renderDeleteConfirmDialog(goal, skill, { onConfirm, onClose }) {
  * Goals tab, never merges into an existing one — a skill goal already
  * tracked separately for the same skill is left alone; this doesn't check
  * for or reuse it.
+ *
+ * `quests` (the full quest-data list) only feeds the optional "include this
+ * quest's whole prerequisite tree" checkbox (treeSkillRequirements,
+ * quest-goal.js) — e.g. Plague's End itself lists no Fletching requirement,
+ * but Within the Light (one of its prerequisites) needs 88, so checking this
+ * surfaces that goal too, deduplicated to the highest level asked for
+ * anywhere in the tree rather than one entry per quest that mentions it.
+ * Off by default (matches this dialog's long-standing single-quest
+ * behaviour); hidden entirely when the tree wouldn't add anything beyond the
+ * quest's own requirements. Toggling it updates the preview list and summary
+ * in place — same "mutate the built DOM directly" shape as renderGoalDialog's
+ * own level/xp radio sync just above — rather than re-opening the dialog.
  */
-export function renderQuestGoalDialog(quest, player, { onConfirm, onClose }) {
+export function renderQuestGoalDialog(quest, player, quests, { onConfirm, onClose }) {
   const skillValues = skillValuesByName(player);
   const skillLevels = new Map([...skillValues].map(([name, value]) => [name, value.level]));
-  const notMet = notMetSkillRequirements(quest, skillLevels);
+  const ownNotMet = notMetSkillRequirements(quest, skillLevels);
+  const treeNotMet = treeSkillRequirements(quest, quests, skillLevels);
+  const treeAddsSomething = !sameRequirements(ownNotMet, treeNotMet);
 
-  const summary =
-    notMet.length === 0
-      ? `Adds one goal, tracking the quest itself.`
-      : `Adds ${notMet.length + 1} goals: the quest itself, plus a skill goal for each requirement below.`;
+  let includeTree = false;
+  const currentRequirements = () => (includeTree ? treeNotMet : ownNotMet);
 
-  const requirementList =
-    notMet.length === 0
-      ? null
-      : el(
-          'ul',
-          { class: 'quest-goal-dialog-reqs' },
-          notMet.map((req) => {
-            const skill = SKILLS.find((candidate) => candidate.name === req.skill);
-            return el('li', { class: 'quest-goal-dialog-req' }, [
-              skill ? el('img', { src: iconFor(skill), alt: '', width: 14, height: 14, decoding: 'async' }) : null,
-              el('span', { text: `${req.skill} ${req.level}` }),
-            ]);
-          }),
-        );
+  const summaryText = el('p', { class: 'goal-dialog-current' });
+  const requirementList = el('ul', { class: 'quest-goal-dialog-reqs' });
+
+  const refresh = () => {
+    const notMet = currentRequirements();
+    summaryText.textContent =
+      notMet.length === 0
+        ? `Adds one goal, tracking the quest itself.`
+        : `Adds ${notMet.length + 1} goals: the quest itself, plus a skill goal for each requirement below.`;
+    requirementList.replaceChildren(...notMet.map(requirementListItem));
+    requirementList.hidden = notMet.length === 0;
+  };
+  refresh();
+
+  const treeToggle = treeAddsSomething
+    ? el('label', { class: 'quest-goal-dialog-tree-toggle' }, [
+        el('input', {
+          type: 'checkbox',
+          onchange: (event) => {
+            includeTree = event.target.checked;
+            refresh();
+          },
+        }),
+        el('span', { text: "Include this quest's whole prerequisite tree" }),
+      ])
+    : null;
 
   const dialog = el('dialog', { class: 'goal-dialog goal-confirm-dialog' }, [
     el('div', { class: 'goal-form' }, [
       el('h3', { class: 'goal-dialog-title', text: `Track "${quest.name}" as a goal?` }),
-      el('p', { class: 'goal-dialog-current', text: summary }),
+      summaryText,
+      treeToggle,
       requirementList,
       el('div', { class: 'goal-dialog-actions' }, [
         el('button', { type: 'button', class: 'goal-btn', text: 'Cancel', onclick: () => dialog.close() }),
@@ -961,7 +1006,7 @@ export function renderQuestGoalDialog(quest, player, { onConfirm, onClose }) {
           class: 'goal-btn goal-btn-primary',
           text: 'Add goals',
           onclick: () => {
-            onConfirm(buildQuestGoalDrafts(quest, skillLevels, skillValues));
+            onConfirm(buildQuestGoalDrafts(quest, skillLevels, skillValues, { requirements: currentRequirements() }));
             dialog.close();
           },
         }),

@@ -1,4 +1,5 @@
 import { SKILLS } from './config.js';
+import { dependencyGraphFor } from './quest-graph.js';
 
 /**
  * Pure logic behind "turn this quest into a set of goals" — the dependency
@@ -32,6 +33,33 @@ export function notMetSkillRequirements(quest, skillLevels) {
     .filter((req) => (skillLevels.get(req.skill) ?? 0) < req.level);
 }
 
+/** Every not-met skill requirement across `quest`'s whole prerequisite tree —
+ * the quest itself plus every quest transitively required to start it
+ * (dependencyGraphFor, quest-graph.js) — deduplicated by skill name, keeping
+ * only the highest level asked for anywhere in the tree. Plague's End itself
+ * lists no Fletching requirement, but Within the Light (one of its
+ * prerequisites) needs 88, so tracking Plague's End "with its tree" still
+ * surfaces that goal. Falls back to just `quest` alone if `quests` doesn't
+ * resolve it (shouldn't happen — `quest` always comes from that same list —
+ * but dependencyGraphFor returning null is cheap to guard against here rather
+ * than assume away). */
+export function treeSkillRequirements(quest, quests, skillLevels) {
+  const graph = dependencyGraphFor(quests, [quest.name]);
+  const treeQuests = graph ? graph.nodes.map((node) => node.quest).filter(Boolean) : [quest];
+
+  const highestLevelBySkill = new Map();
+  for (const treeQuest of treeQuests) {
+    for (const req of treeQuest.skillRequirements.filter(isTrackableSkillRequirement)) {
+      const highest = highestLevelBySkill.get(req.skill);
+      if (highest === undefined || req.level > highest) highestLevelBySkill.set(req.skill, req.level);
+    }
+  }
+
+  return [...highestLevelBySkill.entries()]
+    .map(([skill, level]) => ({ skill, level }))
+    .filter((req) => (skillLevels.get(req.skill) ?? 0) < req.level);
+}
+
 /** `Map<skill name, { id, level, xp }>` — everything buildQuestGoalDrafts
  * needs to turn one not-met requirement into a real skill-goal draft (its
  * `skillId`, and its own starting point). Keyed by name, same as quest-data's
@@ -60,9 +88,19 @@ export function skillValuesByName(player) {
  * toISOString()` but are overridable so this stays unit-testable without
  * mocking globals — same reasoning as player-goals.js's own `uid()`, just
  * threaded in rather than baked in, since this file has no DOM/browser
- * dependency to piggyback a module-level default off of.
+ * dependency to piggyback a module-level default off of. `requirements`
+ * defaults to the quest's own not-met requirements (notMetSkillRequirements)
+ * but is overridable with treeSkillRequirements' result instead, for the
+ * "include the whole prerequisite tree" option (player-goals.js's
+ * renderQuestGoalDialog) — either way, one skill goal per entry, so this
+ * function itself doesn't need to know which one produced the list.
  */
-export function buildQuestGoalDrafts(quest, skillLevels, skillValues, { idFactory = defaultId, nowIso = defaultNowIso } = {}) {
+export function buildQuestGoalDrafts(
+  quest,
+  skillLevels,
+  skillValues,
+  { idFactory = defaultId, nowIso = defaultNowIso, requirements = notMetSkillRequirements(quest, skillLevels) } = {},
+) {
   const group = quest.name;
   const startedAt = nowIso();
 
@@ -76,7 +114,7 @@ export function buildQuestGoalDrafts(quest, skillLevels, skillValues, { idFactor
     completedAt: null,
   };
 
-  const skillGoals = notMetSkillRequirements(quest, skillLevels).map((req) => {
+  const skillGoals = requirements.map((req) => {
     const value = skillValues.get(req.skill) ?? { id: null, level: 0, xp: 0 };
     return {
       id: idFactory(),

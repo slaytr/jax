@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { notMetSkillRequirements, buildQuestGoalDrafts } from '../assets/js/quest-goal.js';
+import { notMetSkillRequirements, treeSkillRequirements, buildQuestGoalDrafts } from '../assets/js/quest-goal.js';
 
-const quest = (name, skillRequirements) => ({ name, skillRequirements });
+const quest = (name, skillRequirements, questRequirements = []) => ({
+  name,
+  skillRequirements,
+  questRequirements: questRequirements.map((questName) => ({ quest: questName, relation: 'required' })),
+});
 
 describe('notMetSkillRequirements', () => {
   it('keeps only requirements above the given level', () => {
@@ -47,6 +51,51 @@ describe('notMetSkillRequirements', () => {
       { skill: 'Agility', level: 25 },
     ]);
     assert.deepEqual(notMetSkillRequirements(q, new Map()), [{ skill: 'Agility', level: 25 }]);
+  });
+});
+
+describe('treeSkillRequirements', () => {
+  it("pulls in a prerequisite's own skill requirement even when the target quest lists none itself", () => {
+    // Plague's End (Fletching 88 comes from Within the Light, not Plague's
+    // End's own skillRequirements) is the motivating real-data case.
+    const withinTheLight = quest('Within the Light', [{ skill: 'Fletching', level: 88 }]);
+    const plaguesEnd = quest('Plague\'s End', [], ["Within the Light"]);
+    const quests = [plaguesEnd, withinTheLight];
+
+    assert.deepEqual(treeSkillRequirements(plaguesEnd, quests, new Map()), [{ skill: 'Fletching', level: 88 }]);
+  });
+
+  it('keeps only the highest level for a skill required at different levels across the tree', () => {
+    const grandparent = quest('Grandparent', [{ skill: 'Herblore', level: 40 }]);
+    const parent = quest('Parent', [{ skill: 'Herblore', level: 70 }], ['Grandparent']);
+    const child = quest('Child', [{ skill: 'Herblore', level: 55 }], ['Parent']);
+    const quests = [grandparent, parent, child];
+
+    assert.deepEqual(treeSkillRequirements(child, quests, new Map()), [{ skill: 'Herblore', level: 70 }]);
+  });
+
+  it('excludes a requirement already met by the player, same as notMetSkillRequirements', () => {
+    const parent = quest('Parent', [{ skill: 'Crafting', level: 50 }]);
+    const child = quest('Child', [{ skill: 'Woodcutting', level: 30 }], ['Parent']);
+    const quests = [parent, child];
+
+    assert.deepEqual(
+      treeSkillRequirements(child, quests, new Map([['Crafting', 50]])),
+      [{ skill: 'Woodcutting', level: 30 }],
+    );
+  });
+
+  it('excludes the "quest points" pseudo-skill anywhere in the tree', () => {
+    const parent = quest('Parent', [{ skill: 'quest points', level: 33 }]);
+    const child = quest('Child', [{ skill: 'Agility', level: 10 }], ['Parent']);
+    const quests = [parent, child];
+
+    assert.deepEqual(treeSkillRequirements(child, quests, new Map()), [{ skill: 'Agility', level: 10 }]);
+  });
+
+  it('is just the quest\'s own requirements when it has no prerequisite quests', () => {
+    const q = quest('Q', [{ skill: 'Agility', level: 25 }]);
+    assert.deepEqual(treeSkillRequirements(q, [q], new Map()), [{ skill: 'Agility', level: 25 }]);
   });
 });
 
@@ -127,5 +176,23 @@ describe('buildQuestGoalDrafts', () => {
     const drafts = buildQuestGoalDrafts(q, new Map(), new Map(), options());
     assert.equal(drafts.length, 1, 'just the quest goal — no skillId: null draft alongside it');
     assert.equal(drafts[0].kind, 'quest');
+  });
+
+  it('uses an explicit requirements list instead of the quest\'s own, for the "include the tree" option', () => {
+    // Plague's End itself has no Fletching requirement — this is the shape
+    // renderQuestGoalDialog passes when the tree checkbox is on
+    // (treeSkillRequirements' result), not what notMetSkillRequirements(q,
+    // ...) alone would produce.
+    const q = quest('Plague\'s End', []);
+    const drafts = buildQuestGoalDrafts(
+      q,
+      new Map(),
+      new Map([['Fletching', { id: 9, level: 40, xp: 10000 }]]),
+      { ...options(), requirements: [{ skill: 'Fletching', level: 88 }] },
+    );
+    assert.equal(drafts.length, 2);
+    assert.equal(drafts[1].kind, 'skill');
+    assert.equal(drafts[1].skillId, 9);
+    assert.equal(drafts[1].targetValue, 88);
   });
 });

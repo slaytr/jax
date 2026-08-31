@@ -2667,6 +2667,21 @@ body::after {
   color: var(--ink-2);
 }
 
+/* The "include this quest's whole prerequisite tree" checkbox
+   (renderQuestGoalDialog, player-goals.js) — same row shape as
+   goal-target-choice, just a checkbox instead of a radio pair. */
+.quest-goal-dialog-tree-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+.quest-goal-dialog-tree-toggle input[type='checkbox'] {
+  accent-color: var(--ember);
+}
+
 .goal-target-choice {
   display: flex;
   align-items: center;
