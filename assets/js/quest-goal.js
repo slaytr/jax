@@ -10,13 +10,26 @@ import { SKILLS } from './config.js';
  * it's unit-testable on its own.
  */
 
+/** A handful of quests (Dragon Slayer among them) list "quest points" as a
+ * skillRequirements entry — a real requirement in-game, but not a skill:
+ * there's no SKILLS entry, no icon, and no way to set a level-target goal
+ * against it the way every other requirement here works. Excluded from goal
+ * creation entirely for now rather than crashing on a skillId that doesn't
+ * resolve to anything (see skillValuesByName's own null fallback) — a
+ * player who needs quest points for a quest already sees that count on
+ * their own masthead. */
+const isTrackableSkillRequirement = (req) => req.skill.toLowerCase() !== 'quest points';
+
 /** Every one of `quest`'s skill requirements the player's own current level
- * doesn't yet meet. `skillLevels` is a plain `Map<skill name, level>` — the
- * same shape skillLevelsByName (player-quests.js) already builds for the
- * dependency map's own skill-chip colouring, reused here rather than
- * re-derived. */
+ * doesn't yet meet, excluding the untrackable "quest points" pseudo-skill
+ * (see isTrackableSkillRequirement). `skillLevels` is a plain `Map<skill
+ * name, level>` — the same shape skillLevelsByName (player-quests.js)
+ * already builds for the dependency map's own skill-chip colouring, reused
+ * here rather than re-derived. */
 export function notMetSkillRequirements(quest, skillLevels) {
-  return quest.skillRequirements.filter((req) => (skillLevels.get(req.skill) ?? 0) < req.level);
+  return quest.skillRequirements
+    .filter(isTrackableSkillRequirement)
+    .filter((req) => (skillLevels.get(req.skill) ?? 0) < req.level);
 }
 
 /** `Map<skill name, { id, level, xp }>` — everything buildQuestGoalDrafts

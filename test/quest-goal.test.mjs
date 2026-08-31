@@ -31,6 +31,23 @@ describe('notMetSkillRequirements', () => {
   it('is empty for a quest with no skill requirements at all', () => {
     assert.deepEqual(notMetSkillRequirements(quest('Q', []), new Map()), []);
   });
+
+  it('excludes the "quest points" pseudo-skill requirement entirely, met or not', () => {
+    // Dragon Slayer, in the real data — quest-data lists "quest points" as
+    // a skillRequirements entry even though it isn't a real skill (no
+    // SKILLS entry, no icon), so it can never be turned into a goal.
+    const q = quest('Dragon Slayer', [{ skill: 'quest points', level: 33 }]);
+    assert.deepEqual(notMetSkillRequirements(q, new Map()), [], 'not met, but still excluded');
+    assert.deepEqual(notMetSkillRequirements(q, new Map([['quest points', 100]])), []);
+  });
+
+  it('excludes "quest points" alongside real requirements, keeping only the real ones', () => {
+    const q = quest('Q', [
+      { skill: 'quest points', level: 33 },
+      { skill: 'Agility', level: 25 },
+    ]);
+    assert.deepEqual(notMetSkillRequirements(q, new Map()), [{ skill: 'Agility', level: 25 }]);
+  });
 });
 
 describe('buildQuestGoalDrafts', () => {
@@ -103,5 +120,12 @@ describe('buildQuestGoalDrafts', () => {
     const q = quest('Q', [{ skill: 'A', level: 1 }]);
     const drafts = buildQuestGoalDrafts(q, new Map(), new Map([['A', { id: 1, level: 0, xp: 0 }]]), options());
     assert.equal(drafts[0].startedAt, drafts[1].startedAt);
+  });
+
+  it('never creates a skill goal for the "quest points" requirement (it broke the goal cards — no SKILLS entry, no icon)', () => {
+    const q = quest('Dragon Slayer', [{ skill: 'quest points', level: 33 }]);
+    const drafts = buildQuestGoalDrafts(q, new Map(), new Map(), options());
+    assert.equal(drafts.length, 1, 'just the quest goal — no skillId: null draft alongside it');
+    assert.equal(drafts[0].kind, 'quest');
   });
 });

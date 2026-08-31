@@ -52,15 +52,31 @@ function checkCompletion(goal, player) {
   return { ...goal, completedAt: new Date().toISOString(), completedLevel: value.level, completedXp: value.xp };
 }
 
+/** A `kind: 'skill'` goal whose `skillId` doesn't resolve to any current
+ * SKILLS entry can't be rendered (activeSkillGoalCard/completedSkillGoalCard
+ * both need the real skill for its name and icon — iconFor would throw on
+ * undefined) — dropped here rather than crashing every future render. The
+ * only way to reach this today is a quest-goal draft built before
+ * quest-goal.js's notMetSkillRequirements started excluding the "quest
+ * points" pseudo-skill requirement; kept as a general safety net rather than
+ * a one-off migration, since any other future cause of a dangling skillId
+ * should self-heal the same way instead of needing its own cleanup pass. */
+const isRenderable = (goal) => goal.kind === 'quest' || SKILLS.some((skill) => skill.id === goal.skillId);
+
 /**
- * Re-checks every goal against the player's current skills. Returns a new
- * array (goals that didn't change are the same object, so a caller can
- * still tell *which* changed if it ever needs to) plus whether anything
- * actually flipped to complete — stats.js only needs to persist when it did.
+ * Re-checks every goal against the player's current skills, and drops any
+ * that can no longer be rendered at all (isRenderable). Returns a new array
+ * (goals that didn't change are the same object, so a caller can still tell
+ * *which* changed if it ever needs to) plus whether anything actually
+ * changed — either a completion or a drop — stats.js only needs to persist
+ * when it did.
  */
 export function refreshGoals(goals, player) {
   let changed = false;
-  const next = goals.map((goal) => {
+  const renderable = goals.filter(isRenderable);
+  if (renderable.length !== goals.length) changed = true;
+
+  const next = renderable.map((goal) => {
     const updated = checkCompletion(goal, player);
     if (updated !== goal) changed = true;
     return updated;
