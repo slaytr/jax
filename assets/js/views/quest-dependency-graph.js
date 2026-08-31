@@ -1,9 +1,48 @@
-import { el, svgEl } from '../dom.js';
+import { el, svgEl, replaceChildren } from '../dom.js';
 import { dependencyGraphFor, visibleDependencyGraph, ancestorNames } from '../quest-graph.js';
 import { statusOf, STATUS_MARKER, skillLevelsByName } from './player-quests.js';
 import { SKILLS, iconFor } from '../config.js';
 
 const SKILL_BY_NAME = new Map(SKILLS.map((skill) => [skill.name, skill]));
+
+/**
+ * The fullscreen overlay's own home — a singleton appended directly to
+ * `document.body` on first use (same "module-level element, created once"
+ * shape as tooltip.js's own tip div), *outside* #panel's subtree entirely.
+ * That's not incidental: #panel carries a page-load entrance animation
+ * (styles.css's `body[data-ready] #panel { animation: rise … }`) which,
+ * for as long as it's applying a real (non-`none`) transform, establishes a
+ * *new containing block* for any `position: fixed` descendant — the CSS
+ * spec's own rule, not a bug in this codebase, but one that would otherwise
+ * pin the fullscreen card to #panel's own box instead of the viewport,
+ * which is exactly what "full screen" is supposed to escape. Rendering the
+ * overlay into a portal that's a sibling of #panel (a plain, untransformed
+ * body-level div) sidesteps the whole issue rather than depending on that
+ * animation's own timing.
+ */
+let fullscreenPortal = null;
+
+function ensureFullscreenPortal() {
+  if (!fullscreenPortal) {
+    fullscreenPortal = el('div', { class: 'quest-graph-fullscreen-portal' });
+    document.body.append(fullscreenPortal);
+  }
+  return fullscreenPortal;
+}
+
+/**
+ * Empties the fullscreen portal — a no-op if nothing's ever been rendered
+ * into it yet. Called unconditionally at the very top of stats.js's own
+ * render(), before it even knows which tab is active: a portal left over
+ * from a previous fullscreen render must never linger once that state is no
+ * longer current, including on a render pass that doesn't call
+ * renderQuestDependencyGraph at all (switching away from the Quests tab
+ * entirely, say) — that function only gets a chance to *re-fill* it, within
+ * the same render pass, if the map is still selected and still fullscreen.
+ */
+export function clearFullscreenPortal() {
+  if (fullscreenPortal) replaceChildren(fullscreenPortal);
+}
 
 /**
  * The Quests tab's second column: a left-to-right flow chart of whichever
@@ -453,6 +492,25 @@ function targetNamesFor(quests, selection) {
   return [selection.quest.name];
 }
 
+/** The card header's own fullscreen toggle — same glyph either way ("⛶", a
+ * standard four-corners fullscreen mark) with the title/aria-pressed telling
+ * the two states apart, same contextual-label-not-separate-icon convention
+ * as .quest-series-toggle's own chevron. Genuinely useful once a big chain
+ * (Sliske's Endgame's is ~130 quests across 13 layers) forces
+ * .quest-graph-scroll to scroll in both directions at once — expanding the
+ * card to the full viewport (styles.css's .quest-flowchart.is-fullscreen)
+ * gives it far more room before that scrolling kicks in. */
+function fullscreenToggleButton(isFullscreen, onToggleFullscreen) {
+  return el('button', {
+    type: 'button',
+    class: 'quest-graph-fullscreen-btn',
+    title: isFullscreen ? 'Exit full screen' : 'Expand to full screen',
+    'aria-pressed': isFullscreen ? 'true' : 'false',
+    onclick: onToggleFullscreen,
+    text: isFullscreen ? '✕' : '⛶',
+  });
+}
+
 /**
  * @param quests the full quest-data/quests.json list (quest-data.js), or
  *   null while it's still loading/failed — the caller (stats.js) only ever
@@ -485,6 +543,12 @@ function targetNamesFor(quests, selection) {
  * @param onCreateQuestGoal (quest) => void — opens the "track this as a
  *   goal" confirmation (stats.js), called by clicking a not-started node's
  *   "⚑" button.
+ * @param isFullscreen whether the card is currently expanded to fill the
+ *   viewport (stats.js's own render state — see questGraphFullscreen's doc
+ *   comment there for why this is plain CSS rather than the native
+ *   Fullscreen API).
+ * @param onToggleFullscreen () => void — flips `isFullscreen`, called by the
+ *   header's own toggle button (fullscreenToggleButton above).
  */
 export function renderQuestDependencyGraph({
   quests,
@@ -496,6 +560,8 @@ export function renderQuestDependencyGraph({
   onHighlightNode,
   existingQuestGoalNames,
   onCreateQuestGoal,
+  isFullscreen,
+  onToggleFullscreen,
 }) {
   const body = (() => {
     if (!selection || !quests) {
@@ -508,7 +574,7 @@ export function renderQuestDependencyGraph({
       const label = selection.kind === 'series' ? `the "${selection.seriesName}" questline` : `"${selection.quest.name}"`;
       return el('p', { class: 'chart-empty', text: `Couldn't find ${label} in the quest data.` });
     }
-    return el('div', {}, [
+    return el('div', { class: 'quest-graph-body' }, [
       graphCaption(totalGraph, targetNames, selection),
       el('div', { class: 'quest-graph-scroll' }, [
         graphCanvas(
@@ -526,8 +592,20 @@ export function renderQuestDependencyGraph({
     ]);
   })();
 
-  return el('section', { class: 'lb quest-flowchart' }, [
-    el('div', { class: 'lb-head' }, [el('div', { class: 'lb-title' }, [el('h2', { text: 'Dependency map' })])]),
+  const section = el('section', { class: `lb quest-flowchart${isFullscreen ? ' is-fullscreen' : ''}` }, [
+    el('div', { class: 'lb-head' }, [
+      el('div', { class: 'lb-title' }, [el('h2', { text: 'Dependency map' })]),
+      fullscreenToggleButton(isFullscreen, onToggleFullscreen),
+    ]),
     body,
   ]);
+
+  // Fullscreen: rendered into the body-level portal instead of its normal
+  // spot in the tree (see ensureFullscreenPortal's own doc comment for why)
+  // — null here so .player-row doesn't also place it inline, doubled up.
+  if (isFullscreen) {
+    replaceChildren(ensureFullscreenPortal(), section);
+    return null;
+  }
+  return section;
 }

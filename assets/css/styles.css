@@ -2129,6 +2129,98 @@ body::after {
   padding: 1rem 0;
 }
 
+/* Same recipe as .gains-view-toggle: outlined and muted at rest, filled
+   ember once active (here, while the card is expanded to full screen). */
+.quest-graph-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 2px;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.16s var(--ease),
+    border-color 0.16s var(--ease),
+    background-color 0.16s var(--ease);
+}
+
+.quest-graph-fullscreen-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.quest-graph-fullscreen-btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.quest-graph-fullscreen-btn[aria-pressed='true'] {
+  color: #fdf5e7;
+  border-color: var(--ember);
+  background: rgba(217, 89, 38, 0.13);
+}
+
+/* Empty (the ordinary, not-fullscreen case — clearFullscreenPortal,
+   quest-dependency-graph.js) takes up no space of its own; nothing else
+   needed here beyond that. */
+.quest-graph-fullscreen-portal:empty {
+  display: none;
+}
+
+/* Expanded to fill the viewport (the header's own fullscreen toggle,
+   quest-dependency-graph.js) — plain CSS rather than the native Fullscreen
+   API (see stats.js's questGraphFullscreen for why), so this is just one
+   more state-driven class, same as .quest-series-card.is-collapsed. Sits
+   below .tooltip's own z-index (100) so a skill chip's tooltip still shows
+   above it, and well above everything else on the page. Rendered into its
+   own body-level portal (ensureFullscreenPortal) rather than staying in its
+   normal spot in the tree — #panel carries a page-load entrance animation
+   that would otherwise become this element's containing block instead of
+   the real viewport for as long as that animation keeps applying a
+   transform (see ensureFullscreenPortal's own doc comment). */
+.quest-flowchart.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 1.25rem clamp(1rem, 3.5vw, 2.5rem) 1.5rem;
+  background: var(--surface-0);
+  overflow-y: auto;
+}
+
+.quest-flowchart.is-fullscreen .lb-head {
+  flex: none;
+}
+
+/* .quest-graph-scroll's own direct parent, not .quest-flowchart itself —
+   needs to join the same flex chain (min-height: 0 so it can actually
+   shrink/scroll instead of pushing past its own flex-grown box) before
+   flex: 1 on the scroll container below means anything. */
+.quest-flowchart.is-fullscreen .quest-graph-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The one thing actually worth the extra room — grows to fill whatever
+   vertical space the header/caption/legend leave it, instead of staying
+   capped at the card's own ordinary 520px. */
+.quest-flowchart.is-fullscreen .quest-graph-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 .quest-graph-caption {
   margin: 0 0 0.6rem;
   color: var(--ink-muted);
@@ -2139,7 +2231,9 @@ body::after {
    Grandmaster chain's canvas can run well past the card's own width/height
    (see quest-graph.js's own size notes: the biggest is ~130 quests across
    13 layers), while a typical quest's is small enough to need no scrolling
-   at all. Capped rather than left to grow the whole page with it. */
+   at all. Capped rather than left to grow the whole page with it —
+   .quest-flowchart.is-fullscreen above lifts that cap once there's real
+   room to give it instead. */
 .quest-graph-scroll {
   max-height: 520px;
   overflow: auto;

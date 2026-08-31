@@ -17,7 +17,7 @@ import { renderPlayerMasthead } from './views/player-masthead.js';
 import { renderPlayerGains } from './views/player-gains.js';
 import { renderPlayerSkills } from './views/player-skills.js';
 import { renderPlayerQuestList, SORT_OPTIONS, STATUS_OPTIONS, SKILL_OPTIONS, statusOf } from './views/player-quests.js';
-import { renderQuestDependencyGraph } from './views/quest-dependency-graph.js';
+import { renderQuestDependencyGraph, clearFullscreenPortal } from './views/quest-dependency-graph.js';
 import { renderQuestSeriesLinks } from './views/quest-series-links.js';
 import { renderQuestPlanner } from './views/quest-planner.js';
 import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, refreshGoals } from './views/player-goals.js';
@@ -239,6 +239,18 @@ async function boot() {
     // selectedQuestSlug since a highlight from one target's chain means
     // nothing in another's.
     let highlightedQuestName = null;
+    // Whether the dependency map card is currently shown as a full-viewport
+    // overlay (its own toggle button, quest-dependency-graph.js) — an
+    // ordinary piece of render state, not the native Fullscreen API: that
+    // API's state lives outside this app's own model and would need
+    // special-casing around every render() (which tears down and rebuilds
+    // the whole panel on any change, including a node click inside the map
+    // itself — exactly the interaction someone examining a big graph in
+    // fullscreen would keep doing), so a plain CSS "fill the viewport"
+    // overlay driven by ordinary state composes with that rebuild-everything
+    // model for free instead of fighting it. Also more broadly compatible —
+    // Element.requestFullscreen() is unreliable-to-absent on iOS Safari.
+    let questGraphFullscreen = false;
 
     // Shared by onSelectQuest/onSelectSeries (render(), Quests tab body) and
     // applyQuestLinkParams (query-param deep links) below: every branch from
@@ -428,9 +440,18 @@ async function boot() {
       // whole .quest-graph-scroll div still resets a plain element's own
       // scrollLeft/scrollTop to 0 — otherwise a viewer scrolled into a big
       // chain (Sliske's Endgame, say) gets snapped back to the top-left on
-      // every click.
-      const questGraphScroll = dom.panel.querySelector('.quest-graph-scroll');
+      // every click. Queried document-wide, not scoped to dom.panel — while
+      // the map is fullscreen it lives in its own body-level portal instead
+      // (see quest-dependency-graph.js's ensureFullscreenPortal), and this
+      // needs to find it there too. Snapshotting before clearFullscreenPortal
+      // (below) runs is what keeps this from finding an already-emptied one.
+      const questGraphScroll = document.querySelector('.quest-graph-scroll');
       const questGraphScrollPosition = questGraphScroll ? { left: questGraphScroll.scrollLeft, top: questGraphScroll.scrollTop } : null;
+
+      // Unconditional, before anything else below decides what actually
+      // renders this pass — see clearFullscreenPortal's own doc comment for
+      // why this can't just live inside renderQuestDependencyGraph alone.
+      clearFullscreenPortal();
 
       // Resolved fresh each render (not cached in the outer state) since
       // it's derived purely from selectedSkillId — one fewer thing that
@@ -445,6 +466,14 @@ async function boot() {
         onSelect: (tab) => {
           previousTab = activeTab;
           activeTab = tab;
+          // The dependency map's fullscreen overlay only ever renders on the
+          // Quests tab (it's inside that tab's own body below) — leaving
+          // questGraphFullscreen set while switching away would strand
+          // document.body's own overflow: hidden lock (set for that overlay,
+          // cleared alongside it — see render()'s own side effect) with
+          // nothing left to clear it, silently breaking scroll on every
+          // other tab.
+          if (tab !== 'quests') questGraphFullscreen = false;
           persistStatsState();
           if (tab === 'quests') ensureQuestsLoaded();
           render();
@@ -598,6 +627,11 @@ async function boot() {
                       questGoalDraftQuest = quest;
                       render();
                     },
+                    isFullscreen: questGraphFullscreen,
+                    onToggleFullscreen: () => {
+                      questGraphFullscreen = !questGraphFullscreen;
+                      render();
+                    },
                   }),
                 ]),
                 quests ? renderQuestPlanner(quests, player, onSelectQuest, onSelectSeries) : null,
@@ -712,6 +746,12 @@ async function boot() {
 
       replaceChildren(dom.panel, el('div', { class: 'page-tabs' }, [tabs]), body, goalDialog, deleteConfirmDialog, questGoalDialog);
 
+      // The dependency map's fullscreen overlay covers the whole viewport
+      // (styles.css's .quest-flowchart.is-fullscreen) but sits in normal
+      // document flow underneath — without this, the page itself would
+      // still scroll behind it.
+      document.body.style.overflow = questGraphFullscreen ? 'hidden' : '';
+
       if (questSearchFocused) {
         const input = dom.panel.querySelector('.quest-search-input');
         if (input) {
@@ -721,7 +761,7 @@ async function boot() {
       }
 
       if (questGraphScrollPosition) {
-        const freshQuestGraphScroll = dom.panel.querySelector('.quest-graph-scroll');
+        const freshQuestGraphScroll = document.querySelector('.quest-graph-scroll');
         if (freshQuestGraphScroll) {
           freshQuestGraphScroll.scrollLeft = questGraphScrollPosition.left;
           freshQuestGraphScroll.scrollTop = questGraphScrollPosition.top;
@@ -732,6 +772,17 @@ async function boot() {
       deleteConfirmDialog?.showModal();
       questGoalDialog?.showModal();
     }
+
+    // Escape is the standard way out of any fullscreen-shaped UI; the
+    // overlay is plain CSS rather than the native Fullscreen API (see
+    // questGraphFullscreen's own doc comment above), so nothing closes it
+    // for free the way a real fullscreen element or a native <dialog> would.
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && questGraphFullscreen) {
+        questGraphFullscreen = false;
+        render();
+      }
+    });
 
     if (activeTab === 'quests') ensureQuestsLoaded();
     render();
