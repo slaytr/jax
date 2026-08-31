@@ -83,8 +83,14 @@ function resolveRequirementName(byName, name) {
  * quest-data/README.md), deduplicated by the required quest's name since a
  * few quests list the same one in both lists. Order doesn't matter here;
  * dependencyGraphFor only ever consumes this as a set.
+ *
+ * Exported for quest-planner.js, which needs just one quest's own *direct*
+ * requirements (already name-resolved — see resolveRequirementName above)
+ * rather than a whole walked-out tree — a "ready to start" quest only needs
+ * its immediate prerequisites completed, and if those are complete then
+ * (completion being transitive in-game) so is everything behind them.
  */
-function requirementsOf(quest, byName) {
+export function requirementsOf(quest, byName) {
   const relationByName = new Map();
   for (const req of [...(quest.questRequirements ?? []), ...(quest.fullCompletionRequirements ?? [])]) {
     const name = resolveRequirementName(byName, req.quest);

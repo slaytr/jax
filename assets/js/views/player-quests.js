@@ -1,5 +1,11 @@
 import { el } from '../dom.js';
-import { SKILLS } from '../config.js';
+import { statusOf, skillLevelsByName, meetsSkillRequirements, matchesTitle } from '../quest-status.js';
+
+// Re-exported so every existing `from './player-quests.js'` import site
+// (stats.js, player-goals.js, quest-dependency-graph.js, quest-series-links.js)
+// keeps working unchanged — the actual logic moved to quest-status.js so
+// quest-planner.js (pure, no DOM) can use it without importing a view module.
+export { statusOf, skillLevelsByName };
 
 /**
  * `length` on a quest is qualitative and sometimes a range ("Short to
@@ -54,43 +60,6 @@ export const SKILL_OPTIONS = [
   ['met', 'Meets skill reqs'],
   ['not-met', 'Missing skill reqs'],
 ];
-
-/** `quest.skillRequirements` names skills by their in-game name ("Agility"),
- * the same strings SKILLS uses — so a plain name → level map off the
- * player's own skillById (data.js) is all a lookup needs. */
-export function skillLevelsByName(player) {
-  const levels = new Map();
-  for (const skill of SKILLS) {
-    const value = player.skillById?.[skill.id];
-    if (value) levels.set(skill.name, value.level);
-  }
-  return levels;
-}
-
-const meetsSkillRequirements = (quest, skillLevels) =>
-  quest.skillRequirements.every((req) => (skillLevels.get(req.skill) ?? 0) >= req.level);
-
-/** RuneMetrics titles drop the wiki's own disambiguator suffix for a
- * miniquest/saga/same-named-non-quest-thing quest ("Father and Son" vs
- * quest-data's "Father and Son (miniquest)") — confirmed against every
- * roster member's real completed/started list, where this was the only
- * mismatch. Tried only as a fallback, after the exact name. */
-const DISAMBIGUATORS = [' (quest)', ' (miniquest)', ' (saga)'];
-
-function matchesTitle(quest, titles) {
-  if (titles.has(quest.name)) return true;
-  return DISAMBIGUATORS.some((suffix) => quest.name.endsWith(suffix) && titles.has(quest.name.slice(0, -suffix.length)));
-}
-
-/** A quest counts as complete/in-progress by title match (see matchesTitle)
- * against the player's own RuneMetrics lists (scripts/quests.mjs) —
- * completed checked first, so a title RuneMetrics somehow reports as both
- * reads as completed rather than in-progress. */
-export function statusOf(quest, completedSet, startedSet) {
-  if (matchesTitle(quest, completedSet)) return 'completed';
-  if (matchesTitle(quest, startedSet)) return 'in-progress';
-  return 'not-started';
-}
 
 export const STATUS_MARKER = { completed: '✓', 'in-progress': '•', 'not-started': '' };
 

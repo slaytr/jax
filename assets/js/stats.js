@@ -19,6 +19,7 @@ import { renderPlayerSkills } from './views/player-skills.js';
 import { renderPlayerQuestList, SORT_OPTIONS, STATUS_OPTIONS, SKILL_OPTIONS, statusOf } from './views/player-quests.js';
 import { renderQuestDependencyGraph } from './views/quest-dependency-graph.js';
 import { renderQuestSeriesLinks } from './views/quest-series-links.js';
+import { renderQuestPlanner } from './views/quest-planner.js';
 import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, refreshGoals } from './views/player-goals.js';
 import { tabToggle } from './views/tabs.js';
 import { loadGoals, saveGoals } from './goals-storage.js';
@@ -599,6 +600,7 @@ async function boot() {
                     },
                   }),
                 ]),
+                quests ? renderQuestPlanner(quests, player, onSelectQuest, onSelectSeries) : null,
               ]);
             })()
           : el('div', { class: 'player-row' }, [

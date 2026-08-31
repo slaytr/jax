@@ -1983,6 +1983,145 @@ body::after {
   text-align: right;
 }
 
+/* The Quests tab's Planner (quest-planner.js/views/quest-planner.js) — a
+   full-width card below the quest list/dependency map row (same "full-width
+   card outside .player-row" shape as .quest-series-card above it), advising
+   what to work on next: quests with nothing left in the way, quests a small
+   stat requirement away, and questlines already underway. .player-row's own
+   children lose their .lb bottom margin (see .player-row .lb above) so this
+   card supplies its own top spacing instead of stacking on top of that. */
+.quest-plan-card {
+  margin-top: 1.5rem;
+}
+
+.quest-plan-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.quest-plan-section {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+/* The questlines section stacks below .quest-plan-columns rather than
+   beside it — same section anatomy (heading + list), just full width for
+   its own two-line rows (series progress, then its next actionable quest). */
+.quest-plan-card > .quest-plan-section {
+  margin-top: 1.25rem;
+}
+
+.quest-plan-heading {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.quest-plan-empty {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.quest-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.quest-plan-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.5rem;
+  padding: 0.32rem 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.quest-plan-list .quest-plan-item:last-child {
+  border-bottom: 0;
+}
+
+/* Same button-reset-to-plain-row-text recipe as .quest-list-name (site
+   convention — a click target is a real <button>, styled to read as
+   ordinary row text until hover/focus gives it away). flex: 1 so the whole
+   remaining row width is clickable, not just the name's own text. */
+.quest-plan-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.quest-plan-name:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.quest-plan-name:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* "Ready now" row's own unlock count — how many other still-incomplete
+   quests directly need this one (computeUnlockCounts, quest-planner.js) —
+   pinned to the row's right edge, same green "positive figure" language as
+   a Gains chip's own "+N". */
+.quest-plan-unlocks {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--gain);
+}
+
+/* The questlines section's own two-line row: series progress on top, its
+   next actionable quest below — unlike the plain single-line rows above,
+   so the name button reverts to block-level rather than flex: 1. */
+.quest-plan-line-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.quest-plan-line-item .quest-plan-name {
+  flex: none;
+  width: 100%;
+}
+
+.quest-plan-line-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--ink-2);
+}
+
+.quest-plan-line-next-label {
+  color: var(--ink-muted);
+}
+
+.quest-plan-line-next-name {
+  flex: none;
+  width: auto;
+  font-weight: 500;
+}
+
 /* The quest dependency flow chart (quest-dependency-graph.js) — sits in the
    Quests tab's 2nd column, so it already inherits the Gains column's own
    flex-grow sizing (.player-row .lb:nth-child(2) above) for free. */
