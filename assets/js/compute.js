@@ -592,10 +592,18 @@ export function computeActivityBadges(snapshots, slug) {
   const gained = days.map((day) => day.gained ?? 0);
   const badges = [];
 
-  if (gained.every((xp) => xp === 0)) badges.push({ key: 'sleeping', label: 'Sleeping' });
-  if (gained.filter((xp) => xp > 0).length >= CONSISTENT_MIN_ACTIVE_DAYS) badges.push({ key: 'consistent', label: 'Consistent' });
-  if (gained.slice(-2).reduce((sum, xp) => sum + xp, 0) > HOT_STREAK_MIN_XP) badges.push({ key: 'hot-streak', label: 'Hot streak' });
-  if (gained.filter((xp) => xp >= GRINDER_MIN_DAY_XP).length >= GRINDER_MIN_DAYS) badges.push({ key: 'grinder', label: 'Grinder' });
+  if (gained.every((xp) => xp === 0)) {
+    badges.push({ key: 'sleeping', label: 'Sleeping', hint: 'No xp gained in the last 7 days' });
+  }
+  if (gained.filter((xp) => xp > 0).length >= CONSISTENT_MIN_ACTIVE_DAYS) {
+    badges.push({ key: 'consistent', label: 'Consistent', hint: 'Xp gained on at least 5 of the last 7 days' });
+  }
+  if (gained.slice(-2).reduce((sum, xp) => sum + xp, 0) > HOT_STREAK_MIN_XP) {
+    badges.push({ key: 'hot-streak', label: 'Hot streak', hint: 'Over 400K xp gained in the last 2 days' });
+  }
+  if (gained.filter((xp) => xp >= GRINDER_MIN_DAY_XP).length >= GRINDER_MIN_DAYS) {
+    badges.push({ key: 'grinder', label: 'Grinder', hint: 'At least 600K xp gained on any 2 of the last 7 days' });
+  }
 
   return badges;
 }

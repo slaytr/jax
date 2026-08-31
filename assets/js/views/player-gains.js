@@ -35,9 +35,12 @@ const daysFor = (window) => WINDOWS.find(([value]) => value === window)?.[2] ?? 
 const isMobileViewport = () => globalThis.matchMedia?.('(max-width: 720px)').matches ?? false;
 
 /** One computeActivityBadges entry, rendered as a small coloured chip beside
- * the Gains title — flavour only, so no tooltip/explanation beyond its own
- * label. */
-const activityBadge = ({ key, label }) => el('span', { class: `activity-badge is-${key}` }, [label]);
+ * the Gains title. The native `title` attribute carries its earning rule
+ * (`hint`) — a plain hover tooltip is enough for a one-line explanation,
+ * same as the "Fetched …"/"Expected around …" titles on the masthead's own
+ * metrics, rather than pulling in the richer bindTooltip/tooltipContent
+ * machinery built for charts. */
+const activityBadge = ({ key, label, hint }) => el('span', { class: `activity-badge is-${key}`, title: hint }, [label]);
 
 /** Week/Month — a 2-tab version of periodToggle's sliding-indicator segmented
  * control (leaderboards.js). `.tabs-2up` sets the indicator to half width

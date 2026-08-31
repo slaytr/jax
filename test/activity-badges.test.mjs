@@ -27,7 +27,10 @@ describe('computeActivityBadges', () => {
       snap('2026-08-30T00:00:00Z', 1000),
       snap('2026-08-30T12:00:00Z', 1000), // "now"
     ];
-    assert.deepEqual(keysOf(computeActivityBadges(snapshots, 'a')), ['sleeping']);
+    const badges = computeActivityBadges(snapshots, 'a');
+    assert.deepEqual(keysOf(badges), ['sleeping']);
+    assert.equal(typeof badges[0].hint, 'string', 'each badge carries an explanation for its hover title');
+    assert.match(badges[0].hint, /7 days/);
   });
 
   it('flags 5 active days out of 7 as Consistent, with no other badge', () => {
