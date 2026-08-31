@@ -550,6 +550,30 @@ export function computeDailyBreakdown(snapshots, slug, metric, days = 7, skillId
   return entries;
 }
 
+/** Columns in the per-player masthead's GitHub-style activity calendar —
+ * 53 weeks, the same footprint GitHub's own contribution graph pads a year
+ * to. */
+export const ACTIVITY_CALENDAR_WEEKS = 53;
+
+/**
+ * computeDailyBreakdown's own last-`weeks * 7`-days window, front-aligned to
+ * a Sunday so the result slots directly into a `weeks`-wide Sun–Saturday
+ * grid: `days[column * 7 + row]` is that column's row-th weekday, no
+ * remainder to special-case. The current, not-yet-finished week is simply
+ * shorter than the rest — there is no entry past "today", so a caller
+ * indexing past the end of the array naturally gets `undefined` for a day
+ * that hasn't happened yet, distinct from computeDailyBreakdown's own
+ * `gained: null` for a real day that predates this group's tracking.
+ */
+export function computeActivityCalendar(snapshots, slug, weeks = ACTIVITY_CALENDAR_WEEKS) {
+  const peek = computeDailyBreakdown(snapshots, slug, 'xp', 1);
+  if (peek.length === 0) return [];
+
+  const todayWeekday = new Date(peek[0].dayStart * 1000).getUTCDay();
+  const totalDays = (weeks - 1) * 7 + todayWeekday + 1;
+  return computeDailyBreakdown(snapshots, slug, 'xp', totalDays);
+}
+
 /** Thresholds behind computeActivityBadges' rule-of-thumb labels — pulled out
  * so the numbers only appear once, next to the rule that reads them. */
 const ACTIVITY_BADGE_DAYS = 7;

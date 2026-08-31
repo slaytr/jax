@@ -174,6 +174,7 @@ async function boot() {
       player,
       groupName: data.group.name,
       fetchedAt: data.fetchedAt,
+      snapshots: data.snapshots,
     });
 
     // Only the Gains section is interactive on this page (the Week/Month

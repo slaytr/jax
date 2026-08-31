@@ -57,6 +57,9 @@ async function download(skill) {
 const EXTRA_ICONS = [
   { name: 'Quest points', slug: 'quest-points', wikiFile: 'Quest_points' },
   { name: 'Total levels', slug: 'stats', wikiFile: 'Skills_icon' },
+  // The book icon the wiki itself uses on a quest page's "This article has a
+  // quick guide" notice — reused here for the Goals tab's own quick-guide link.
+  { name: 'Quick guide', slug: 'quick-guide', wikiFile: 'Queen_help_book' },
 ];
 
 async function main() {

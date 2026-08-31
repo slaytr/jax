@@ -66,6 +66,15 @@ export function treeSkillRequirements(quest, quests, skillLevels) {
  * own skillRequirements, rather than by id like a goal itself ends up —
  * SKILLS is the only place both a name and an id are known for the same
  * skill. */
+/** The wiki's own quick-guide page for `questName`. MediaWiki titles use
+ * underscores for spaces but otherwise take a title as-is (an apostrophe or
+ * colon in "Nomad's Requiem"/"Rune Memories: ..." survives unescaped in a
+ * real wiki URL) — encodeURI matches that, unlike encodeURIComponent, which
+ * would needlessly percent-escape those characters. */
+export function questWikiUrl(questName) {
+  return `https://runescape.wiki/w/${encodeURI(questName.replace(/ /g, '_'))}/Quick_guide`;
+}
+
 export function skillValuesByName(player) {
   return new Map(
     SKILLS.map((skill) => [

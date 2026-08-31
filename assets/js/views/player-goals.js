@@ -1,9 +1,9 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatCompact, formatSpan, formatRelativeTime } from '../format.js';
 import { xpForLevel, levelForXp } from '../xp-table.js';
-import { SKILLS, iconFor, QUEST_POINTS_ICON } from '../config.js';
+import { SKILLS, iconFor, QUEST_POINTS_ICON, QUICK_GUIDE_ICON } from '../config.js';
 import { statusOf } from './player-quests.js';
-import { notMetSkillRequirements, treeSkillRequirements, skillValuesByName, buildQuestGoalDrafts } from '../quest-goal.js';
+import { notMetSkillRequirements, treeSkillRequirements, skillValuesByName, buildQuestGoalDrafts, questWikiUrl } from '../quest-goal.js';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
@@ -291,6 +291,26 @@ function completedSkillGoalCard(goal, skill, labelsByName, onDelete) {
  * status: this card isn't the thing that decides completion (checkCompletion
  * already did, via the very same statusOf call), it's just describing where
  * things stand for a goal that hasn't tipped over into complete yet. */
+/** Opens the wiki's quick guide for a quest goal in a new tab — the one
+ * piece of context a bare quest name in a goal card can't carry on its own.
+ * Stops the click from bubbling to the card so it never triggers whatever
+ * the card itself listens for. */
+function questWikiLink(questName) {
+  return el(
+    'a',
+    {
+      class: 'goal-card-wiki-link',
+      href: questWikiUrl(questName),
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      'aria-label': `Open ${questName} quick guide on the wiki`,
+      title: 'Quick guide (wiki)',
+      onClick: (event) => event.stopPropagation(),
+    },
+    el('img', { src: QUICK_GUIDE_ICON, alt: '', width: 14, height: 12, decoding: 'async' }),
+  );
+}
+
 function activeQuestGoalCard(goal, player, labelsByName, onDelete) {
   const completedSet = new Set(player.completedQuests ?? []);
   const startedSet = new Set(player.startedQuests ?? []);
@@ -300,6 +320,7 @@ function activeQuestGoalCard(goal, player, labelsByName, onDelete) {
     el('div', { class: 'goal-card-head' }, [
       el('img', { class: 'goal-card-icon', src: QUEST_POINTS_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'goal-card-name', text: goal.questName }),
+      questWikiLink(goal.questName),
       el('span', { class: 'goal-card-current', text: status === 'in-progress' ? 'In progress' : 'Not started' }),
       el('span', { class: 'goal-card-head-spacer' }),
       deleteButton(goal, onDelete),
@@ -314,6 +335,7 @@ function completedQuestGoalCard(goal, labelsByName, onDelete) {
     el('div', { class: 'goal-card-head' }, [
       el('img', { class: 'goal-card-icon', src: QUEST_POINTS_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'goal-card-name', text: goal.questName }),
+      questWikiLink(goal.questName),
       el('span', { class: 'goal-card-target', text: '✓ Completed' }),
       deleteButton(goal, onDelete),
     ]),

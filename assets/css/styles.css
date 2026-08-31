@@ -271,6 +271,28 @@ body::after {
   border-left: 0;
 }
 
+/* The player page's own .topbar (renderPlayerMasthead) holds just identity
+   and the activity calendar — the metric strip moved to a full-width row of
+   its own below (.metrics-row) rather than fighting the two of them plus
+   five metric columns for space on one line. Two items, one fixed-width
+   (.activity-cal) and one that's already fairly narrow (.identity), fit
+   .topbar's base space-between layout without any further help, so nothing
+   here needs to override the shared .topbar/.metrics rules the group
+   masthead (masthead.js) also uses. */
+.topbar.has-activity-cal {
+  /* No metric strip left in this row to keep a bottom border/padding for —
+     .metrics-row carries that now, right below whichever of identity/
+     .activity-cal ends up taller. */
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.metrics-row {
+  margin-top: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--brass);
+}
+
 .metric-label {
   margin: 0 0 0.3rem;
   font-family: var(--font-mono);
@@ -366,6 +388,92 @@ body::after {
   .metric {
     padding-left: 1rem;
   }
+}
+
+/* ------------------------------------------------------- activity calendar
+   GitHub-style "one square per day" strip, riding in the same row as the
+   identity block and metric strip (renderActivityCalendar,
+   player-masthead.js — see .topbar.has-activity-cal below for how that row
+   makes room for it) — visible under every page tab, not just Stats, since
+   it lives in the header rather than the tab body.
+
+   Fixed cell size, deliberately: this calendar is the row's priority, not
+   its most flexible member. It always draws at full size; identity and
+   .metrics are what give way as the window narrows (their own fluid
+   font-size, further below) until .topbar's flex-wrap is the last resort.
+
+   Below that wrap point the calendar has the row to itself, so there's
+   nothing left to squeeze in favour of — but its fixed content is still
+   wider (~480px) than a phone screen, which is a real hard limit no
+   shrink-the-other-guy trick can fix. max-width: 100% + overflow-x: auto
+   (below) is what keeps that limit from ever becoming *page* overflow: past
+   that point the calendar scrolls within its own box instead of drawing
+   smaller, same fixed cell size throughout. */
+
+.activity-cal {
+  /* Never grows (there's no leftover space it should claim) and never
+     shrinks (flex-shrink: 0) — its natural, fixed-px content width is the
+     one width it's ever drawn at, right up until max-width below caps it. */
+  flex: 0 0 auto;
+  align-self: center;
+  max-width: 100%;
+  overflow-x: auto;
+  /* A day square plus its own row of gaps: keeps the scrollbar's own
+     reserved space (only ever present once max-width has actually kicked
+     in) from clipping the grid's bottom row. */
+  padding-bottom: 2px;
+}
+
+.activity-cal-months,
+.activity-cal-grid {
+  display: grid;
+  grid-auto-columns: 8px;
+  gap: 1px;
+  width: max-content;
+}
+
+.activity-cal-months {
+  grid-auto-flow: column;
+  margin-bottom: 0.25rem;
+}
+
+.activity-cal-month {
+  /* Grid items default to a min-width of their own content's natural size,
+     which would stretch this column past its shared 8px track — breaking
+     alignment with the day grid below — the moment a label ("Sept") is
+     wider than a cell. Pinning it to 0 lets the fixed track win; the text
+     simply spills rightward over its own (blank) neighbours instead. */
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.activity-cal-grid {
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 8px);
+}
+
+.activity-cal-cell {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--gain) var(--fill-pct, 0%), var(--surface-2));
+}
+
+.activity-cal-cell.is-zero {
+  background: var(--surface-2);
+}
+
+.activity-cal-cell.is-untracked {
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.activity-cal-cell.is-placeholder {
+  background: transparent;
 }
 
 /* ---------------------------------------------------------------- controls */
@@ -2495,6 +2603,23 @@ body::after {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.goal-card-wiki-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  opacity: 0.55;
+}
+
+.goal-card-wiki-link:hover,
+.goal-card-wiki-link:focus-visible {
+  opacity: 1;
+}
+
+.goal-card-wiki-link:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
 }
 
 /* Soaks up the gap between the name/current-level cluster on the left and

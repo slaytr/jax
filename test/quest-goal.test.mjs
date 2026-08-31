@@ -1,12 +1,25 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { notMetSkillRequirements, treeSkillRequirements, buildQuestGoalDrafts } from '../assets/js/quest-goal.js';
+import { notMetSkillRequirements, treeSkillRequirements, buildQuestGoalDrafts, questWikiUrl } from '../assets/js/quest-goal.js';
 
 const quest = (name, skillRequirements, questRequirements = []) => ({
   name,
   skillRequirements,
   questRequirements: questRequirements.map((questName) => ({ quest: questName, relation: 'required' })),
+});
+
+describe('questWikiUrl', () => {
+  it('turns spaces into underscores and points at the quick guide', () => {
+    assert.equal(
+      questWikiUrl('The Branches of Darkmeyer'),
+      'https://runescape.wiki/w/The_Branches_of_Darkmeyer/Quick_guide',
+    );
+  });
+
+  it('leaves apostrophes and colons unescaped, as the wiki itself does', () => {
+    assert.equal(questWikiUrl("Nomad's Requiem"), "https://runescape.wiki/w/Nomad's_Requiem/Quick_guide");
+  });
 });
 
 describe('notMetSkillRequirements', () => {
