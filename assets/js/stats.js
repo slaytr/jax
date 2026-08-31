@@ -255,6 +255,16 @@ async function boot() {
       const questSearchFocused = focused?.classList?.contains('quest-search-input');
       const questSearchCaret = questSearchFocused ? focused.selectionStart : null;
 
+      // Same reasoning as the search box above, for the dependency map's own
+      // scroll position: a highlight click (onHighlightNode) only changes
+      // which nodes/edges carry is-dimmed/is-highlighted, but replacing the
+      // whole .quest-graph-scroll div still resets a plain element's own
+      // scrollLeft/scrollTop to 0 — otherwise a viewer scrolled into a big
+      // chain (Sliske's Endgame, say) gets snapped back to the top-left on
+      // every click.
+      const questGraphScroll = dom.panel.querySelector('.quest-graph-scroll');
+      const questGraphScrollPosition = questGraphScroll ? { left: questGraphScroll.scrollLeft, top: questGraphScroll.scrollTop } : null;
+
       // Resolved fresh each render (not cached in the outer state) since
       // it's derived purely from selectedSkillId — one fewer thing that
       // could drift out of sync with it.
@@ -512,6 +522,14 @@ async function boot() {
         if (input) {
           input.focus();
           if (questSearchCaret !== null) input.setSelectionRange(questSearchCaret, questSearchCaret);
+        }
+      }
+
+      if (questGraphScrollPosition) {
+        const freshQuestGraphScroll = dom.panel.querySelector('.quest-graph-scroll');
+        if (freshQuestGraphScroll) {
+          freshQuestGraphScroll.scrollLeft = questGraphScrollPosition.left;
+          freshQuestGraphScroll.scrollTop = questGraphScrollPosition.top;
         }
       }
 
