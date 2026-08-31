@@ -10,21 +10,18 @@
 import { loadGroupData } from './data.js';
 import { loadQuests } from './quest-data.js';
 import { CALENDAR_DAY, computeLevelGains } from './compute.js';
+import { initialExpansionFor } from './quest-graph.js';
 import { SKILLS } from './config.js';
 import { el, replaceChildren } from './dom.js';
 import { renderPlayerMasthead } from './views/player-masthead.js';
 import { renderPlayerGains } from './views/player-gains.js';
 import { renderPlayerSkills } from './views/player-skills.js';
-import {
-  renderPlayerQuestList,
-  renderQuestFlowchartPlaceholder,
-  SORT_OPTIONS,
-  STATUS_OPTIONS,
-  SKILL_OPTIONS,
-} from './views/player-quests.js';
-import { renderGoalsList, renderGoalDialog, refreshGoals } from './views/player-goals.js';
+import { renderPlayerQuestList, SORT_OPTIONS, STATUS_OPTIONS, SKILL_OPTIONS, statusOf } from './views/player-quests.js';
+import { renderQuestDependencyGraph } from './views/quest-dependency-graph.js';
+import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, refreshGoals } from './views/player-goals.js';
 import { tabToggle } from './views/tabs.js';
 import { loadGoals, saveGoals } from './goals-storage.js';
+import { loadGoalLabels, saveGoalLabels } from './goal-labels-storage.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -159,20 +156,65 @@ async function boot() {
     let questSort = oneOf(SORT_OPTIONS, savedState.questSort, SORT_OPTIONS[0][0]);
     let questStatusFilter = oneOf(STATUS_OPTIONS, savedState.questStatus, STATUS_OPTIONS[0][0]);
     let questSkillFilter = oneOf(SKILL_OPTIONS, savedState.questSkillReq, SKILL_OPTIONS[0][0]);
+    // Which quest the dependency map beside the list is anchored on — set
+    // only by clicking a list row (see render()). Nothing below is
+    // persisted; all of it always starts fresh.
+    let selectedQuestSlug = null;
+    // Quest *names* (not slugs — quest-graph.js's own node identity)
+    // currently expanded within that map, revealing their own direct
+    // requirements (quest-dependency-graph.js's own "+"/"–" button).
+    // Recomputed from scratch whenever a different quest is selected
+    // (initialExpansionFor, quest-graph.js) rather than inheriting some
+    // other chain's expansion state — every branch starts already unfolded
+    // down to what this player still has left to do, not a lone collapsed
+    // node.
+    let expandedQuestNames = new Set();
+    // Which single quest name is selected for highlighting within that same
+    // map (clicking anywhere on a node besides its "+"/"–" button) — dims
+    // everything outside its branch rather than changing what's expanded.
+    // Fully independent of expandedQuestNames; reset alongside
+    // selectedQuestSlug since a highlight from one target's chain means
+    // nothing in another's.
+    let highlightedQuestName = null;
 
     // Goals are checked against this player's skills once, right after
     // loading them — skills don't change again for the rest of the visit
     // (only a real reload pulls fresh data), so there's nothing to gain by
-    // re-checking on every render. `goalDialogSkillId` (which skill's "new
-    // goal" dialog is open, or null) never persists across a reload, and
-    // never needs resetting on a tab switch either: a native <dialog> shown
-    // via showModal() makes the rest of the page inert, so there's no way
-    // to reach the tab buttons while one is actually open.
+    // re-checking on every render. `goalDialogSkillId`/`deleteConfirmGoalId`
+    // (which of the two goal dialogs is open, or null) never persist across
+    // a reload, and never need resetting on a tab switch either: a native
+    // <dialog> shown via showModal() makes the rest of the page inert, so
+    // there's no way to reach the tab buttons while one is actually open.
     let goals = loadGoals(player.slug);
     const refreshedGoals = refreshGoals(goals, player);
     goals = refreshedGoals.goals;
     if (refreshedGoals.changed) saveGoals(player.slug, goals);
     let goalDialogSkillId = null;
+    let deleteConfirmGoalId = null;
+    // Which quest's "track this as a goal?" confirmation is open (the
+    // dependency map's own "⚑" button, quest-dependency-graph.js) — a full
+    // quest-data record, not just a name, since the dialog needs its
+    // skillRequirements. Same never-persisted, dialog-owns-its-own-inertness
+    // reasoning as the other two goal dialogs above.
+    let questGoalDraftQuest = null;
+    // Group titles currently collapsed in the Goals tab's own list
+    // (renderGoalsList) — a plain in-memory Set, not persisted, same as
+    // expandedQuestNames on the Quests tab: a "how I've got this arranged
+    // right now" convenience, not a durable preference worth a storage key.
+    let collapsedGoalGroups = new Set();
+
+    // The label registry (name -> colour), separate from goals themselves —
+    // see goal-labels-storage.js. Creating a new label from inside the "new
+    // goal" dialog persists here immediately, without going through
+    // render(): that dialog manages its own DOM in place (player-goals.js's
+    // labelPickerField), and a full re-render here would tear it down
+    // mid-pick, losing whatever labels were already added to this goal.
+    let labels = loadGoalLabels(player.slug);
+    // Which label the Goals tab's own list is filtered to, or 'all' — see
+    // renderGoalsList's own validation of this against whichever labels
+    // actually appear on a current goal (deleting the last goal that used
+    // one, or the label itself, shouldn't leave the list silently empty).
+    let goalLabelFilter = typeof savedState.goalLabelFilter === 'string' ? savedState.goalLabelFilter : 'all';
 
     function persistStatsState() {
       saveStatsState({
@@ -181,6 +223,7 @@ async function boot() {
         questSort,
         questStatus: questStatusFilter,
         questSkillReq: questSkillFilter,
+        goalLabelFilter,
       });
     }
 
@@ -238,42 +281,130 @@ async function boot() {
                 goalDialogSkillId = skillId;
                 render();
               }),
-              renderGoalsList(player, goals, (goalId) => {
-                goals = goals.filter((goal) => goal.id !== goalId);
-                saveGoals(player.slug, goals);
-                render();
+              renderGoalsList(player, goals, labels, {
+                labelFilter: goalLabelFilter,
+                onLabelFilterChange: (value) => {
+                  goalLabelFilter = value;
+                  persistStatsState();
+                  render();
+                },
+                onDeleteGoal: (goalId) => {
+                  deleteConfirmGoalId = goalId;
+                  render();
+                },
+                collapsedGroups: collapsedGoalGroups,
+                onToggleGroup: (title) => {
+                  const next = new Set(collapsedGoalGroups);
+                  if (next.has(title)) next.delete(title);
+                  else next.add(title);
+                  collapsedGoalGroups = next;
+                  render();
+                },
               }),
             ])
           : activeTab === 'quests'
-          ? el('div', { class: 'player-row' }, [
-              renderPlayerQuestList(player, questsState, {
-                search: questSearch,
-                onSearchChange: (value) => {
-                  questSearch = value;
-                  persistStatsState();
-                  render();
-                },
-                sort: questSort,
-                onSortChange: (value) => {
-                  questSort = value;
-                  persistStatsState();
-                  render();
-                },
-                status: questStatusFilter,
-                onStatusChange: (value) => {
-                  questStatusFilter = value;
-                  persistStatsState();
-                  render();
-                },
-                skillReq: questSkillFilter,
-                onSkillReqChange: (value) => {
-                  questSkillFilter = value;
-                  persistStatsState();
-                  render();
-                },
-              }),
-              renderQuestFlowchartPlaceholder(),
-            ])
+          ? (() => {
+              const quests = questsState.status === 'ready' ? questsState.quests : null;
+              const selectedQuest = quests?.find((quest) => quest.slug === selectedQuestSlug) ?? null;
+              const onSelectQuest = (quest) => {
+                // Same click-to-toggle shape as the Skills grid's own
+                // cells: clicking the already-selected quest deselects it.
+                const reselecting = selectedQuestSlug === quest.slug;
+                selectedQuestSlug = reselecting ? null : quest.slug;
+                // A newly-picked quest's map starts already unfolded down
+                // to what this player still has left to do — every branch
+                // expanded until (and including) the first quest they've
+                // completed, rather than a lone collapsed node they'd have
+                // to click their way down from scratch every time (see
+                // initialExpansionFor, quest-graph.js). A deselect has
+                // nothing to expand either way.
+                if (reselecting || !quests) {
+                  expandedQuestNames = new Set();
+                } else {
+                  const byName = new Map(quests.map((candidate) => [candidate.name, candidate]));
+                  const completedSet = new Set(player.completedQuests ?? []);
+                  const startedSet = new Set(player.startedQuests ?? []);
+                  const isCompleted = (name) => {
+                    const match = byName.get(name);
+                    return match ? statusOf(match, completedSet, startedSet) === 'completed' : false;
+                  };
+                  expandedQuestNames = initialExpansionFor(quests, quest.name, isCompleted);
+                }
+                // A highlight from whatever was previously selected (or a
+                // different target's chain entirely) means nothing here.
+                highlightedQuestName = null;
+                render();
+              };
+              const onToggleExpand = (quest) => {
+                const next = new Set(expandedQuestNames);
+                if (next.has(quest.name)) next.delete(quest.name);
+                else next.add(quest.name);
+                expandedQuestNames = next;
+                render();
+              };
+              const onHighlightNode = (name) => {
+                // Same click-to-toggle shape as everything else here:
+                // clicking the already-highlighted node clears it.
+                highlightedQuestName = highlightedQuestName === name ? null : name;
+                render();
+              };
+              // Every quest name that already anchors a goal-group — hides
+              // a not-started node's own "track as a goal" button once
+              // there's already one, so the dialog can't be used twice on
+              // the same quest and duplicate its group.
+              const existingQuestGoalNames = new Set(
+                goals.filter((goal) => goal.kind === 'quest').map((goal) => goal.questName),
+              );
+
+              return el('div', { class: 'player-row' }, [
+                renderPlayerQuestList(
+                  player,
+                  questsState,
+                  {
+                    search: questSearch,
+                    onSearchChange: (value) => {
+                      questSearch = value;
+                      persistStatsState();
+                      render();
+                    },
+                    sort: questSort,
+                    onSortChange: (value) => {
+                      questSort = value;
+                      persistStatsState();
+                      render();
+                    },
+                    status: questStatusFilter,
+                    onStatusChange: (value) => {
+                      questStatusFilter = value;
+                      persistStatsState();
+                      render();
+                    },
+                    skillReq: questSkillFilter,
+                    onSkillReqChange: (value) => {
+                      questSkillFilter = value;
+                      persistStatsState();
+                      render();
+                    },
+                  },
+                  selectedQuestSlug,
+                  onSelectQuest,
+                ),
+                renderQuestDependencyGraph({
+                  quests,
+                  player,
+                  targetQuest: selectedQuest,
+                  expandedNames: expandedQuestNames,
+                  onToggleExpand,
+                  highlightedName: highlightedQuestName,
+                  onHighlightNode,
+                  existingQuestGoalNames,
+                  onCreateQuestGoal: (quest) => {
+                    questGoalDraftQuest = quest;
+                    render();
+                  },
+                }),
+              ]);
+            })()
           : el('div', { class: 'player-row' }, [
               renderPlayerSkills(player, todayLevelGains, selectedSkillId, (skillId) => {
                 // Clicking the already-selected cell reverts to every skill
@@ -315,10 +446,15 @@ async function boot() {
 
       // Built ahead of replaceChildren, like `tabs`/`body` above, rather
       // than appended after: a <dialog> only needs showModal() called on it
-      // once it's actually in the document, done just below.
+      // once it's actually in the document, done just below. None of the
+      // three goal dialogs below ever open at once — each only opens from a
+      // button on whichever tab is currently showing, and a native <dialog>
+      // makes the rest of the page (including the tab strip) inert the
+      // moment one is open — so there's no need to guard against more than
+      // one being non-null together.
       const goalDialogSkill = goalDialogSkillId === null ? null : SKILLS.find((skill) => skill.id === goalDialogSkillId);
       const goalDialog = goalDialogSkill
-        ? renderGoalDialog(goalDialogSkill, player, {
+        ? renderGoalDialog(goalDialogSkill, player, goals, labels, {
             onCreate: (draft) => {
               goals = [...goals, draft];
               saveGoals(player.slug, goals);
@@ -327,10 +463,49 @@ async function boot() {
               goalDialogSkillId = null;
               render();
             },
+            onCreateLabel: (name, colour) => {
+              labels = [...labels, { name, colour }];
+              saveGoalLabels(player.slug, labels);
+            },
+            // Deletes the label from the registry only — see
+            // labelPickerField's own doc comment for why an existing
+            // goal's chip is unaffected (it stores the name, not a live
+            // reference into this array).
+            onDeleteLabel: (name) => {
+              labels = labels.filter((label) => label.name !== name);
+              saveGoalLabels(player.slug, labels);
+            },
           })
         : null;
 
-      replaceChildren(dom.panel, el('div', { class: 'page-tabs' }, [tabs]), body, goalDialog);
+      const deleteConfirmGoal = deleteConfirmGoalId === null ? null : goals.find((goal) => goal.id === deleteConfirmGoalId);
+      const deleteConfirmDialog = deleteConfirmGoal
+        ? renderDeleteConfirmDialog(deleteConfirmGoal, SKILLS.find((skill) => skill.id === deleteConfirmGoal.skillId), {
+            onConfirm: () => {
+              goals = goals.filter((goal) => goal.id !== deleteConfirmGoal.id);
+              saveGoals(player.slug, goals);
+            },
+            onClose: () => {
+              deleteConfirmGoalId = null;
+              render();
+            },
+          })
+        : null;
+
+      const questGoalDialog = questGoalDraftQuest
+        ? renderQuestGoalDialog(questGoalDraftQuest, player, {
+            onConfirm: (drafts) => {
+              goals = [...goals, ...drafts];
+              saveGoals(player.slug, goals);
+            },
+            onClose: () => {
+              questGoalDraftQuest = null;
+              render();
+            },
+          })
+        : null;
+
+      replaceChildren(dom.panel, el('div', { class: 'page-tabs' }, [tabs]), body, goalDialog, deleteConfirmDialog, questGoalDialog);
 
       if (questSearchFocused) {
         const input = dom.panel.querySelector('.quest-search-input');
@@ -341,6 +516,8 @@ async function boot() {
       }
 
       goalDialog?.showModal();
+      deleteConfirmDialog?.showModal();
+      questGoalDialog?.showModal();
     }
 
     if (activeTab === 'quests') ensureQuestsLoaded();

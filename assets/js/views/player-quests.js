@@ -58,7 +58,7 @@ export const SKILL_OPTIONS = [
 /** `quest.skillRequirements` names skills by their in-game name ("Agility"),
  * the same strings SKILLS uses — so a plain name → level map off the
  * player's own skillById (data.js) is all a lookup needs. */
-function skillLevelsByName(player) {
+export function skillLevelsByName(player) {
   const levels = new Map();
   for (const skill of SKILLS) {
     const value = player.skillById?.[skill.id];
@@ -86,18 +86,29 @@ function matchesTitle(quest, titles) {
  * against the player's own RuneMetrics lists (scripts/quests.mjs) —
  * completed checked first, so a title RuneMetrics somehow reports as both
  * reads as completed rather than in-progress. */
-function statusOf(quest, completedSet, startedSet) {
+export function statusOf(quest, completedSet, startedSet) {
   if (matchesTitle(quest, completedSet)) return 'completed';
   if (matchesTitle(quest, startedSet)) return 'in-progress';
   return 'not-started';
 }
 
-const STATUS_MARKER = { completed: '✓', 'in-progress': '•', 'not-started': '' };
+export const STATUS_MARKER = { completed: '✓', 'in-progress': '•', 'not-started': '' };
 
-function questListItem(quest, status) {
-  return el('li', { class: `quest-list-item is-${status}` }, [
+/** The row's own name is a real `<button>` (site convention: a click target
+ * is a button, not a div/li with a handler) — clicking it selects this quest
+ * for the dependency map beside the list (`onSelectQuest`, stats.js), same
+ * click-to-toggle shape as the Skills grid's own cells: clicking the
+ * already-selected quest deselects it rather than staying stuck selected. */
+function questListItem(quest, status, isSelected, onSelectQuest) {
+  return el('li', { class: `quest-list-item is-${status}${isSelected ? ' is-selected' : ''}` }, [
     el('span', { class: 'quest-list-check', 'aria-hidden': 'true', text: STATUS_MARKER[status] }),
-    el('span', { class: 'quest-list-name', text: quest.name }),
+    el('button', {
+      type: 'button',
+      class: 'quest-list-name',
+      title: `Show ${quest.name}'s dependency chain`,
+      text: quest.name,
+      onclick: () => onSelectQuest(quest),
+    }),
   ]);
 }
 
@@ -132,7 +143,7 @@ function searchInput({ value, onChange }) {
   ]);
 }
 
-function renderList(player, quests, { search, sort, status, skillReq }) {
+function renderList(player, quests, { search, sort, status, skillReq }, selectedQuestSlug, onSelectQuest) {
   const completedSet = new Set(player.completedQuests ?? []);
   const startedSet = new Set(player.startedQuests ?? []);
   const skillLevels = skillLevelsByName(player);
@@ -154,7 +165,9 @@ function renderList(player, quests, { search, sort, status, skillReq }) {
     { class: 'quest-list' },
     filtered
       .sort(SORTS[sort] ?? SORTS.name)
-      .map((quest) => questListItem(quest, statusOf(quest, completedSet, startedSet))),
+      .map((quest) =>
+        questListItem(quest, statusOf(quest, completedSet, startedSet), quest.slug === selectedQuestSlug, onSelectQuest),
+      ),
   );
 }
 
@@ -194,8 +207,17 @@ function questProgressSummary(player, quests) {
  * The "Completed X/Y" line under the list (questProgressSummary) always
  * reflects every quest, not just whatever the search/filters currently
  * show — it's a progress figure, not a result count.
+ *
+ * @param selectedQuestSlug whichever quest's dependency chain the map beside
+ *   this list (quest-dependency-graph.js) currently shows, or null — drives
+ *   `.is-selected` on that one row, same highlight convention as a selected
+ *   skill-grid cell.
+ * @param onSelectQuest (quest) => void — a row's name button calls this with
+ *   its own quest on click (stats.js flips `selectedQuestSlug` back to null
+ *   if it was already this quest, same click-to-toggle shape as the Skills
+ *   grid).
  */
-export function renderPlayerQuestList(player, questsState, filters) {
+export function renderPlayerQuestList(player, questsState, filters, selectedQuestSlug, onSelectQuest) {
   const controls = el('div', { class: 'quest-filters' }, [
     searchInput({ value: filters.search, onChange: filters.onSearchChange }),
     filterSelect({ label: 'Sort quests by', value: filters.sort, options: SORT_OPTIONS, onChange: filters.onSortChange }),
@@ -205,7 +227,7 @@ export function renderPlayerQuestList(player, questsState, filters) {
 
   const body =
     questsState.status === 'ready'
-      ? renderList(player, questsState.quests, filters)
+      ? renderList(player, questsState.quests, filters, selectedQuestSlug, onSelectQuest)
       : el('p', {
           class: 'chart-empty',
           text: questsState.status === 'error' ? questsState.message : 'Loading quests…',
@@ -218,19 +240,5 @@ export function renderPlayerQuestList(player, questsState, filters) {
     controls,
     body,
     summary,
-  ]);
-}
-
-/**
- * Reserves the Quests tab's second column for the quest dependency flow
- * chart — not built yet, but this section is already the row's 2nd child,
- * so it gets the same flex-grow treatment as the Gains column on the Stats
- * tab (`.player-row .lb:nth-child(2)` in styles.css) for free. Dropping the
- * real chart in here later is a content swap, not a layout change.
- */
-export function renderQuestFlowchartPlaceholder() {
-  return el('section', { class: 'lb quest-flowchart' }, [
-    el('div', { class: 'lb-head' }, [el('div', { class: 'lb-title' }, [el('h2', { text: 'Dependency map' })])]),
-    el('p', { class: 'chart-empty', text: 'A flow chart of quest dependencies and requirements is coming soon.' }),
   ]);
 }

@@ -1714,6 +1714,46 @@ body::after {
   color: var(--ink-muted);
 }
 
+/* A real <button> (site convention), reset to read as plain row text at
+   rest — only hover/focus/selected give away that it's a click target,
+   same restraint as .skill-cell. Fills the row (flex:1, text-align:left)
+   so the whole name is clickable, not just its own text width. */
+.quest-list-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.quest-list-name:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.quest-list-name:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* Selected — this row's quest is what the dependency map beside the list
+   currently shows (quest-dependency-graph.js). */
+.quest-list-item.is-selected {
+  background: rgba(217, 89, 38, 0.13);
+}
+
+.quest-list-item.is-selected .quest-list-name {
+  color: #fdf5e7;
+  font-weight: 500;
+}
+
 /* Overall progress, not a result count — see questProgressSummary's own
    doc comment (player-quests.js) for why it ignores the search box and the
    three filters above it. */
@@ -1724,16 +1764,443 @@ body::after {
   text-align: right;
 }
 
-/* Placeholder for the quest dependency flow chart (not built yet) — sits in
-   the Quests tab's 2nd column, so it already inherits the Gains column's
-   own flex-grow sizing (.player-row .lb:nth-child(2) above) for free. */
+/* The quest dependency flow chart (quest-dependency-graph.js) — sits in the
+   Quests tab's 2nd column, so it already inherits the Gains column's own
+   flex-grow sizing (.player-row .lb:nth-child(2) above) for free. */
 .quest-flowchart .chart-empty {
   padding: 1rem 0;
+}
+
+.quest-graph-caption {
+  margin: 0 0 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+/* Scrolls the canvas in both directions independently of the page — a big
+   Grandmaster chain's canvas can run well past the card's own width/height
+   (see quest-graph.js's own size notes: the biggest is ~130 quests across
+   13 layers), while a typical quest's is small enough to need no scrolling
+   at all. Capped rather than left to grow the whole page with it. */
+.quest-graph-scroll {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+/* Sized exactly to its content (quest-dependency-graph.js sets width/height
+   inline from the same layout math the nodes and edges are positioned
+   against) — position:relative just gives the absolutely-positioned nodes
+   and the edges <svg> a shared origin. */
+.quest-graph-canvas {
+  position: relative;
+}
+
+/* Behind the node buttons, not intercepting their clicks — pointer-events
+   only need to reach whichever node is actually on top. */
+.quest-graph-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.quest-graph-edge {
+  fill: none;
+  stroke: var(--hairline-strong);
+  stroke-width: 1.3;
+  transition: opacity 0.16s var(--ease);
+}
+
+.quest-graph-edge.is-partial {
+  stroke-dasharray: 3 3;
+}
+
+.quest-graph-edge.is-dimmed {
+  opacity: 0.25;
+}
+
+.quest-graph-arrowhead {
+  fill: var(--hairline-strong);
+}
+
+/* One prerequisite, absolutely positioned (and, once expanded with skill
+   requirements to show, sized) by quest-dependency-graph.js's own layout
+   math. Always a plain <div> now, not itself a click target — it holds two
+   independent buttons instead (quest-graph-node-expand-btn,
+   quest-graph-node-select; see this node's own file's top doc comment for
+   why they're split rather than one button covering the whole node). A
+   column, not a single row, so an expanded node's skills block
+   (quest-graph-node-skills) sits under its header rather than fighting it
+   for width. */
+.quest-graph-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-1);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: inherit;
+  text-align: left;
+  transition: opacity 0.16s var(--ease);
+}
+
+.quest-graph-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* Reset button chrome shared by all of a node's own buttons — the rest of
+   each rule below is what actually tells them apart. */
+.quest-graph-node-expand-btn,
+.quest-graph-node-select,
+.quest-graph-node-goal-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The "+"/"–" toggle. `.is-empty` (a plain <span>, not a button — a leaf
+   quest or an unresolved requirement name has nothing to expand) still
+   reserves the same width, so every node's name lines up in the same
+   column regardless of which ones happen to be expandable. */
+.quest-graph-node-expand-btn {
+  flex: none;
+  width: 0.9em;
+  text-align: center;
+  color: var(--ink-muted);
+  font-weight: 700;
+}
+
+.quest-graph-node-expand-btn.is-empty {
+  cursor: default;
+}
+
+.quest-graph-node-expand-btn:hover {
+  color: var(--ink);
+}
+
+.quest-graph-node-expand-btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.quest-graph-node.is-expanded .quest-graph-node-expand-btn {
+  color: var(--ink);
+}
+
+/* The rest of the node — status marker + name — selects it for
+   highlighting (onHighlightNode). flex:1 so its own hover/focus feedback
+   and hit target cover the whole remaining width, not just the name text. */
+.quest-graph-node-select {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.quest-graph-node-select:hover .quest-graph-node-name {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.quest-graph-node-select:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* "⚑" — only on an untracked, not-started quest (canCreateQuestGoal,
+   quest-dependency-graph.js). Muted at rest like the expand toggle, so it
+   doesn't outweigh the name it sits beside; gold on hover/focus — the same
+   family as a highlighted node's own brass ring, opaque here rather than
+   that ring's translucent border colour since this needs to read clearly
+   as text — ties it visually to "this creates something new" rather than
+   the ember "in-focus" language the select button's own focus ring uses. */
+.quest-graph-node-goal-btn {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+.quest-graph-node-goal-btn:hover {
+  color: var(--medal-gold);
+}
+
+.quest-graph-node-goal-btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.quest-graph-node-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-graph-node-check {
+  flex: none;
+  width: 0.9em;
+  text-align: center;
+}
+
+/* Everything outside the currently-highlighted branch (onHighlightNode) —
+   dimmed rather than hidden, so the overall shape of the chart stays
+   legible while one path through it reads clearly. */
+.quest-graph-node.is-dimmed {
+  opacity: 0.3;
+}
+
+/* The one node actually clicked to highlight, distinct from the rest of its
+   (equally full-opacity) branch — brass, not ember (that's .is-target's own
+   accent, a different kind of "this one matters") and not tied to
+   completion status the way the border colours below are. */
+.quest-graph-node.is-highlighted {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 1px var(--brass);
+}
+
+/* An expanded node's skill requirements — icon-led chips wrapped
+   SKILL_CHIPS_PER_ROW to a row (quest-dependency-graph.js's own nodeHeight
+   sizes the node to match exactly this wrapping, so nothing here should
+   ever need to scroll or clip). */
+.quest-graph-node-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.35rem;
+}
+
+.quest-graph-node-skill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.62rem;
+}
+
+.quest-graph-node-skill img {
+  flex: none;
+}
+
+/* Whether the viewed player's own current level meets this requirement —
+   same green/red language as .delta's own better/worse accent, just
+   per-skill here instead of one figure. */
+.quest-graph-node-skill.is-met {
+  color: var(--gain);
+}
+
+.quest-graph-node-skill.is-not-met {
+  color: #efa08a;
+}
+
+/* The selected quest — always the chart's single rightmost node — reads as
+   the destination rather than just another prerequisite. Ember, same "this
+   is the thing currently in focus" accent as a selected skill-grid cell or
+   an active tab, not tied to completion status the way the other states
+   below are. */
+.quest-graph-node.is-target {
+  border-color: var(--ember);
+  border-width: 2px;
+  background: rgba(217, 89, 38, 0.13);
+  font-weight: 500;
+}
+
+.quest-graph-node.is-completed {
+  border-color: rgba(25, 158, 112, 0.5);
+}
+
+.quest-graph-node.is-completed .quest-graph-node-check {
+  color: #8fd0a4;
+}
+
+.quest-graph-node.is-in-progress .quest-graph-node-check {
+  color: var(--ember);
+}
+
+.quest-graph-node.is-external {
+  border-style: dashed;
+  color: var(--ink-muted);
+}
+
+.quest-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  margin-top: 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+}
+
+.quest-graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.quest-graph-legend-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 2px;
+}
+
+.quest-graph-legend-swatch.is-completed {
+  border-color: rgba(25, 158, 112, 0.5);
+}
+
+.quest-graph-legend-swatch.is-in-progress {
+  border-color: var(--ember);
+}
+
+.quest-graph-legend-swatch.is-external {
+  border-style: dashed;
+}
+
+.quest-graph-legend-line {
+  width: 1.1rem;
+  height: 0;
+  border-top: 1.3px solid var(--hairline-strong);
+}
+
+.quest-graph-legend-line.is-partial {
+  border-top-style: dashed;
+}
+
+.quest-graph-legend-expand {
+  width: 0.7rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.quest-graph-legend-skill {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.quest-graph-legend-skill.is-met {
+  color: var(--gain);
+}
+
+.quest-graph-legend-skill.is-not-met {
+  color: #efa08a;
+}
+
+.quest-graph-legend-highlight {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--brass);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--brass);
+}
+
+.quest-graph-legend-goal {
+  color: var(--medal-gold);
+  font-weight: 700;
 }
 
 /* Goals tab: the goal list is the Quests tab's 2nd-column card in every way
    that matters (same .player-row slot, same flex-grow sizing), just with
    its own card anatomy below. */
+.goal-filters {
+  margin-bottom: 0.7rem;
+}
+
+.goal-filter-select {
+  width: 200px;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+}
+
+.goal-filter-select:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.goal-group + .goal-group {
+  margin-top: 1.1rem;
+}
+
+/* A real <button> (site convention) — clicking it collapses the group down
+   to just this heading (renderGoalsList's own `collapsed` state, stats.js).
+   Reset to read as plain text at rest, same restraint as .skill-cell/
+   .quest-list-name; only the hover/focus feedback and chevron give away
+   that it's a click target. */
+.goal-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.goal-group-title:hover {
+  color: var(--ink);
+}
+
+.goal-group-title:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+/* A closed disclosure triangle, rotated open — avoids a second glyph swap
+   (▸/▾) needing its own two-branch text, same trick as .matrix-invert's own
+   chevron. */
+.goal-group-chevron {
+  flex: none;
+  width: 0.6em;
+  border-style: solid;
+  border-width: 0.3em 0 0.3em 0.45em;
+  border-color: transparent transparent transparent currentColor;
+  transition: transform 0.14s var(--ease);
+}
+
+.goal-group.is-collapsed .goal-group-chevron {
+  transform: rotate(0deg);
+}
+
+.goal-group:not(.is-collapsed) .goal-group-chevron {
+  transform: rotate(90deg);
+}
+
+.goal-group-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.goal-group-count {
+  flex: none;
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
 .goals-list {
   display: flex;
   flex-direction: column;
@@ -1771,13 +2238,57 @@ body::after {
 }
 
 .goal-card-name {
-  flex: 1;
+  flex: none;
+  max-width: 40%;
   min-width: 0;
   font-weight: 600;
   font-size: 0.82rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Soaks up the gap between the name/current-level cluster on the left and
+   the target/delete cluster on the right, so the current level reads as
+   part of the name rather than getting flex-stretched away from it. */
+.goal-card-head-spacer {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+/* The one visible trace of a goal's labels — its group never shows on the
+   card itself, only as the section heading it sorts the goal into. */
+.goal-card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.goal-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+}
+
+.goal-card-label-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-card-current {
+  flex: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
 }
 
 .goal-card-target {
@@ -1820,11 +2331,18 @@ body::after {
   outline-offset: 1px;
 }
 
+.goal-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Same anatomy as the skill grid's own .cell-rule/.cell-rule-fill (a share
    of the way there, painted in the player's --accent), just full-width and
    a touch taller — this is the card's own headline figure, not one detail
    among several. */
 .goal-progress-track {
+  flex: 1;
   height: 6px;
   border-radius: 999px;
   background: var(--hairline);
@@ -1835,6 +2353,14 @@ body::after {
   display: block;
   height: 100%;
   background: var(--accent);
+}
+
+.goal-progress-percent {
+  flex: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .goal-card-meta {
@@ -1880,6 +2406,29 @@ body::after {
   font-size: 0.76rem;
 }
 
+/* The "track this quest" confirmation's own preview of which skill goals
+   will be added alongside the quest itself (renderQuestGoalDialog,
+   player-goals.js) — plain requirement chips, not the dependency map's own
+   met/not-met colouring: every one shown here is, by construction, already
+   not met (that's why it's in the list at all). */
+.quest-goal-dialog-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quest-goal-dialog-req {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}
+
 .goal-target-choice {
   display: flex;
   align-items: center;
@@ -1914,6 +2463,215 @@ body::after {
 .goal-target-choice input[type='number']:focus-visible {
   outline: 2px solid var(--ember);
   outline-offset: -2px;
+}
+
+/* Group/label — same row shape as goal-target-choice (a label span, an
+   input pinned right), just a plain text input instead of a radio-paired
+   number field. */
+.goal-text-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Direct child only — the labels field nests its own spans (chip text,
+   dropdown option text) several levels deep inside .goal-label-field, which
+   must not inherit this caption's sizing. */
+.goal-text-field > span {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+/* Direct child only, same reasoning as ">span" above — .goal-label-search
+   nests inside .goal-label-field and sets its own width:100% instead. */
+.goal-text-field > input {
+  width: 130px;
+  margin-left: auto;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.goal-text-field > input:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+/* Labels' own row breaks the label-then-input single line every other
+   goal-text-field uses — the picker below (search box, dropdown, chips) is
+   too tall to sit beside its "Labels" caption the way a plain input does. */
+.goal-text-field-labels {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.goal-label-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.goal-label-search {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.goal-label-search:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.goal-label-dropdown {
+  margin: 0;
+  padding: 0.25rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  list-style: none;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+/* One row per known label: the select button (flex:1, so it fills whatever
+   the delete button doesn't need) plus its own delete button, as two
+   sibling controls rather than one nested inside the other. The "+ Create"
+   row reuses this same wrapper with only the one button — flex:1 alone
+   already fills it, same effect as width:100% used to. */
+.goal-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.goal-label-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goal-label-option:hover,
+.goal-label-option:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.goal-label-create {
+  color: var(--ember);
+}
+
+.goal-label-row-delete {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.goal-label-row-delete:hover,
+.goal-label-row-delete:focus-visible {
+  color: #efa08a;
+  background: var(--surface-2);
+}
+
+/* [hidden] on its own would lose to this rule's own display:flex — author
+   CSS always beats the UA stylesheet's [hidden]{display:none}, regardless
+   of specificity — so it needs restating explicitly here. */
+.goal-label-colours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+}
+
+.goal-label-colours[hidden] {
+  display: none;
+}
+
+.goal-label-swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.goal-label-swatch:hover,
+.goal-label-swatch:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.goal-label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.goal-label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.3rem 0.15rem 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.goal-label-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.goal-label-chip button:hover,
+.goal-label-chip button:focus-visible {
+  color: var(--ink);
+  background: var(--surface-2);
 }
 
 .goal-dialog-error {
@@ -1960,6 +2718,18 @@ body::after {
 
 .goal-btn-primary:hover {
   background: rgba(217, 89, 38, 0.12);
+}
+
+/* Same salmon-red as .delta.is-worse — the site's one other "this reads as
+   negative" text colour — rather than inventing a new one for this single
+   destructive button. */
+.goal-btn-danger {
+  border-color: #efa08a;
+  color: #efa08a;
+}
+
+.goal-btn-danger:hover {
+  background: rgba(138, 28, 43, 0.18);
 }
 
 /* The active chart at 2× the width of the two stacked beside it — since
