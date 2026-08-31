@@ -204,6 +204,7 @@ function graphNode({
   isDimmed,
   isHighlighted,
   targetCount,
+  isQuestlineTarget,
   existingQuestGoalNames,
   onToggleExpand,
   onHighlightNode,
@@ -215,7 +216,7 @@ function graphNode({
   const classes = [
     'quest-graph-node',
     `is-${status}`,
-    node.isTarget && 'is-target',
+    node.isTarget && (isQuestlineTarget ? 'is-questline-target' : 'is-target'),
     node.isExpanded && 'is-expanded',
     isDimmed && 'is-dimmed',
     isHighlighted && 'is-highlighted',
@@ -321,7 +322,7 @@ function highlightSetFor(graph, highlightedName) {
   return ancestorNames(graph.edges, highlightedName);
 }
 
-function graphCanvas(graph, player, highlightedName, existingQuestGoalNames, onToggleExpand, onHighlightNode, onCreateQuestGoal) {
+function graphCanvas(graph, player, highlightedName, isQuestlineTarget, existingQuestGoalNames, onToggleExpand, onHighlightNode, onCreateQuestGoal) {
   const { positionByName, heightByName, width, height } = layoutOf(graph);
   const completedSet = new Set(player.completedQuests ?? []);
   const startedSet = new Set(player.startedQuests ?? []);
@@ -349,6 +350,7 @@ function graphCanvas(graph, player, highlightedName, existingQuestGoalNames, onT
       isDimmed: highlightSet ? !highlightSet.has(node.name) : false,
       isHighlighted: node.name === highlightedName,
       targetCount,
+      isQuestlineTarget,
       existingQuestGoalNames,
       onToggleExpand,
       onHighlightNode,
@@ -507,7 +509,16 @@ export function renderQuestDependencyGraph({
     return el('div', {}, [
       graphCaption(totalGraph, targetNames, selection),
       el('div', { class: 'quest-graph-scroll' }, [
-        graphCanvas(visibleGraph, player, highlightedName, existingQuestGoalNames, onToggleExpand, onHighlightNode, onCreateQuestGoal),
+        graphCanvas(
+          visibleGraph,
+          player,
+          highlightedName,
+          selection.kind === 'series',
+          existingQuestGoalNames,
+          onToggleExpand,
+          onHighlightNode,
+          onCreateQuestGoal,
+        ),
       ]),
       graphLegend(),
     ]);

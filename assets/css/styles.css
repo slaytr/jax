@@ -28,6 +28,10 @@
   --gain: #5fd39b;
   --gain-bg: rgba(25, 158, 112, 0.16);
 
+  /* Tempered steel — a questline's own member quests in the dependency map,
+     distinct from --ember's single-quest "selected" accent. */
+  --temper: #4a90c9;
+
   /* The two trailing-column ribbons — deliberately apart from --ember/--gain
      above, and from each other in hue, not just lightness. */
   --crimson: #8a1c2b;
@@ -2120,6 +2124,17 @@ body::after {
   border-color: var(--ember);
   border-width: 2px;
   background: rgba(217, 89, 38, 0.13);
+  font-weight: 500;
+}
+
+/* Every member of the currently-selected questline (quest-series-links.js) —
+   same treatment as .is-target but tempered-steel blue instead of ember, so a
+   questline's many targets read as one group distinct from a single selected
+   quest. */
+.quest-graph-node.is-questline-target {
+  border-color: var(--temper);
+  border-width: 2px;
+  background: rgba(74, 144, 201, 0.15);
   font-weight: 500;
 }
 
