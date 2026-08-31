@@ -2123,8 +2123,16 @@ body::after {
   color: #8fd0a4;
 }
 
+/* Warn, not ember — ember is reserved for .is-target's own "this is the
+   selected quest" accent below. The two used to share ember, which read as
+   the same thing happening twice on an in-progress node that also happened
+   to be the selected target: one colour meaning both "your status here"
+   and "this is what you picked" at once. Warn is already the "getting
+   there" middle step of PROGRESS_GRADIENT (player-goals.js) elsewhere on
+   this page, so it reads consistently as "in progress" rather than
+   borrowing a colour that means something else here. */
 .quest-graph-node.is-in-progress .quest-graph-node-check {
-  color: var(--ember);
+  color: var(--warn);
 }
 
 .quest-graph-node.is-external {
@@ -2136,7 +2144,8 @@ body::after {
    the destination rather than just another prerequisite. Ember, same "this
    is the thing currently in focus" accent as a selected skill-grid cell or
    an active tab, not tied to completion status the way .is-completed/
-   .is-in-progress/.is-external above are — placed after them on purpose
+   .is-in-progress/.is-external above are (nor shared with .is-in-progress's
+   own warn any more — see its own comment) — placed after them on purpose
    (equal specificity either way, so source order decides) so a completed
    target still shows the "this is the target" border/background rather
    than losing it to .is-completed's own, more muted one. */
@@ -2189,7 +2198,7 @@ body::after {
 }
 
 .quest-graph-legend-swatch.is-in-progress {
-  border-color: var(--ember);
+  border-color: var(--warn);
 }
 
 .quest-graph-legend-swatch.is-external {
