@@ -550,6 +550,56 @@ export function computeDailyBreakdown(snapshots, slug, metric, days = 7, skillId
   return entries;
 }
 
+/** Thresholds behind computeActivityBadges' rule-of-thumb labels — pulled out
+ * so the numbers only appear once, next to the rule that reads them. */
+const ACTIVITY_BADGE_DAYS = 7;
+const CONSISTENT_MIN_ACTIVE_DAYS = 5;
+const HOT_STREAK_MIN_XP = 400_000;
+const GRINDER_MIN_DAY_XP = 600_000;
+const GRINDER_MIN_DAYS = 2;
+
+/**
+ * Playful, rule-of-thumb badges for the personal stats page's Gains title —
+ * a nickname for the shape of a player's last 7 UTC calendar days of xp
+ * (today included), not a precise stat. Always reads the *overall* xp total
+ * (skillId 0), regardless of which skill-grid cell the page currently has
+ * selected — these describe the player's week, not whichever skill they
+ * happen to be looking at.
+ *
+ * Several can apply at once (several are returned, in a fixed order) except
+ * where the rules are naturally exclusive — "Sleeping" (zero gained every
+ * day) can never coexist with "Hot streak" or "Grinder" (both require a real
+ * gain on at least one day), so there's no explicit tie-breaking here.
+ *
+ *  - Sleeping: no xp gained on any of the last 7 days.
+ *  - Consistent: xp gained on at least 5 of the last 7 days.
+ *  - Hot streak: over 400K xp combined across just the last 2 days.
+ *  - Grinder: at least 600K xp on any 2 (or more) of the last 7 days.
+ *
+ * Returns [] rather than guessing when the group's own tracking history
+ * doesn't yet reach back 7 days at all (every day `null`, see
+ * computeDailyBreakdown) — otherwise every player would read as "Sleeping"
+ * for their first week simply for lack of history, not lack of activity.
+ * Once at least one real day exists, the remaining untracked days (if any)
+ * count as zero gained rather than being excluded, same reasoning as
+ * `Math.max(0, …)` elsewhere in this file: a day this group wasn't tracked
+ * yet is not a day this player is known to have trained.
+ */
+export function computeActivityBadges(snapshots, slug) {
+  const days = computeDailyBreakdown(snapshots, slug, 'xp', ACTIVITY_BADGE_DAYS);
+  if (!days.some((day) => day.gained !== null)) return [];
+
+  const gained = days.map((day) => day.gained ?? 0);
+  const badges = [];
+
+  if (gained.every((xp) => xp === 0)) badges.push({ key: 'sleeping', label: 'Sleeping' });
+  if (gained.filter((xp) => xp > 0).length >= CONSISTENT_MIN_ACTIVE_DAYS) badges.push({ key: 'consistent', label: 'Consistent' });
+  if (gained.slice(-2).reduce((sum, xp) => sum + xp, 0) > HOT_STREAK_MIN_XP) badges.push({ key: 'hot-streak', label: 'Hot streak' });
+  if (gained.filter((xp) => xp >= GRINDER_MIN_DAY_XP).length >= GRINDER_MIN_DAYS) badges.push({ key: 'grinder', label: 'Grinder' });
+
+  return badges;
+}
+
 /**
  * How many of the last `days` UTC calendar days each player finished #1 in
  * for a metric — the basis for the Weekly Highlights row's Ranker (levels)

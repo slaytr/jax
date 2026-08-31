@@ -1,6 +1,6 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatCompact, formatNumber, formatShortDate, formatUtcMidnight } from '../format.js';
-import { computeDailyBreakdown } from '../compute.js';
+import { computeActivityBadges, computeDailyBreakdown } from '../compute.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 
 /**
@@ -33,6 +33,11 @@ const daysFor = (window) => WINDOWS.find(([value]) => value === window)?.[2] ?? 
  * resize, and a phone loading this page fresh always renders at its own
  * width on the first pass anyway. */
 const isMobileViewport = () => globalThis.matchMedia?.('(max-width: 720px)').matches ?? false;
+
+/** One computeActivityBadges entry, rendered as a small coloured chip beside
+ * the Gains title — flavour only, so no tooltip/explanation beyond its own
+ * label. */
+const activityBadge = ({ key, label }) => el('span', { class: `activity-badge is-${key}` }, [label]);
 
 /** Week/Month — a 2-tab version of periodToggle's sliding-indicator segmented
  * control (leaderboards.js). `.tabs-2up` sets the indicator to half width
@@ -490,6 +495,7 @@ export function renderPlayerGains({
     el('div', { class: 'lb-head' }, [
       el('div', { class: 'lb-title' }, [
         el('h2', { text: selectedSkill ? `Gains — ${selectedSkill.name}` : 'Gains' }),
+        el('div', { class: 'activity-badges' }, computeActivityBadges(snapshots, player.slug).map(activityBadge)),
       ]),
       windowToggle(window, onSelectWindow, previousWindow),
     ]),
