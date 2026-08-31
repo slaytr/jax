@@ -58,24 +58,29 @@ const STATS_STATE_KEY = 'jax:stats-state';
 /**
  * A handful of query-string params seed the very first render, so a URL is
  * enough to hand someone else (or your own future self) a link straight to
- * a particular spot on this page — read once, in boot(), never written back
- * to the address bar as a viewer clicks around afterward. All optional;
- * absent or unmatched, the page falls back to its usual persisted-state
- * behaviour (loadStatsState) exactly as if none of this existed.
+ * a particular spot on this page. Read once in boot() (readLinkParams,
+ * below) — but kept in sync afterward too: every render() call rewrites
+ * the address bar to match whatever's currently selected (syncUrlToState,
+ * below render()'s own definition), via history.replaceState so clicking
+ * around the Quests tab never piles up back-button entries. Copy the URL
+ * at any point and it reopens to exactly what's on screen. All optional;
+ * absent or unmatched on load, the page falls back to its usual
+ * persisted-state behaviour (loadStatsState) exactly as if none of this
+ * existed.
  *
- * - `?tab=stats|quests|goals` — which PAGE_TABS entry opens first, same
- *   values the tab strip itself uses. Beats the persisted tab if both are
- *   present.
+ * - `?tab=stats|quests|goals` — which PAGE_TABS entry is open, same values
+ *   the tab strip itself uses. Beats the persisted tab on load if both are
+ *   present. Only ever written back when there's nothing more specific to
+ *   say (no quest/series selected) — see syncUrlToState.
  * - `?quest=<slug>` — Quests tab, anchors the dependency map on this one
  *   quest (quest-data's own `slug`), same as clicking its list row.
  * - `?series=<name>` — Quests tab, anchors the map on this whole questline
  *   instead (quest-data's own `series`, e.g. `Mahjarrat%20Mysteries`), same
  *   as clicking its quest-series-links.js chip. Ignored if `quest` is also
  *   given (a single quest is a stricter pick, so it wins).
- * - `?node=<slug>` — only meaningful alongside `series`: additionally
- *   highlights one particular member of that questline (onHighlightNode's
- *   own effect) rather than just anchoring the map on the questline as a
- *   whole.
+ * - `?node=<slug>` — alongside either `quest` or `series`: additionally
+ *   highlights one particular quest in the map (onHighlightNode's own
+ *   effect), same as clicking its name.
  *
  * `quest`/`series` implicitly open the Quests tab even without an explicit
  * `tab=quests` — there's no reason to link someone to one of those and land
@@ -268,6 +273,16 @@ async function boot() {
         if (quest) {
           selectedQuestSlug = quest.slug;
           expandedQuestNames = expandForTargets(quests, [quest.name]);
+          // node is scoped to *any* quest here, not just this one's own
+          // chain — highlighting works the same regardless of selection
+          // kind (onHighlightNode, render()), so a linked node just needs
+          // to resolve to a real quest; if it never actually shows up in
+          // the expanded chain, highlightSetFor (quest-graph.js) already
+          // treats that as nothing highlighted rather than an error.
+          if (linkParams.nodeSlug) {
+            const node = quests.find((candidate) => candidate.slug === linkParams.nodeSlug);
+            if (node) highlightedQuestName = node.name;
+          }
         }
         return;
       }
@@ -354,7 +369,45 @@ async function boot() {
         });
     }
 
+    // Rewrites the address bar to match activeTab/selectedQuestSlug/
+    // selectedSeriesName/highlightedQuestName — the write-side counterpart
+    // to readLinkParams/applyQuestLinkParams above, called at the top of
+    // every render() so the URL is always an up-to-date, copy-pasteable
+    // link to whatever's currently on screen. quest/series only ever get
+    // written while actually on the Quests tab — both stay set in memory
+    // after switching away (so flipping back doesn't lose the selection),
+    // but a copied URL taken from e.g. the Goals tab should say `tab=goals`,
+    // not resurrect a stale quest that isn't even visible right now.
+    // history.replaceState, not pushState: this is a running "what's on
+    // screen" reflection, not a navigation history a viewer would expect
+    // the back button to step through one click at a time.
+    function syncUrlToState() {
+      const params = new URLSearchParams();
+
+      if (activeTab === 'quests' && selectedQuestSlug) {
+        params.set('quest', selectedQuestSlug);
+      } else if (activeTab === 'quests' && selectedSeriesName) {
+        params.set('series', selectedSeriesName);
+      } else if (activeTab !== PAGE_TABS[0][0]) {
+        params.set('tab', activeTab);
+      }
+
+      if (activeTab === 'quests' && (selectedQuestSlug || selectedSeriesName) && highlightedQuestName) {
+        const quests = questsState.status === 'ready' ? questsState.quests : null;
+        const node = quests?.find((quest) => quest.name === highlightedQuestName);
+        if (node) params.set('node', node.slug);
+      }
+
+      const search = params.toString();
+      const url = location.pathname + (search ? `?${search}` : '');
+      if (url !== location.pathname + location.search) history.replaceState(null, '', url);
+    }
+
     function render() {
+      // Keeps the address bar in sync before anything else — see
+      // syncUrlToState's own doc comment.
+      syncUrlToState();
+
       // render() rebuilds the whole panel from scratch on every state
       // change (this page's own convention — see every onSelect/onChange
       // handler below), which for a <select> or a button is invisible: the
