@@ -398,6 +398,8 @@ const LEGEND_ITEMS = [
   ['is-in-progress', 'In progress'],
   ['is-not-started', 'Not started'],
   ['is-external', 'Not a tracked quest'],
+  ['is-target', 'Selected quest'],
+  ['is-questline-target', 'Selected questline'],
 ];
 
 function graphLegend() {

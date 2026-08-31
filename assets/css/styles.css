@@ -2115,29 +2115,6 @@ body::after {
   color: #efa08a;
 }
 
-/* The selected quest — always the chart's single rightmost node — reads as
-   the destination rather than just another prerequisite. Ember, same "this
-   is the thing currently in focus" accent as a selected skill-grid cell or
-   an active tab, not tied to completion status the way the other states
-   below are. */
-.quest-graph-node.is-target {
-  border-color: var(--ember);
-  border-width: 2px;
-  background: rgba(217, 89, 38, 0.13);
-  font-weight: 500;
-}
-
-/* Every member of the currently-selected questline (quest-series-links.js) —
-   same treatment as .is-target but tempered-steel blue instead of ember, so a
-   questline's many targets read as one group distinct from a single selected
-   quest. */
-.quest-graph-node.is-questline-target {
-  border-color: var(--temper);
-  border-width: 2px;
-  background: rgba(74, 144, 201, 0.15);
-  font-weight: 500;
-}
-
 .quest-graph-node.is-completed {
   border-color: rgba(25, 158, 112, 0.5);
 }
@@ -2153,6 +2130,36 @@ body::after {
 .quest-graph-node.is-external {
   border-style: dashed;
   color: var(--ink-muted);
+}
+
+/* The selected quest — always the chart's single rightmost node — reads as
+   the destination rather than just another prerequisite. Ember, same "this
+   is the thing currently in focus" accent as a selected skill-grid cell or
+   an active tab, not tied to completion status the way .is-completed/
+   .is-in-progress/.is-external above are — placed after them on purpose
+   (equal specificity either way, so source order decides) so a completed
+   target still shows the "this is the target" border/background rather
+   than losing it to .is-completed's own, more muted one. */
+.quest-graph-node.is-target {
+  border-color: var(--ember);
+  border-width: 2px;
+  background: rgba(217, 89, 38, 0.13);
+  font-weight: 500;
+}
+
+/* Every member of the currently-selected questline (quest-series-links.js) —
+   same treatment as .is-target but tempered-steel blue instead of ember, so a
+   questline's many targets read as one group distinct from a single selected
+   quest, and same after-the-status-rules placement so a completed member's
+   border/background stays this blue rather than the plain .is-completed
+   green — every questline node reads as *in this questline* first,
+   completion a secondary detail (still visible via .quest-graph-node-check's
+   own colour). */
+.quest-graph-node.is-questline-target {
+  border-color: var(--temper);
+  border-width: 2px;
+  background: rgba(74, 144, 201, 0.15);
+  font-weight: 500;
 }
 
 .quest-graph-legend {
@@ -2187,6 +2194,20 @@ body::after {
 
 .quest-graph-legend-swatch.is-external {
   border-style: dashed;
+}
+
+/* Same border/background pair as a real .quest-graph-node carrying either
+   class (see .quest-graph-node.is-target/.is-questline-target above) —
+   filled, not just a border outline like the status swatches, so the
+   legend swatch actually looks like the node it's explaining. */
+.quest-graph-legend-swatch.is-target {
+  border-color: var(--ember);
+  background: rgba(217, 89, 38, 0.13);
+}
+
+.quest-graph-legend-swatch.is-questline-target {
+  border-color: var(--temper);
+  background: rgba(74, 144, 201, 0.15);
 }
 
 .quest-graph-legend-line {
@@ -2401,10 +2422,9 @@ body::after {
 }
 
 /* Colour comes from an inline gradient (progressFillStyle, player-goals.js)
-   revealing more of PROGRESS_GRADIENT as current/target gets closer to
-   complete — no static background here so that always wins. Absolutely
-   positioned (not a flex child) so .goal-subgoal-start-mark can sit on top
-   of it at its own independent position along the same track. */
+   revealing more of PROGRESS_GRADIENT as the requirement's own
+   startLevel->targetLevel span gets closer to complete — no static
+   background here so that always wins. */
 .goal-subgoal-fill {
   position: absolute;
   inset: 0 auto 0 0;
@@ -2414,21 +2434,6 @@ body::after {
 
 .goal-subgoal-row.is-complete .goal-subgoal-fill {
   background: var(--gain);
-}
-
-/* Where the player was when this requirement started being tracked — a
-   thin notch on top of the fill rather than a second flat-coloured
-   segment, so it stays informative without ever dulling the fill's own
-   colour (which now reflects current/target, not progress since this
-   mark). */
-.goal-subgoal-start-mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--surface-1);
-  opacity: 0.85;
 }
 
 /* Same fixed-width reasoning as .goal-subgoal-name, from the other end —

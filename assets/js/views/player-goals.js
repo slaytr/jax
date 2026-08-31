@@ -95,6 +95,22 @@ const startValueOf = (goal) => (goal.targetType === 'level' ? goal.startLevel : 
 const targetXpOf = (goal, skill, currentXp) =>
   (goal.targetType === 'xp' ? goal.targetValue : xpForLevel(skill, goal.targetValue)) ?? currentXp;
 
+/** A quest requirement's own starting point, in xp — the *threshold* of
+ * `goal.startLevel` (xpForLevel), not the exact raw xp captured the moment
+ * the requirement was created (goal.startXp). The two usually sit close
+ * together, but resolving through the level threshold instead keeps
+ * compactSkillGoalRow's percent scoped to "how far through the
+ * startLevel-to-targetLevel span" the player's real xp sits — using 0
+ * instead (an earlier version of this) let every level already banked
+ * before the requirement even existed dominate the reading, since the xp
+ * curve is exponential: "level 74 out of a level 76 requirement" read as
+ * ~85% even at the very start of level 74, because reaching 74 alone
+ * already covers most of level 76's own total threshold. Falls back to
+ * `goal.startXp` for an xp-type goal (never actually reached by
+ * buildQuestGoalDrafts today, which only ever creates level-type
+ * requirements, but keeps this symmetric with targetXpOf either way). */
+const baseXpOf = (goal, skill) => (goal.targetType === 'level' ? xpForLevel(skill, goal.startLevel) : goal.startXp);
+
 /** Fraction of the way from `fromXp` to `toXp` that `currentXp` has
  * reached, clamped 0-1 — xp throughout, never level. A level-type goal's
  * own *level* only moves in big integer jumps, so measuring progress in
@@ -337,33 +353,31 @@ const orderByStatus = (goals) => {
  * quest goal needs, but the start/current/target/percent numbers are worth
  * keeping since the bar alone can't carry all four.
  *
- * Unlike a regular skill goal's own progress bar (activeSkillGoalCard),
- * this one's fill and percent are current/target directly, *not*
- * (current-start)/(target-start): a quest's skill requirement is a fixed
- * floor the player already happens to be partway to, not a personal
- * milestone chosen from a blank slate, so "how close" has to mean how
- * close their actual level is to the requirement — not how much they've
- * gained since this tracker happened to be added, which reads a
- * one-level-away requirement as 0% (and the gradient below as plain grey)
- * right up until their very next xp drop. Measured in xp (targetXpOf/
- * xpProgressFraction, from 0), same reasoning as activeSkillGoalCard's own
- * since-start xp measure: a level-type requirement's raw level position
- * alone barely moves within a level, so "74 out of a 75 requirement" would
- * otherwise always read as a misleadingly high ~99% even at the very start
- * of level 74's own xp grind. `startValue` (still a level/xp number, not
- * xp-normalised) shows as a `.goal-subgoal-start-mark` tick on the track
- * and in the figures text — useful context — it just doesn't drive the
- * colour or the percent. */
+ * The bar/percent span baseXpOf(goal,skill) (the *threshold* of
+ * goal.startLevel) to targetXpOf(goal,skill) (the requirement's own
+ * level/xp) — not 0 to target, and not the exact xp captured the moment
+ * the requirement was created either. Two earlier versions of this got it
+ * wrong in opposite directions: measuring since the *exact* creation-time
+ * xp read a one-level-away requirement as a flat 0% right up until the
+ * player's very next xp drop; measuring from 0 let every level already
+ * banked before the requirement even existed dominate the reading (RS's xp
+ * curve is exponential, so "level 74 out of a level 76 requirement" read
+ * as ~85% even at the very start of level 74, since reaching 74 alone
+ * already covers most of level 76's own total threshold). Scoping the
+ * span to just startLevel->targetLevel fixes both: a fresh requirement
+ * already partway through its start level's own xp reads as that much
+ * progress immediately, and a requirement spanning several levels no
+ * longer inherits the whole game's worth of xp sunk before it existed. */
 function compactSkillGoalRow(goal, skill, player, onDelete) {
   const value = player.skillById?.[goal.skillId];
   const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
   const currentXp = value?.xp ?? goal.startXp;
   const startValue = startValueOf(goal);
+  const baseXp = baseXpOf(goal, skill);
   const targetXp = targetXpOf(goal, skill, currentXp);
 
-  const startFraction = xpProgressFraction(0, goal.startXp, targetXp);
-  const currentFraction = goal.completedAt ? 1 : xpProgressFraction(0, currentXp, targetXp);
-  const percent = Math.round(currentFraction * 100);
+  const fraction = goal.completedAt ? 1 : xpProgressFraction(baseXp, currentXp, targetXp);
+  const percent = Math.round(fraction * 100);
 
   return el('li', { class: `goal-subgoal-row${goal.completedAt ? ' is-complete' : ''}` }, [
     el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
@@ -371,9 +385,8 @@ function compactSkillGoalRow(goal, skill, player, onDelete) {
     el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
       el('span', {
         class: 'goal-subgoal-fill',
-        style: goal.completedAt ? { width: '100%' } : progressFillStyle(currentFraction),
+        style: goal.completedAt ? { width: '100%' } : progressFillStyle(fraction),
       }),
-      el('span', { class: 'goal-subgoal-start-mark', style: { left: `${(startFraction * 100).toFixed(1)}%` } }),
     ]),
     el('span', {
       class: 'goal-subgoal-figures',
