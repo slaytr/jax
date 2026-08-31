@@ -101,10 +101,11 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
   /**
    * Quest points come from a separate API, so they succeed and fail
    * independently of the hiscore fetch: keep the previous value when the
-   * profile is private or the call failed. `completedQuests` (the current
-   * list of completed titles) follows the same fallback — it's a live
-   * snapshot for display, not something carried in history, so there's
-   * nothing to reconcile beyond "keep the last good list".
+   * profile is private or the call failed. `completedQuests`/`startedQuests`
+   * (the current completed/in-progress title lists) follow the same
+   * fallback — they're a live snapshot for display, not something carried
+   * in history, so there's nothing to reconcile beyond "keep the last good
+   * list".
    */
   const questsFor = (slug, previous) => {
     const quest = questsBySlug[slug];
@@ -113,6 +114,7 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
         questPoints: quest.questPoints,
         questsComplete: quest.questsComplete,
         completedQuests: quest.completedQuests,
+        startedQuests: quest.startedQuests,
         questsStale: false,
       };
     }
@@ -120,6 +122,7 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
       questPoints: previous?.questPoints ?? null,
       questsComplete: previous?.questsComplete ?? null,
       completedQuests: previous?.completedQuests ?? [],
+      startedQuests: previous?.startedQuests ?? [],
       questsStale: true,
     };
   };

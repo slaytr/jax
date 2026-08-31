@@ -613,6 +613,52 @@ body::after {
   gap: 0.9rem;
 }
 
+/* Playful, rule-of-thumb badges beside the personal stats page's Gains title
+   (computeActivityBadges, player-gains.js) — a nickname for the shape of a
+   player's last 7 days, not another stat, so each gets its own accent colour
+   rather than the uniform gain/loss treatment `.delta` uses. Its own flex
+   row (rather than `.lb-title`'s own gap) so an empty badge list collapses
+   to nothing and, with more than one badge, they sit close together instead
+   of picking up `.lb-title`'s wider header-to-control spacing. */
+.activity-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.activity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.5rem;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.activity-badge.is-sleeping {
+  color: var(--ink-muted);
+  background: var(--hairline);
+}
+
+.activity-badge.is-consistent {
+  color: var(--gain);
+  background: var(--gain-bg);
+}
+
+.activity-badge.is-hot-streak {
+  color: #f2a37a;
+  background: rgba(217, 89, 38, 0.18);
+}
+
+.activity-badge.is-grinder {
+  color: #e3c675;
+  background: rgba(201, 162, 39, 0.2);
+}
+
 /* Grid ⇄ line chart — icon buttons in a row. */
 .gains-view-tabs {
   display: inline-flex;
@@ -1570,9 +1616,350 @@ body::after {
 
 /* Week/Month — a 2-tab variant of the shared .tabs segmented control (see
    Day/Week/Month above), sized for two equal-width tabs instead of the
-   base .tabs-indicator's one-third. */
+   base .tabs-indicator's one-third. Also the Stats/Quests page-level
+   toggle below (stats.js), which happens to be two tabs as well. */
 .tabs-2up .tabs-indicator {
   width: 50%;
+}
+
+.page-tabs {
+  margin-bottom: 1rem;
+}
+
+/* Quests tab: the Skills grid's replacement, same 200px width as
+   .skill-grid so switching tabs never reflows anything beside it — plus a
+   filter/sort toolbar above the list itself (below), which is why the
+   whole card runs a bit taller than Skills' own ~350px now; the list's own
+   height still matches roughly what Skills' grid took. */
+.quest-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 200px;
+}
+
+.quest-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.quest-filter-select,
+.quest-search-input {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+}
+
+.quest-search-input::placeholder {
+  color: var(--ink-muted);
+}
+
+.quest-filter-select:focus-visible,
+.quest-search-input:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.quest-list {
+  height: 260px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.quest-list-empty {
+  padding: 0.5rem 0.1rem;
+}
+
+.quest-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.32rem 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.quest-list-item:last-child {
+  border-bottom: 0;
+}
+
+/* Reserves the width of a checkmark/dot whether or not this row has one, so
+   a not-started quest's name doesn't sit one glyph left of a marked one's. */
+.quest-list-check {
+  flex: none;
+  width: 0.9em;
+}
+
+.quest-list-item.is-completed .quest-list-check {
+  color: #8fd0a4;
+}
+
+.quest-list-item.is-in-progress .quest-list-check {
+  color: var(--ember);
+}
+
+.quest-list-item.is-completed .quest-list-name {
+  color: var(--ink-muted);
+}
+
+/* Overall progress, not a result count — see questProgressSummary's own
+   doc comment (player-quests.js) for why it ignores the search box and the
+   three filters above it. */
+.quest-progress {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+/* Placeholder for the quest dependency flow chart (not built yet) — sits in
+   the Quests tab's 2nd column, so it already inherits the Gains column's
+   own flex-grow sizing (.player-row .lb:nth-child(2) above) for free. */
+.quest-flowchart .chart-empty {
+  padding: 1rem 0;
+}
+
+/* Goals tab: the goal list is the Quests tab's 2nd-column card in every way
+   that matters (same .player-row slot, same flex-grow sizing), just with
+   its own card anatomy below. */
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.goal-card.is-complete {
+  border-color: var(--gain-bg);
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.goal-card-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: none;
+}
+
+.goal-card-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-card-target {
+  flex: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.goal-card.is-complete .goal-card-target {
+  color: var(--gain);
+}
+
+/* A real button (site convention), styled to sit quietly beside the name
+   until it's actually needed. */
+.goal-card-delete {
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.16s var(--ease),
+    background-color 0.16s var(--ease);
+}
+
+.goal-card-delete:hover,
+.goal-card-delete:focus-visible {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.goal-card-delete:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* Same anatomy as the skill grid's own .cell-rule/.cell-rule-fill (a share
+   of the way there, painted in the player's --accent), just full-width and
+   a touch taller — this is the card's own headline figure, not one detail
+   among several. */
+.goal-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.goal-card-meta {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+}
+
+/* The "new goal" dialog a skill-grid click opens (player-goals.js). A real
+   <dialog>, shown via showModal() — the browser supplies the backdrop,
+   focus trap and Escape-to-dismiss; only its own box needs styling. */
+.goal-dialog {
+  width: min(320px, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink);
+}
+
+.goal-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.goal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem;
+}
+
+.goal-dialog-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.goal-dialog-current {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.76rem;
+}
+
+.goal-target-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.goal-target-choice input[type='radio'] {
+  accent-color: var(--ember);
+}
+
+.goal-target-choice span {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+.goal-target-choice input[type='number'] {
+  width: 130px;
+  margin-left: auto;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.goal-target-choice input[type='number']:disabled {
+  opacity: 0.4;
+}
+
+.goal-target-choice input[type='number']:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.goal-dialog-error {
+  margin: 0;
+  color: var(--ember);
+  font-size: 0.72rem;
+}
+
+.goal-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.goal-btn {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.goal-btn:hover {
+  border-color: var(--ink-muted);
+  color: var(--ink);
+}
+
+.goal-btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.goal-btn-primary {
+  border-color: var(--ember);
+  color: var(--ember);
+}
+
+.goal-btn-primary:hover {
+  background: rgba(217, 89, 38, 0.12);
 }
 
 /* The active chart at 2× the width of the two stacked beside it — since
@@ -1801,7 +2188,8 @@ body::after {
     width: 100%;
   }
 
-  .skill-grid {
+  .skill-grid,
+  .quest-list-card {
     margin: 0 auto;
   }
 

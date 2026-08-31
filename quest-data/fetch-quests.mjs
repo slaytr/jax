@@ -120,7 +120,7 @@ async function main() {
       'release_date',
       'removal_date',
     ]),
-    bucketQuery('quest', ['page_name', 'requirement_skill_level']),
+    bucketQuery('quest', ['page_name', 'requirement_skill_level', 'official_length']),
     fetch(WIKI_MODULE('Module:Questreq/data')).then((res) => res.text()),
   ]);
 
@@ -146,6 +146,12 @@ async function main() {
         return { skill, level: Number(level) };
       }),
     ]),
+  );
+
+  // Qualitative, sometimes a range ("Short to Medium") — see the README's
+  // LENGTH_ORDER note for how a planner turns this into a sort order.
+  const lengthByPage = new Map(
+    skillRows.map((row) => [row.page_name, row.official_length && row.official_length !== 'N/A' ? row.official_length : null]),
   );
 
   const knownPageNames = new Set(rows.map((row) => row.page_name));
@@ -209,6 +215,7 @@ async function main() {
         questType: row.quest_type ?? 'quest',
         subquestOf: row.subquest_of ?? null,
         difficulty: row.official_difficulty ?? null,
+        length: lengthByPage.get(row.page_name) ?? null,
         // Bucket serialises this boolean field as present-but-empty for
         // true and absent for false — there is no literal `true` value.
         members: Object.hasOwn(row, 'is_members_only'),

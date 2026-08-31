@@ -41,6 +41,7 @@ One object per quest in the `quests` array:
 | `questType` | `"quest"` \| `"miniquest"` \| `"subquest"` | |
 | `subquestOf` | string \| null | Parent quest name, for subquests (e.g. every *Recipe for Disaster* subquest). |
 | `difficulty` | string \| null | `Novice`/`Intermediate`/`Experienced`/`Master`/`Grandmaster`/`Special`. |
+| `length` | string \| null | Qualitative, e.g. `"Medium"` or `"Short to Medium"` — a range, not always a single step. `null` where the wiki has it as `N/A` (mostly miniquests/subquests). The values seen at last fetch, low to high: `Very Short`, `Short`, `Short to Medium`, `Medium`, `Medium to Long`, `Long`, `Long to Very Long`, `Very Long`, `Very, Very Long`. A consumer sorting by this needs its own ordinal map over exactly those strings — there's nothing numeric to sort on directly. |
 | `members` | boolean | |
 | `series` | string \| null | Quest series name, e.g. `"Mahjarrat Mysteries"`. |
 | `seriesPosition` | number \| null | Position within `series`. |

@@ -3,8 +3,9 @@
  *
  * The hiscore feed does not expose quests at all — its activities list carries
  * RuneScore and clue counts, but nothing about quests. RuneMetrics does, as a
- * per-quest list, so the point total is summed from completed entries and the
- * completed titles are kept as-is for display — this is a current snapshot
+ * per-quest list, with a `status` of COMPLETED, STARTED, or NOT_STARTED per
+ * quest; the point total is summed from completed entries, and the completed
+ * and started titles are kept as-is for display — this is a current snapshot
  * only, not tracked over time the way skills/xp are.
  *
  * RuneMetrics honours the in-game privacy setting: a player who has hidden their
@@ -18,12 +19,13 @@ const USER_AGENT = 'jax-hiscores (github.com/slaytr/jax)';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Sums questPoints across completed quests and lists their titles. Exported for testing. */
+/** Sums questPoints across completed quests and lists completed/started titles. Exported for testing. */
 export function questPointsFrom(payload) {
   if (payload?.error) return { ok: false, error: `RuneMetrics: ${payload.error}` };
   if (!Array.isArray(payload?.quests)) return { ok: false, error: 'RuneMetrics returned no quest list' };
 
   const completed = payload.quests.filter((quest) => quest?.status === 'COMPLETED');
+  const started = payload.quests.filter((quest) => quest?.status === 'STARTED');
   const points = completed.reduce((sum, quest) => sum + (Number(quest.questPoints) || 0), 0);
 
   return {
@@ -32,6 +34,7 @@ export function questPointsFrom(payload) {
     questsComplete: completed.length,
     questsTotal: payload.quests.length,
     completedQuests: completed.map((quest) => quest.title),
+    startedQuests: started.map((quest) => quest.title),
   };
 }
 

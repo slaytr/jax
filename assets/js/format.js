@@ -72,3 +72,22 @@ export function formatDuration(milliseconds) {
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
+
+/** A fixed elapsed span as "3 days" / "2 months" / "1 year" — day-and-up
+ * scale, unlike formatDuration's h/m countdown, and a span between two
+ * fixed points rather than formatRelativeTime's "X ago" from now. Used for
+ * "how long a goal took" (player-goals.js). */
+export function formatSpan(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return '—';
+
+  const days = Math.round(milliseconds / 86400000);
+  if (days < 1) return 'same day';
+  if (days === 1) return '1 day';
+  if (days < 30) return `${days} days`;
+
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'}`;
+
+  const years = Math.round(days / 365);
+  return `${years} year${years === 1 ? '' : 's'}`;
+}
