@@ -2224,6 +2224,119 @@ body::after {
   border-color: var(--gain-bg);
 }
 
+/* A quest goal's own skill-requirement goals (buildQuestGoalDrafts,
+   quest-goal.js), nested inside its <li> rather than listed as flat
+   siblings — indented under a dashed divider so the checklist reads as
+   belonging to the quest card above it. */
+.goal-subgoals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.15rem 0 0;
+  padding: 0.5rem 0 0 1.35rem;
+  border-top: 1px dashed var(--hairline);
+  list-style: none;
+}
+
+/* One requirement per line — icon, name, and its own progress bar together,
+   target/✓ and delete trailing — dense on purpose, unlike a full goal-card's
+   separate head/progress/meta rows (compactSkillGoalRow, player-goals.js). */
+.goal-subgoal-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.goal-subgoal-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: none;
+}
+
+/* A fixed column width (not a max-width) — every row's name takes the same
+   space regardless of "Attack" vs "Dungeoneering", so the track after it
+   (flex: 1) always gets the same remaining width and every skill's bar
+   reads as the same physical length, not just the same percentage. */
+.goal-subgoal-name {
+  flex: none;
+  width: 6.5rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.goal-subgoal-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+/* Colour comes from an inline gradient (progressFillStyle, player-goals.js)
+   revealing more of PROGRESS_GRADIENT as current/target gets closer to
+   complete — no static background here so that always wins. Absolutely
+   positioned (not a flex child) so .goal-subgoal-start-mark can sit on top
+   of it at its own independent position along the same track. */
+.goal-subgoal-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+.goal-subgoal-row.is-complete .goal-subgoal-fill {
+  background: var(--gain);
+}
+
+/* Where the player was when this requirement started being tracked — a
+   thin notch on top of the fill rather than a second flat-coloured
+   segment, so it stays informative without ever dulling the fill's own
+   colour (which now reflects current/target, not progress since this
+   mark). */
+.goal-subgoal-start-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--surface-1);
+  opacity: 0.85;
+}
+
+/* Same fixed-width reasoning as .goal-subgoal-name, from the other end —
+   "40 → 66 / 80 · 65%" and "✓ 30 → 40" are different lengths, but the
+   track between them (flex: 1) should still land on the same width either
+   way. Right-aligned so the numbers stay flush against the delete button
+   rather than drifting with the track. */
+.goal-subgoal-figures {
+  flex: none;
+  width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-subgoal-row.is-complete .goal-subgoal-figures {
+  color: var(--gain);
+}
+
+.goal-subgoal-row .goal-card-delete {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 0.85rem;
+}
+
 .goal-card-head {
   display: flex;
   align-items: center;
@@ -2349,10 +2462,13 @@ body::after {
   overflow: hidden;
 }
 
+/* Colour comes from an inline gradient (progressFillStyle, player-goals.js)
+   revealing more of PROGRESS_GRADIENT as the goal gets closer to complete
+   — no static background here so that always wins. */
 .goal-progress-fill {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background-repeat: no-repeat;
 }
 
 .goal-progress-percent {

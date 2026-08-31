@@ -94,6 +94,37 @@ function progressFraction(goal, currentValue) {
 
 const goalTargetLabel = (goal) => (goal.targetType === 'level' ? `Level ${formatNumber(goal.targetValue)}` : `${formatNumber(goal.targetValue)} xp`);
 
+/** Ember (far) -> warn (getting there) -> gain (green, done) — one shared
+ * gradient every progress fill reveals more of as a goal gets closer to
+ * complete, so a bar's colour always means the same thing at the same
+ * completion percentage, whatever width it happens to render at (a
+ * two-tone subgoal row's own growth segment, for one, is usually a lot
+ * narrower on screen than the percentage it represents — see
+ * compactSkillGoalRow). Only meant for an in-progress fill; a completed
+ * one is styled solid green by its own `.is-complete` CSS rule instead,
+ * so callers skip this for those. */
+const PROGRESS_GRADIENT = 'linear-gradient(to right, var(--ember), var(--warn) 35%, var(--gain) 70%)';
+
+/** `widthFraction` (0–1) is how wide the fill element itself should
+ * render — for a plain single-tone bar that's the same as the goal's own
+ * completion share, but a two-tone subgoal row's growth segment renders at
+ * a different, absolute-scale width (see compactSkillGoalRow), so the two
+ * are kept as separate parameters. `backgroundSize` is a percentage of the
+ * fill element's *own* box (CSS's definition, not the track around it),
+ * so setting it to `100 / percentFraction` reveals exactly the 0..percent
+ * slice of PROGRESS_GRADIENT inside that box regardless of how wide the
+ * box itself renders — the right edge always lands on the correct colour
+ * for this goal's own completion share. Guarded against 0 (nothing to
+ * reveal, and 1/0 isn't a valid CSS length) — invisible at that width
+ * anyway. */
+function progressFillStyle(widthFraction, percentFraction = widthFraction) {
+  return {
+    width: `${(widthFraction * 100).toFixed(1)}%`,
+    backgroundImage: PROGRESS_GRADIENT,
+    backgroundSize: percentFraction > 0 ? `${(100 / percentFraction).toFixed(1)}% 100%` : undefined,
+  };
+}
+
 /** Every distinct non-empty value of `field` across `goals`, alphabetised —
  * the group datalist in renderGoalDialog and the group headings in
  * renderGoalsList both read off this. There's no separate "list of groups"
@@ -153,29 +184,34 @@ function labelChips(goal, labelsByName) {
   );
 }
 
+/** One compact line, same anatomy as a quest's own skill-requirement rows
+ * (compactSkillGoalRow) — icon, name, progress bar, then target and
+ * percent, delete last — reusing their `.goal-subgoal-*` classes so every
+ * skill goal's bar lines up at the same fixed width everywhere on the
+ * page, nested or not. Progress here stays since-start (progressFraction),
+ * unlike a quest requirement's current/target: this is a personal
+ * milestone the viewer chose from wherever they were standing, not a fixed
+ * floor they were already partway to. Labels (label-picker, unlike a quest
+ * requirement which never carries any) still get their own row underneath
+ * when present — labelChips already returns null otherwise, so a
+ * label-less goal stays a single line. */
 function activeSkillGoalCard(goal, skill, player, labelsByName, onDelete) {
   const value = player.skillById?.[goal.skillId];
   const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
   const fraction = progressFraction(goal, currentValue);
-  const currentLabel = goal.targetType === 'level' ? 'Current Level' : 'Current XP';
+  const percent = Math.round(fraction * 100);
 
   return el('li', { class: 'goal-card' }, [
-    el('div', { class: 'goal-card-head' }, [
-      el('img', { class: 'goal-card-icon', src: iconFor(skill), alt: '', width: 18, height: 18, decoding: 'async' }),
-      el('span', { class: 'goal-card-name', text: skill.name }),
-      el('span', { class: 'goal-card-current', text: `${currentLabel}: ${formatNumber(currentValue)}` }),
-      el('span', { class: 'goal-card-head-spacer' }),
-      el('span', { class: 'goal-card-target', text: goalTargetLabel(goal) }),
+    el('div', { class: 'goal-subgoal-row' }, [
+      el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
+      el('span', { class: 'goal-subgoal-name', text: skill.name }),
+      el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
+        el('span', { class: 'goal-subgoal-fill', style: progressFillStyle(fraction) }),
+      ]),
+      el('span', { class: 'goal-subgoal-figures', text: `${goalTargetLabel(goal)} · ${percent}%` }),
       deleteButton(goal, onDelete),
     ]),
     labelChips(goal, labelsByName),
-    el('div', { class: 'goal-progress-row' }, [
-      el('div', { class: 'goal-progress-track', role: 'presentation' }, [
-        el('span', { class: 'goal-progress-fill', style: { width: `${(fraction * 100).toFixed(1)}%` } }),
-      ]),
-      el('span', { class: 'goal-progress-percent', text: `${Math.round(fraction * 100)}%` }),
-    ]),
-    metaLine([`Started ${formatRelativeTime(goal.startedAt)}`]),
   ]);
 }
 
@@ -265,30 +301,115 @@ function goalCard(goal, bySkillId, player, labelsByName, onDelete) {
 
 /** Active ones first (creation order), completed ones shuffled to the
  * bottom (most recently finished first) rather than mixed in, so the
- * still-in-progress goals a viewer actually cares about stay on top — same
- * ordering renderGoalsList used before groups existed, just now scoped to
- * one group's goals at a time instead of the whole list. Skill and quest
- * goals (goalCard) sort and mix freely within that — a quest-derived group
- * (quest-goal.js) typically holds one of each. */
+ * still-in-progress goals a viewer actually cares about stay on top. */
+const orderByStatus = (goals) => {
+  const active = goals.filter((goal) => !goal.completedAt);
+  const completed = goals.filter((goal) => goal.completedAt).sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt));
+  return [...active, ...completed];
+};
+
+/** A quest's own skill-requirement goal (buildQuestGoalDrafts, quest-goal.js
+ * — always `kind: 'skill'`), as one compact line rather than a full
+ * goalCard: icon, name, and its progress bar together, then the start,
+ * current, and target values plus a percent, and delete at the end. A
+ * requirement checklist reads better dense — the xp-rate/date figures a
+ * full card shows are more than a single requirement riding along with a
+ * quest goal needs, but the start/current/target/percent numbers are worth
+ * keeping since the bar alone can't carry all four.
+ *
+ * Unlike a regular skill goal's own progress bar (activeSkillGoalCard),
+ * this one's fill and percent are current/target directly, *not*
+ * (current-start)/(target-start): a quest's skill requirement is a fixed
+ * floor the player already happens to be partway to, not a personal
+ * milestone chosen from a blank slate, so "how close" has to mean how
+ * close their actual level is to the requirement — not how much they've
+ * gained since this tracker happened to be added, which reads a
+ * one-level-away requirement as 0% (and the gradient below as plain grey)
+ * right up until their very next xp drop. `startValue` still shows as a
+ * `.goal-subgoal-start-mark` tick on the track and in the figures text —
+ * useful context — it just no longer drives the colour or the percent. */
+function compactSkillGoalRow(goal, skill, player, onDelete) {
+  const value = player.skillById?.[goal.skillId];
+  const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
+  const startValue = startValueOf(goal);
+
+  const target = goal.targetValue || 1;
+  const startFraction = Math.min(1, Math.max(0, startValue / target));
+  const currentFraction = goal.completedAt ? 1 : Math.min(1, Math.max(0, currentValue / target));
+  const percent = Math.round(currentFraction * 100);
+
+  return el('li', { class: `goal-subgoal-row${goal.completedAt ? ' is-complete' : ''}` }, [
+    el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
+    el('span', { class: 'goal-subgoal-name', text: skill.name }),
+    el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
+      el('span', {
+        class: 'goal-subgoal-fill',
+        style: goal.completedAt ? { width: '100%' } : progressFillStyle(currentFraction),
+      }),
+      el('span', { class: 'goal-subgoal-start-mark', style: { left: `${(startFraction * 100).toFixed(1)}%` } }),
+    ]),
+    el('span', {
+      class: 'goal-subgoal-figures',
+      text: goal.completedAt
+        ? `✓ ${formatNumber(startValue)} → ${formatNumber(goal.targetValue)}`
+        : `${formatNumber(startValue)} → ${formatNumber(currentValue)} / ${formatNumber(goal.targetValue)} · ${percent}%`,
+    }),
+    deleteButton(goal, onDelete),
+  ]);
+}
+
+/** The quest itself, with every skill-requirement goal sharing its group
+ * (buildQuestGoalDrafts, quest-goal.js) nested inside its own `<li>` as a
+ * `.goal-subgoals` sub-list of compact rows (compactSkillGoalRow), rather
+ * than listed as flat full-size siblings — a viewer sees a quest's
+ * requirement checklist attached to the quest card that owns it, not
+ * scattered loosely under a section heading that already repeats the same
+ * quest's name. */
+function questGoalCard(quest, childGoals, bySkillId, player, labelsByName, onDelete) {
+  const card = goalCard(quest, bySkillId, player, labelsByName, onDelete);
+  if (childGoals.length > 0) {
+    card.append(
+      el(
+        'ul',
+        { class: 'goal-subgoals' },
+        orderByStatus(childGoals).map((goal) => compactSkillGoalRow(goal, bySkillId.get(goal.skillId), player, onDelete)),
+      ),
+    );
+  }
+  return card;
+}
+
+/** One card per goal in this group's own ordering (orderByStatus), except a
+ * group built from a quest (goalSections/quest-goal.js — every draft in it
+ * shares `group: quest.name`) collapses down to a single top-level item:
+ * the quest card, with its skill-requirement siblings nested inside it
+ * (questGoalCard) instead of appearing as their own list entries. */
 function goalListItems(sectionGoals, bySkillId, player, labelsByName, onDeleteGoal) {
-  const active = sectionGoals.filter((goal) => !goal.completedAt);
-  const completed = sectionGoals.filter((goal) => goal.completedAt).sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt));
-  return [...active, ...completed].map((goal) => goalCard(goal, bySkillId, player, labelsByName, onDeleteGoal));
+  const quest = sectionGoals.find((goal) => goal.kind === 'quest');
+  if (quest) {
+    const children = sectionGoals.filter((goal) => goal !== quest);
+    return [questGoalCard(quest, children, bySkillId, player, labelsByName, onDeleteGoal)];
+  }
+  return orderByStatus(sectionGoals).map((goal) => goalCard(goal, bySkillId, player, labelsByName, onDeleteGoal));
 }
 
 /**
  * Splits `goals` into one section per group, alphabetised, plus a final
- * catch-all for goals with no group — titled "Ungrouped" only when there's
- * at least one *named* group to actually distinguish it from (a viewer who
- * has never grouped anything just gets one flat, heading-less list, exactly
- * like before groups existed).
+ * catch-all for goals with no group — titled "Skills" only when there's at
+ * least one *named* group to actually distinguish it from (a viewer who has
+ * never grouped anything just gets one flat, heading-less list, exactly
+ * like before groups existed). Every goal without a group is a plain
+ * `kind: 'skill'` goal set from the skill grid — a quest goal always
+ * carries one (its own name, buildQuestGoalDrafts/quest-goal.js) — so
+ * "Skills" names this catch-all accurately rather than just describing it
+ * as leftover.
  */
 function goalSections(goals) {
   const groupNames = distinctValues(goals, 'group');
   const sections = groupNames.map((name) => ({ title: name, goals: goals.filter((goal) => goal.group === name) }));
 
   const ungrouped = goals.filter((goal) => !goal.group);
-  if (ungrouped.length > 0) sections.push({ title: groupNames.length > 0 ? 'Ungrouped' : null, goals: ungrouped });
+  if (ungrouped.length > 0) sections.push({ title: groupNames.length > 0 ? 'Skills' : null, goals: ungrouped });
 
   return sections;
 }
