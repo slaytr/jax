@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Static GitHub Pages scoreboard for the Jax group ironman team, fed by the RuneScape 3 hiscores.",
+  "description": "Postgres-backed scoreboard and API for the Jax group ironman team, fed by the RuneScape 3 hiscores.",
   "scripts": {
     "update": "node scripts/update.mjs",
+    "update:db": "node api/jobs/update-job.mjs",
     "icons": "node scripts/fetch-icons.mjs",
     "stats": "node scripts/build-stats-pages.mjs",
     "serve": "node scripts/serve.mjs",
+    "server": "node api/server.mjs",
     "test": "node --test test/*.test.mjs",
     "migrate": "node api/migrate.mjs",
     "backfill": "node scripts/backfill.mjs"

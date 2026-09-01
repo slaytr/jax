@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 /**
- * One-time (but idempotent — safe to re-run) load of everything currently
- * committed as JSON into Postgres: data/players.json, data/latest.json,
+ * One-time (but idempotent — safe to re-run) load of everything committed
+ * as JSON into Postgres: data/players.json, data/latest.json,
  * data/history/**, quest-data/quests.json.
  *
  * Every write is an upsert, so re-running after more cron commits have
  * landed on main (see the plan's Branching section) just fills in whatever
  * is new — nothing needs to be truncated first.
+ *
+ * Kept around after the cutover that deletes data/latest.json,
+ * data/history/**, and quest-data/quests.json from the working tree — it's
+ * only useful again against a checkout of a commit that still has them
+ * (rebuilding a database from scratch off pre-cutover history, say), so
+ * running it post-cutover on a normal checkout just logs "skipped" for
+ * everything past the roster.
  *
  * Usage: node scripts/backfill.mjs
  */
@@ -16,7 +23,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { withTransaction, closePool } from '../api/db.mjs';
-import { upsertRoster, upsertLatest, insertSnapshotEntry } from '../api/store/upserts.mjs';
+import { upsertRoster, upsertLatest, insertSnapshotEntry, upsertQuests } from '../api/store/upserts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = join(ROOT, 'data');
@@ -65,73 +72,6 @@ async function backfillHistory(client) {
   return { files: files.length, snapshots: snapshotCount, playerSnapshots: playerSnapshotCount };
 }
 
-async function backfillQuests(client, questData) {
-  if (!questData) return { quests: 0 };
-
-  for (const quest of questData.quests ?? []) {
-    await client.query(
-      `insert into quests
-         (name, slug, wiki_url, quest_type, subquest_of, difficulty, length, members, series,
-          series_position, age, start_area, combat_level, release_date, removal_date,
-          misc_requirements, full_completion_requirements)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-       on conflict (name) do update set
-         slug = excluded.slug, wiki_url = excluded.wiki_url, quest_type = excluded.quest_type,
-         subquest_of = excluded.subquest_of, difficulty = excluded.difficulty, length = excluded.length,
-         members = excluded.members, series = excluded.series, series_position = excluded.series_position,
-         age = excluded.age, start_area = excluded.start_area, combat_level = excluded.combat_level,
-         release_date = excluded.release_date, removal_date = excluded.removal_date,
-         misc_requirements = excluded.misc_requirements,
-         full_completion_requirements = excluded.full_completion_requirements`,
-      [
-        quest.name,
-        quest.slug,
-        quest.wikiUrl ?? null,
-        quest.questType ?? null,
-        quest.subquestOf ?? null,
-        quest.difficulty ?? null,
-        quest.length ?? null,
-        quest.members ?? null,
-        quest.series ?? null,
-        quest.seriesPosition ?? null,
-        quest.age ?? null,
-        quest.startArea ?? null,
-        quest.combatLevel ?? null,
-        quest.releaseDate ?? null,
-        quest.removalDate ?? null,
-        JSON.stringify(quest.miscRequirements ?? []),
-        JSON.stringify(quest.fullCompletionRequirements ?? []),
-      ],
-    );
-
-    await client.query('delete from quest_skill_requirements where quest_name = $1', [quest.name]);
-    for (const [position, req] of (quest.skillRequirements ?? []).entries()) {
-      await client.query('insert into quest_skill_requirements (quest_name, skill, level, position) values ($1, $2, $3, $4)', [
-        quest.name,
-        req.skill,
-        req.level,
-        position,
-      ]);
-    }
-
-    await client.query('delete from quest_prerequisites where quest_name = $1', [quest.name]);
-    // questRequirements and recommendedQuests are numbered independently —
-    // each is its own source array with its own display order, split back
-    // apart on read by projectQuest() filtering on `relation`.
-    const required = (quest.questRequirements ?? []).map((req, position) => [quest.name, req.quest, req.relation, position]);
-    const recommended = (quest.recommendedQuests ?? []).map((req, position) => [quest.name, req.quest, 'recommended', position]);
-    for (const row of [...required, ...recommended]) {
-      await client.query(
-        `insert into quest_prerequisites (quest_name, requires, relation, position) values ($1, $2, $3, $4)
-         on conflict (quest_name, requires, relation) do update set position = excluded.position`,
-        row,
-      );
-    }
-  }
-
-  return { quests: questData.quests?.length ?? 0 };
-}
-
 async function main() {
   const roster = await readJson(join(DATA_DIR, 'players.json'));
   if (!roster) throw new Error('data/players.json not found — nothing to backfill from.');
@@ -151,7 +91,7 @@ async function main() {
       `History: ${historyResult.files} shard file(s), ${historyResult.snapshots} snapshot(s), ${historyResult.playerSnapshots} player-snapshot(s).`,
     );
 
-    const questResult = await backfillQuests(client, questData);
+    const questResult = await upsertQuests(client, questData);
     console.log(questData ? `Quests: ${questResult.quests} quests.` : 'Quests: no quest-data/quests.json, skipped.');
   });
 

@@ -1,18 +1,25 @@
 # RuneScape 3 quest data
 
-`quests.json` — every quest, miniquest and subquest currently on the [RuneScape
+Every quest, miniquest and subquest currently on the [RuneScape
 Wiki](https://runescape.wiki), with its skill requirements and its
-quest-to-quest prerequisite graph. Captured for a future quest planner: check
-off finished quests and completed skills, see what's unlocked.
+quest-to-quest prerequisite graph. Powers the Quests tab's dependency map and
+goal tracking — check off finished quests and completed skills, see what's
+unlocked.
 
-Regenerate with:
+The `quests`/`quest_skill_requirements`/`quest_prerequisites` tables in
+Postgres are the canonical store (served at `GET /api/quests` — see the
+Postgres migration plan); this directory holds only the scraper. Regenerate
+after a new quest release with:
 
 ```
-node quest-data/fetch-quests.mjs
+node quest-data/fetch-quests.mjs --to-db
 ```
 
 It always pulls fresh from the wiki — nothing here is hand-maintained, so
-rerun it after a new quest release rather than hand-editing `quests.json`.
+rerun it rather than hand-editing anything. Omit `--to-db` to write a local
+`quests.json` instead, for inspecting a scrape before trusting it against the
+real database (that file is gitignored, not committed — see the schema table
+below for the shape either way).
 
 ## Where this comes from
 

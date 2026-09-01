@@ -1,85 +1,28 @@
 /**
- * Loads the committed snapshot files.
+ * Loads the group's current state and recent history from the API.
  *
- * The RS3 hiscore feed sends no CORS headers, so the browser cannot call Jagex
- * directly. These files are produced server-side by scripts/update.mjs running in
- * GitHub Actions, and are plain static assets from the page's own origin.
+ * Postgres is canonical now (see the Postgres migration plan) — this used
+ * to fetch data/latest.json plus up to 33 daily data/history/YYYY-MM/DD.json
+ * shards directly as static files (committed by a GitHub Actions job,
+ * since the RS3 hiscore feed sends no CORS headers and a browser can't
+ * call it directly). The site and the API now share an origin, so this is
+ * just two ordinary same-origin fetches through api-client.js.
  */
 
+import { apiGet } from './api-client.js';
 import { colourForPlayer } from './config.js';
 
-const LATEST_URL = new URL('../../data/latest.json', import.meta.url);
-
-/**
- * History is sharded one file per UTC day (data/history/YYYY-MM/DD.json —
- * see scripts/history-store.mjs), so a run only ever has to write the one
- * file that changed instead of rewriting the group's entire tracking history.
- *
- * The page never needs more than a month of it: the longest Gains period is
- * "month", a rolling 30-day window (see compute.js) — a couple of days'
- * margin keep that baseline lookup covered even right at the edge.
- */
+/** The longest Gains window is a rolling month; a couple of days' margin
+ * keeps that baseline lookup covered even right at the edge. The server
+ * (api/routes/read.mjs) also never looks back further than the group's own
+ * trackingSince, so this is a ceiling, not a promise every request scans
+ * that far. */
 const HISTORY_WINDOW_DAYS = 33;
 
-const utcDayKey = (date) => date.toISOString().slice(0, 10);
-
-function historyFileUrl(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return new URL(`../../data/history/${year}-${month}/${day}.json`, import.meta.url);
-}
-
-/**
- * Fetches the last `days` daily shards — but never further back than
- * `trackingSince`, so a group in its first weeks doesn't spend a fetch (and a
- * console 404) on days that provably can't exist yet. Flattens the result
- * into one ascending-by-time snapshot array — the same shape `compute.js`
- * expected from the old single history.json.
- */
-async function loadRecentHistory(days, trackingSince) {
-  const today = new Date();
-  const earliestKey = trackingSince ? utcDayKey(new Date(trackingSince)) : null;
-
-  const urls = [];
-  for (let offset = 0; offset < days; offset += 1) {
-    const date = new Date(today);
-    date.setUTCDate(date.getUTCDate() - offset);
-    if (earliestKey && utcDayKey(date) < earliestKey) break;
-    urls.push(historyFileUrl(date));
-  }
-
-  const files = await Promise.all(urls.map((url) => loadJson(url, { required: false })));
-
-  return files
-    .flatMap((file) => (Array.isArray(file?.snapshots) ? file.snapshots : []))
-    .sort((a, b) => a.t - b.t);
-}
-
-async function loadJson(url, { required }) {
-  let response;
-  try {
-    response = await fetch(url, { cache: 'no-cache' });
-  } catch (cause) {
-    throw new Error(`Could not reach ${url.pathname} (${cause.message}).`);
-  }
-
-  if (!response.ok) {
-    if (!required && response.status === 404) return null;
-    throw new Error(`${url.pathname} responded ${response.status}.`);
-  }
-
-  try {
-    return await response.json();
-  } catch {
-    throw new Error(`${url.pathname} is not valid JSON.`);
-  }
-}
-
 function validateLatest(latest) {
-  if (!latest || typeof latest !== 'object') throw new Error('latest.json is not an object.');
-  if (!Array.isArray(latest.players)) throw new Error('latest.json has no players array.');
-  if (latest.players.length === 0) throw new Error('latest.json contains no players.');
+  if (!latest || typeof latest !== 'object') throw new Error('/api/latest returned no data.');
+  if (!Array.isArray(latest.players)) throw new Error('/api/latest has no players array.');
+  if (latest.players.length === 0) throw new Error('/api/latest contains no players.');
   return latest;
 }
 
@@ -99,8 +42,10 @@ function decorate(players) {
 }
 
 export async function loadGroupData() {
-  const latest = validateLatest(await loadJson(LATEST_URL, { required: true }));
-  const snapshots = await loadRecentHistory(HISTORY_WINDOW_DAYS, latest.trackingSince);
+  const [latest, history] = await Promise.all([
+    apiGet('/latest').then(validateLatest),
+    apiGet(`/history?days=${HISTORY_WINDOW_DAYS}`),
+  ]);
 
   return {
     fetchedAt: latest.fetchedAt,
@@ -108,6 +53,6 @@ export async function loadGroupData() {
     group: latest.group ?? { name: 'Group', tagline: '' },
     groupRank: latest.groupRank ?? null,
     players: decorate(latest.players),
-    snapshots,
+    snapshots: history.snapshots,
   };
 }

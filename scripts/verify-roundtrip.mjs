@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 /**
  * One-off verification, not part of the permanent test suite: compares
- * GET /api/latest and GET /api/history?days=33 against the committed
- * data/latest.json and the flattened, t-sorted data/history/** shards —
- * exactly what assets/js/data.js's loadGroupData() would have produced.
- * This is the phase-2 gate from the plan: if this doesn't come back clean,
- * the projection layer is wrong, not the client.
+ * GET /api/latest and GET /api/history?days=33 against data/latest.json
+ * and the flattened, t-sorted data/history/** shards — the same shapes
+ * assets/js/data.js's loadGroupData() used to fetch directly, back when
+ * those were the canonical, committed store rather than Postgres. This
+ * was the phase-2 cutover gate from the plan; kept for whenever the
+ * projection layer changes and needs re-proving against a fresh
+ * `npm run update` run's output.
+ *
+ * Postgres is canonical now, so data/latest.json and data/history/** are
+ * gitignored, local-only artefacts of `npm run update` (see .gitignore) —
+ * run that first if they don't exist yet.
  *
  * Usage: API_BASE=http://localhost:4174 node scripts/verify-roundtrip.mjs
  */

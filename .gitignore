@@ -4,3 +4,10 @@ node_modules/
 # committed on purpose.
 /*.png
 .playwright-mcp/
+
+# Postgres is canonical now (see the Postgres migration plan) — these are
+# only ever local inspection artefacts of scripts/update.mjs /
+# quest-data/fetch-quests.mjs run without --to-db, never committed again.
+/data/latest.json
+/data/history/
+/quest-data/quests.json

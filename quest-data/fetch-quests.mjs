@@ -1,9 +1,14 @@
 /**
  * Pulls RuneScape 3's full quest list — skill requirements and the
- * quest-to-quest prerequisite graph — from the RuneScape Wiki and writes
- * quests.json. Rerun this whenever new quests ship; it always reflects
- * whatever the wiki currently has, not a point-in-time snapshot baked into
- * this file.
+ * quest-to-quest prerequisite graph — from the RuneScape Wiki.
+ *
+ * `node quest-data/fetch-quests.mjs --to-db` writes straight into Postgres
+ * (DATABASE_URL) — the quests table and its two requirement tables (see
+ * the plan's Quest data decision) are the canonical store now that
+ * quests.json itself is gone; `--to-db` is the only way left to update
+ * them when new quests ship. Bare `node quest-data/fetch-quests.mjs`
+ * (no flag) still writes quests.json instead, for local inspection of a
+ * scrape before trusting it against the real database.
  *
  * Three sources, all discovered by reading the wiki's own infobox Lua
  * modules (Module:Infobox_Quest, Module:QuestDetails, Module:Questreq) —
@@ -243,11 +248,20 @@ async function main() {
     quests,
   };
 
-  const { writeFile } = await import('node:fs/promises');
-  const { fileURLToPath } = await import('node:url');
-  const path = fileURLToPath(new URL('quests.json', import.meta.url));
-  await writeFile(path, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
-  console.log(`Wrote ${quests.length} quests to ${path}`);
+  if (process.argv.includes('--to-db')) {
+    const { withTransaction, closePool } = await import('../api/db.mjs');
+    const { upsertQuests } = await import('../api/store/upserts.mjs');
+    const result = await withTransaction((client) => upsertQuests(client, output));
+    await closePool();
+    console.log(`Wrote ${result.quests} quests to Postgres.`);
+  } else {
+    const { writeFile } = await import('node:fs/promises');
+    const { fileURLToPath } = await import('node:url');
+    const path = fileURLToPath(new URL('quests.json', import.meta.url));
+    await writeFile(path, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
+    console.log(`Wrote ${quests.length} quests to ${path}`);
+  }
+
   if (output.unresolvedQuestRefs.length) {
     console.log(`${output.unresolvedQuestRefs.length} requirement names have no matching quest record:`, output.unresolvedQuestRefs);
   }

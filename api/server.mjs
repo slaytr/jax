@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
  * The one Railway web service: serves the static site (index.html, assets/,
- * stats/, and — until the phase 6 cutover deletes them — data/ and
- * quest-data/quests.json) and everything under /api/* and /auth/*, all from
- * the same origin. That's the whole reason this replaces GitHub Pages: a
- * session cookie can be HttpOnly + SameSite=Lax with no CORS involved only
- * if the site and the API answer the same origin.
+ * stats/) and everything under /api/* and /auth/*, all from the same
+ * origin. That's the whole reason this replaces GitHub Pages: a session
+ * cookie can be HttpOnly + SameSite=Lax with no CORS involved only if the
+ * site and the API answer the same origin.
  */
 
 import { dirname, join } from 'node:path';
@@ -24,11 +23,11 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT ?? 4173);
 
 // Explicit allowlist rather than serving the whole repo: this directory
-// also holds api/, scripts/, test/, node_modules/, .git — none of which is
-// meant to be fetchable. Extend this list, don't widen it, as new public
-// assets show up (it shrinks again once phase 6 removes data/ and
-// quest-data/).
-const PUBLIC_PREFIXES = ['/assets/', '/stats/', '/data/', '/quest-data/'];
+// also holds api/, data/, quest-data/, scripts/, test/, node_modules/,
+// .git — none of which is meant to be fetchable (data/players.json is read
+// server-side only, by scripts/*.mjs, never by the browser). Extend this
+// list, don't widen it, as new public assets show up.
+const PUBLIC_PREFIXES = ['/assets/', '/stats/'];
 const PUBLIC_FILES = new Set(['/', '/index.html', '/.nojekyll']);
 
 function isPublicPath(urlPath) {

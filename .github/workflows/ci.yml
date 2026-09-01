@@ -3,9 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'data/latest.json'
-      - 'data/history/**'
   pull_request:
 
 jobs:

@@ -166,3 +166,83 @@ export async function insertSnapshotEntry(client, snapshot) {
 
   return { snapshotId, playerCount: slugs.length };
 }
+
+/**
+ * One quest — its own row plus its skill-requirement and prerequisite
+ * rows — in exactly quest-data/quests.json's per-entry shape (see
+ * quest-data/README.md). Shared by scripts/backfill.mjs (reading the
+ * committed quests.json) and quest-data/fetch-quests.mjs's `--to-db` mode
+ * (writing straight from a fresh wiki scrape), so a quest ends up in
+ * Postgres the same way regardless of which one produced it.
+ */
+export async function upsertQuest(client, quest) {
+  await client.query(
+    `insert into quests
+       (name, slug, wiki_url, quest_type, subquest_of, difficulty, length, members, series,
+        series_position, age, start_area, combat_level, release_date, removal_date,
+        misc_requirements, full_completion_requirements)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+     on conflict (name) do update set
+       slug = excluded.slug, wiki_url = excluded.wiki_url, quest_type = excluded.quest_type,
+       subquest_of = excluded.subquest_of, difficulty = excluded.difficulty, length = excluded.length,
+       members = excluded.members, series = excluded.series, series_position = excluded.series_position,
+       age = excluded.age, start_area = excluded.start_area, combat_level = excluded.combat_level,
+       release_date = excluded.release_date, removal_date = excluded.removal_date,
+       misc_requirements = excluded.misc_requirements,
+       full_completion_requirements = excluded.full_completion_requirements`,
+    [
+      quest.name,
+      quest.slug,
+      quest.wikiUrl ?? null,
+      quest.questType ?? null,
+      quest.subquestOf ?? null,
+      quest.difficulty ?? null,
+      quest.length ?? null,
+      quest.members ?? null,
+      quest.series ?? null,
+      quest.seriesPosition ?? null,
+      quest.age ?? null,
+      quest.startArea ?? null,
+      quest.combatLevel ?? null,
+      quest.releaseDate ?? null,
+      quest.removalDate ?? null,
+      JSON.stringify(quest.miscRequirements ?? []),
+      JSON.stringify(quest.fullCompletionRequirements ?? []),
+    ],
+  );
+
+  await client.query('delete from quest_skill_requirements where quest_name = $1', [quest.name]);
+  for (const [position, req] of (quest.skillRequirements ?? []).entries()) {
+    await client.query('insert into quest_skill_requirements (quest_name, skill, level, position) values ($1, $2, $3, $4)', [
+      quest.name,
+      req.skill,
+      req.level,
+      position,
+    ]);
+  }
+
+  await client.query('delete from quest_prerequisites where quest_name = $1', [quest.name]);
+  // questRequirements and recommendedQuests are numbered independently —
+  // each is its own source array with its own display order, split back
+  // apart on read by projectQuest() filtering on `relation`.
+  const required = (quest.questRequirements ?? []).map((req, position) => [quest.name, req.quest, req.relation, position]);
+  const recommended = (quest.recommendedQuests ?? []).map((req, position) => [quest.name, req.quest, 'recommended', position]);
+  for (const row of [...required, ...recommended]) {
+    await client.query(
+      `insert into quest_prerequisites (quest_name, requires, relation, position) values ($1, $2, $3, $4)
+       on conflict (quest_name, requires, relation) do update set position = excluded.position`,
+      row,
+    );
+  }
+}
+
+/** Every quest in one `quest-data/quests.json`-shaped `{quests: [...]}`
+ * object, sequentially (each upsertQuest is itself several statements, so
+ * running the whole list concurrently would just contend with itself over
+ * the same connection). */
+export async function upsertQuests(client, questData) {
+  for (const quest of questData?.quests ?? []) {
+    await upsertQuest(client, quest);
+  }
+  return { quests: questData?.quests?.length ?? 0 };
+}

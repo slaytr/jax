@@ -1,6 +1,9 @@
 # Jax — Competitive Group Ironman hiscores
 
-A static scoreboard for the **Jax** RuneScape 3 group ironman team, hosted on GitHub Pages.
+A scoreboard for the **Jax** RuneScape 3 group ironman team, backed by
+Postgres and served by a small Fastify API (see "How the data is produced"
+below). Sign in with Discord to claim a roster player and set goals for it,
+shared with everyone who visits the page.
 
 One page, no tabs:
 
@@ -18,44 +21,66 @@ Standings and the matrix, for whichever period Gains is currently showing.
 On a phone every grid band puts all five players on one line and the matrix
 drops to icons-only columns (see Layout notes).
 
-## Why there is a build step at all
+## Why the fetching happens server-side
 
-The RS3 hiscore feed sends **no `Access-Control-Allow-Origin` header**, so a page
-served from `github.io` cannot call it from the browser — the request is blocked
-before it leaves. The competitive group ladder is worse: it has no JSON API at
-all, only a server-rendered Next.js page.
+The RS3 hiscore feed sends **no `Access-Control-Allow-Origin` header**, so a
+page can't call it directly from the browser — the request is blocked before
+it leaves. The competitive group ladder is worse: it has no JSON API at all,
+only a server-rendered Next.js page that has to be scraped.
 
-So all fetching happens **server-side in GitHub Actions**, which commits the
-results as plain JSON. The site then reads its own static files from its own
-origin, with no proxy and no CORS involved.
+So all fetching happens **server-side** — an hourly Railway cron service
+(`api/jobs/update-job.mjs`) runs the same `scripts/update.mjs` fetch logic
+the original GitHub Actions version did, and writes the result into
+Postgres instead of committing JSON. A Fastify API (`api/server.mjs`) then
+serves both the static site and `GET /api/latest`/`GET /api/history` from
+that database, all from one origin — no proxy, no CORS, and (unlike a purely
+static site) a "Refresh now" button that can trigger the same fetch on
+demand instead of waiting for the next cron tick.
 
-This also buys the thing a live fetch could never give you: **history**. Gains
-are computed by diffing snapshots, which only works because they are stored.
+This also buys the thing a live fetch could never give you: **history**.
+Gains are computed by diffing snapshots, which only works because they're
+stored — every cycle's reading lands in `snapshots`/`player_snapshots`
+alongside the current `player_state`.
 
 ```
-GitHub Actions (hourly)            repo                          GitHub Pages
-┌──────────────────────┐    ┌──────────────────────────┐    ┌────────────────────┐
-│ scripts/update.mjs   │───▶│ data/latest.json         │◀───│ assets/js/app.js   │
-│  · hiscore feed ×5   │    │ data/history/YYYY-MM/     │    │  (fetch + render)  │
-│  · group ladder page │    │   DD.json (one per day)  │    └────────────────────┘
-└──────────────────────┘    └──────────────────────────┘
+Railway cron (hourly, or a                      Railway web service
+"Refresh now"/"Refresh me" click)                (api/server.mjs)
+┌───────────────────────────┐    ┌──────────┐    ┌───────────────────┐
+│ api/jobs/update-job.mjs    │───▶│ Postgres │◀───│ /api/latest        │◀── assets/js/data.js
+│  · hiscore feed ×5         │    │          │    │ /api/history        │
+│  · group ladder page       │    │          │    │ /api/quests         │
+│  · quest points ×5         │    └──────────┘    │ + the static site   │
+└───────────────────────────┘                     └───────────────────┘
 ```
 
 ## Setup
 
-1. **Enable Pages** — Settings → Pages → Source: *Deploy from a branch*, branch
-   `main`, folder `/ (root)`. The site is then at `https://slaytr.github.io/jax/`.
-2. **Allow Actions to commit** — Settings → Actions → General → Workflow
-   permissions → *Read and write permissions*. Without this the update job
-   cannot push its snapshot.
-3. **Run the job once** — Actions → *Update hiscores* → *Run workflow*. It also
-   runs automatically every hour, on the hour.
+1. **Provision Postgres** and run the schema: `DATABASE_URL=... npm run migrate`.
+2. **Load the roster and quest data**:
+   ```bash
+   DATABASE_URL=... npm run update:db                     # first hiscore fetch, straight into Postgres
+   DATABASE_URL=... node quest-data/fetch-quests.mjs --to-db
+   ```
+   (`npm run backfill` instead if you're migrating from an old checkout
+   that still has `data/latest.json`/`data/history/**`/`quest-data/quests.json`
+   committed — it loads all three at once, roster included.)
+3. **Deploy two Railway services** against the same repo — see
+   [`railway.toml`](railway.toml)'s own header comment for exact Start
+   Commands and env vars: a **web service** (`node api/server.mjs`) and a
+   **cron service** (`node api/jobs/update-job.mjs`, hourly).
+4. **Register a Discord OAuth2 app** (Discord Developer Portal → New
+   Application → OAuth2) for `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET`,
+   with a redirect URL of `https://<your-domain>/auth/discord/callback`
+   matching `DISCORD_REDIRECT_URI`.
 
-Gains stay empty until the job has run **twice** — one snapshot cannot be diffed.
+Gains stay empty until the cron (or a manual refresh) has run **twice** —
+one snapshot cannot be diffed.
 
 ## Editing the roster
 
-Everything about the group lives in [`data/players.json`](data/players.json):
+Everything about the group lives in [`data/players.json`](data/players.json)
+— still a plain committed file; only the *hourly hiscore readings* moved to
+Postgres, not the roster itself:
 
 ```json
 {
@@ -69,22 +94,49 @@ Everything about the group lives in [`data/players.json`](data/players.json):
 ```
 
 - `name` must be the exact in-game display name.
-- `slug` is the stable key used in history; **do not change it** after tracking
-  starts or that player's history is orphaned.
+- `slug` is the stable key used in history (and, now, in a claimed player's
+  `players.discord_id` row) — **do not change it** after tracking starts or
+  that player's history/claim is orphaned.
 - `table` is `main`, `ironman`, or `hardcore`. All five Jax accounts are on
   `main` — they return 404 on the solo ironman tables, since group ironman
   accounts are not listed there.
 
-Commit the change and the update workflow re-runs automatically.
+Commit the change; the roster is re-synced into `players`/`groups` on the
+next update cycle (cron tick or refresh), same as any other update.
+
+## Accounts, goals, and on-demand refresh
+
+Sign in with Discord (top right) and claim one unclaimed roster player — one
+account per player, first come first served. Everyone can always read every
+player's standings and goals with no session at all; claiming only unlocks
+*writing* for that one player:
+
+- **Goals** (a player's own Goals tab) — set/delete skill and quest goals for
+  the player you claimed. Shared: anyone who visits that page sees the same
+  list, not a private per-browser copy.
+- **Refresh** — "Refresh me" (your own player, ~1s) or "Refresh now" (the
+  whole group, same cost as a cron tick) triggers `scripts/update.mjs`'s
+  fetch immediately instead of waiting for the next hourly tick. Concurrent
+  presses join the same in-flight run rather than starting a second one
+  (`api/routes/refresh.mjs`'s Postgres advisory lock).
 
 ## Local development
 
 ```bash
-npm run update   # fetch live data into data/
-npm run stats    # regenerate stats/<slug>/index.html from data/players.json
-npm run serve    # preview at http://localhost:4173
-npm test         # unit tests, no dependencies
+DATABASE_URL=postgresql://localhost/jax npm run migrate   # apply api/migrations/*.sql
+DATABASE_URL=... npm run update:db   # fetch live hiscore data into Postgres
+npm run stats                        # regenerate stats/<slug>/index.html from data/players.json
+DATABASE_URL=... npm run server      # serve the site + API at http://localhost:4173
+npm test                             # unit tests; set DATABASE_URL too to include the API integration tests
 ```
+
+`npm run update` (no `:db`) still exists — it fetches into local,
+gitignored `data/latest.json`/`data/history/**` files instead of Postgres,
+for inspecting a fetch cycle without touching the real database (same idea
+as `fetch-quests.mjs` without `--to-db`). `npm run serve` serves the static
+files alone with no API behind them, so the page loads but every fetch
+404s — useful only for checking that assets/HTML themselves are intact,
+not for an actual working preview; use `npm run server` for that.
 
 The project has **no dependencies and no build step** — plain ES modules, served
 exactly as committed.
@@ -97,12 +149,16 @@ exactly as committed.
 | `scripts/group-rank.mjs` | Parses the competitive ladder out of the page's RSC payload |
 | `scripts/quests.mjs` | Quest points, summed from the RuneMetrics quest list |
 | `scripts/snapshots.mjs` | Pure snapshot transforms (build a snapshot, redundancy check, merge) |
-| `scripts/history-store.mjs` | Reads/writes the sharded `data/history/YYYY-MM/DD.json` files |
-| `scripts/update.mjs` | Orchestrates a run and writes `data/` |
+| `scripts/update.mjs` | `runUpdate()`/`runPlayerUpdate()` — orchestrates one fetch cycle; `main()` is the local file-sink CLI (`npm run update`) |
+| `api/jobs/update-job.mjs` | The Postgres sink over the same `runUpdate()` — the cron entry point and what the refresh routes call |
+| `api/store/upserts.mjs` | The upsert SQL shared by the backfill script and the ongoing writer |
+| `api/routes/refresh.mjs` | `POST /api/refresh` / `POST /api/players/:slug/refresh` — on-demand, advisory-lock-deduped |
+| `scripts/history-store.mjs` | Reads/writes the sharded `data/history/YYYY-MM/DD.json` files — still used by `npm run update`'s local (gitignored) file sink |
 | `scripts/fetch-icons.mjs` | One-off: downloads skill icons into `assets/icons/` |
 | `scripts/build-stats-pages.mjs` | Writes `stats/<slug>/index.html` from `data/players.json` — see [Per-player stats pages](#per-player-stats-pages) |
 
-Three deliberate robustness choices:
+Three deliberate robustness choices, true of every fetch cycle whether it's
+the hourly cron, a manual `POST /api/refresh`, or a local `npm run update`:
 
 - **A failed player fetch never blanks the board.** The previous reading is
   carried forward and flagged `stale`, and the run aborts rather than writing if
@@ -110,14 +166,12 @@ Three deliberate robustness choices:
 - **Each source fails independently.** Hiscores, the group ladder and quest
   points are three separate services; any one going down leaves the other two
   fresh and only its own column marked stale.
-- **History is sharded by day and deduplicated.** Each UTC day gets its own
-  file (`data/history/YYYY-MM/DD.json`), grouped into month folders, so an
-  hourly run only ever writes and commits the one file that changed instead of
-  rewriting the group's whole tracking history. Identical consecutive readings
-  are skipped rather than stored — though a ladder move counts as a change,
-  since other groups passing us shifts our rank without us gaining xp. The page
-  itself only ever loads the last ~33 days of shards, since no gain window
-  looks back further than a month.
+- **A snapshot is only recorded when something actually changed.** Identical
+  consecutive readings are skipped — though a ladder move counts as a change,
+  since other groups passing us shifts our rank without us gaining xp
+  (`isRedundant`, `scripts/snapshots.mjs`). `GET /api/history` bounds its own
+  query to the last ~33 days, since no gain window looks back further than a
+  month.
 
 ### Quest points come from a different API
 
@@ -199,12 +253,13 @@ figures, Day/Week/Month gains, an XP-over-time chart, and the skill grid laid
 out the way RS3's own skills tab does it (3 columns × 10 rows, `Attack ·
 Constitution · Mining` across the top).
 
-These are **generated static files**, not a client-side router: GitHub Pages
-has no server-side routing, so `scripts/build-stats-pages.mjs` writes one real
+These are **generated static files**, not a server-side or client-side
+router: `scripts/build-stats-pages.mjs` writes one real
 `stats/<slug>/index.html` per player (`npm run stats`), each a near-copy of
-`index.html` pointed at `assets/js/stats.js` instead of `app.js`. They're
-committed like everything else and regenerated whenever the roster changes;
-CI fails if `stats/` drifts from `data/players.json`.
+`index.html` pointed at `assets/js/stats.js` instead of `app.js`, and
+`@fastify/static` (`api/server.mjs`) just serves whatever's on disk under
+`stats/`. They're committed like everything else and regenerated whenever
+the roster changes; CI fails if `stats/` drifts from `data/players.json`.
 
 ## Layout notes
 
