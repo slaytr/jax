@@ -2637,12 +2637,7 @@ body::after {
 /* Goals tab: the goal list is the Quests tab's 2nd-column card in every way
    that matters (same .player-row slot, same flex-grow sizing), just with
    its own card anatomy below. */
-.goal-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.6rem;
+.goal-filters {
   margin-bottom: 0.7rem;
 }
 
@@ -2664,17 +2659,15 @@ body::after {
 }
 
 /* The one goal a click anywhere in the list below has picked out
-   (renderFocusGoal, player-goals.js) — sits in the same toolbar row as the
-   label filter, on the opposite end (.goal-toolbar's justify-content). A
-   brass border (the site's existing highlight colour, not a new one) marks
-   it as distinct from an ordinary .goal-card rather than just another
-   entry in the list; flex-basis gives it room to breathe next to a
-   200px-wide select without either fighting the other for space. */
+   (renderFocusGoal, player-goals.js) — its own block above the label
+   filter and the list itself. A brass border (the site's existing
+   highlight colour, not a new one) marks it as distinct from an ordinary
+   .goal-card rather than just another entry in the list. */
 .goal-focus {
   display: flex;
-  flex: 1 1 320px;
   flex-direction: column;
   gap: 0.4rem;
+  margin-bottom: 0.7rem;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--brass);
   border-radius: var(--radius);

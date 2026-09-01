@@ -598,7 +598,7 @@ function labelFilterSelect({ value, options, onChange }) {
 
 /** A clear (×) button, same look as a card's own delete button
  * (.goal-card-delete) since it plays the same "quiet until needed" role —
- * just clearing the toolbar's focus goal (actions.onFocusGoal(null))
+ * just clearing the Goals tab's own focus goal (actions.onFocusGoal(null))
  * rather than deleting anything. */
 function clearFocusButton(onClearFocus) {
   return el('button', {
@@ -611,9 +611,10 @@ function clearFocusButton(onClearFocus) {
 }
 
 /**
- * The Goals tab's toolbar picks out exactly one goal — any kind, a nested
- * requirement included (toggleFocus, attached to every clickable row/card)
- * — to show in fuller detail than its own compact row or card carries: an
+ * The Goals tab's own focus panel, above the filter and the list itself —
+ * a click anywhere in the list (toggleFocus, attached to every clickable
+ * row/card) picks out exactly one goal, any kind, a nested requirement
+ * included, to show in fuller detail than its own compact row or card carries: an
  * elapsed-time/rate/ETA readout for a skill goal, or a quest's own full
  * requirement checklist regardless of whether that quest's section happens
  * to be collapsed elsewhere on the page. `goals` is the full, unfiltered
@@ -775,15 +776,17 @@ export function renderGoalsList(
   const effectiveFilter = usedLabelNames.includes(labelFilter) ? labelFilter : 'all';
   const filterControl =
     usedLabelNames.length > 0
-      ? labelFilterSelect({ value: effectiveFilter, options: usedLabelNames, onChange: onLabelFilterChange })
+      ? el('div', { class: 'goal-filters' }, [
+          labelFilterSelect({ value: effectiveFilter, options: usedLabelNames, onChange: onLabelFilterChange }),
+        ])
       : null;
 
   // Resolved from the full `goals`, not the label-filtered list below — a
   // focus a viewer picked deliberately shouldn't vanish just because they
-  // then filtered the list down to a label that goal doesn't carry.
+  // then filtered the list down to a label that goal doesn't carry. Its own
+  // block above the filter, not sharing a row with it — same top-of-the-tab
+  // position, just no longer fighting the filter select for width.
   const focusPanel = focusedGoal ? renderFocusGoal(focusedGoal, { goals, bySkillId, player, actions }) : null;
-
-  const toolbar = focusPanel || filterControl ? el('div', { class: 'goal-toolbar' }, [focusPanel, filterControl]) : null;
 
   const filteredGoals =
     effectiveFilter === 'all' ? goals : goals.filter((goal) => (goal.labels ?? []).includes(effectiveFilter));
@@ -821,7 +824,8 @@ export function renderGoalsList(
 
   return el('section', { class: 'lb', style: { '--accent': player.colour } }, [
     el('div', { class: 'lb-head' }, [el('div', { class: 'lb-title' }, [el('h2', { text: 'Goals' })])]),
-    toolbar,
+    focusPanel,
+    filterControl,
     body,
   ]);
 }

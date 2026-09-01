@@ -365,11 +365,12 @@ async function boot() {
     // one, or the label itself, shouldn't leave the list silently empty).
     let goalLabelFilter = typeof savedState.goalLabelFilter === 'string' ? savedState.goalLabelFilter : 'all';
     // The one goal (any kind — a nested quest requirement included)
-    // currently picked out for the toolbar's own focus panel, or null. Not
-    // persisted, same never-needs-to-survive-a-reload reasoning as
-    // goalDialogSkillId/deleteConfirmGoalId above — renderGoalsList already
-    // falls back to no focus if this ever names a goal that got deleted.
-    let focusGoalId = null;
+    // currently picked out for the toolbar's own focus panel, or null —
+    // persisted like goalLabelFilter/collapsedGoalGroups above, since a
+    // focus a viewer deliberately picked should still be there on their
+    // next visit. renderGoalsList already falls back to no focus if this
+    // ever names a goal that got deleted since.
+    let focusGoalId = typeof savedState.focusGoalId === 'string' ? savedState.focusGoalId : null;
 
     function persistStatsState() {
       saveStatsState({
@@ -381,6 +382,7 @@ async function boot() {
         questlinesCollapsed,
         goalLabelFilter,
         collapsedGoalGroups: [...collapsedGoalGroups],
+        focusGoalId,
       });
     }
 
@@ -527,6 +529,7 @@ async function boot() {
                 focusGoalId,
                 onFocusGoal: (goalId) => {
                   focusGoalId = goalId;
+                  persistStatsState();
                   render();
                 },
               }),
