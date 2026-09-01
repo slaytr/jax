@@ -132,7 +132,14 @@ export async function runUpdate({ roster, previousLatest = null, log = defaultLo
   const latest = {
     version: HISTORY_VERSION,
     fetchedAt: now.toISOString(),
-    trackingSince: previousLatest?.trackingSince ?? now.toISOString(),
+    // On a brand-new group's first-ever run, this has to equal the
+    // snapshot's own `taken_at` (derived from the whole-second
+    // `epochSeconds`, not `now` directly) rather than the full-millisecond
+    // `now.toISOString()` — GET /api/history bounds its query to
+    // `taken_at >= trackingSince`, and a few hundred milliseconds of
+    // truncation drift there would silently exclude that very first
+    // snapshot from history forever.
+    trackingSince: previousLatest?.trackingSince ?? new Date(epochSeconds * 1000).toISOString(),
     group,
     groupRank,
     players,
