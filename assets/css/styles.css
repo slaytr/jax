@@ -1877,19 +1877,16 @@ body::after {
   color: var(--gain);
 }
 
-/* Quests tab: the Skills grid's replacement — wider than Skills' own 200px
-   (quest names need the room; Skills only ever shows a level number), plus
-   a filter/sort toolbar above the list itself (below). */
+/* Quests tab: the Skills grid's replacement, same 200px width as
+   .skill-grid so switching tabs never reflows anything beside it — plus a
+   filter/sort toolbar above the list itself (below), which is why the
+   whole card runs taller than Skills' own grid (the list's own height,
+   .quest-list below, is sized independently of Skills' now). */
 .quest-list-card {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 400px;
-  /* Unlike Skills' old fixed 200px, 400px is wider than a phone screen —
-     this is what keeps a narrow viewport from being forced into horizontal
-     overflow by it (the ≤720px breakpoint's own margin: 0 auto below only
-     centres within whatever width is actually available). */
-  max-width: 100%;
+  width: 200px;
 }
 
 .quest-filters {
@@ -1922,7 +1919,7 @@ body::after {
 }
 
 .quest-list {
-  height: 260px;
+  height: 400px;
   margin: 0;
   padding: 0;
   list-style: none;

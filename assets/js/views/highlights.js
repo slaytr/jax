@@ -14,21 +14,12 @@ import { QUEST_POINTS_ICON } from '../config.js';
  * another row of leaderboard-style cards, since this section alone is
  * naming *champions*, not relaying figures.
  *
- * Ranker and Grind King (`mode: 'days'`) crown whoever finished #1 on the
- * most individual days this week, not whoever ended the week with the
- * single biggest total (see computeDailyLeaderCounts in compute.js) — the
- * figure shown is still that weekly total (`winner.total`), same as Quest
- * God's, but it's a supporting stat rather than the reason they won; two
- * players could show the same total with different day-counts deciding
- * between them. The hover tooltip's summary row spells this out
- * (`totalLabel`, e.g. "Total XP gained"). Quest God (`mode: 'total'`) is
- * decided by, and shows, the week's raw total directly, since RuneMetrics-
- * sourced quest data is too sparse day-to-day for a daily-leader count to
- * mean much.
- *
- * Every badge's hover tooltip also breaks the winner's gain down by the last
- * 7 UTC calendar days (see computeDailyBreakdown in compute.js) — for the
- * daily-leader badges that's *why* they're leading, not just a total.
+ * All three badges are decided the same simple way (app.js's own
+ * computeHighlights): whoever ended the week with the single biggest total —
+ * Ranker on levels gained, Grind King on xp gained, Quest God on quest
+ * points gained. Every badge's hover tooltip also breaks the winner's gain
+ * down by the last 7 UTC calendar days (see computeDailyBreakdown in
+ * compute.js), so a viewer can see which days actually built that total.
  */
 
 /** The section header's own mark — a five-point star, distinct from any of
@@ -73,9 +64,9 @@ function questPointsIconLarge() {
 }
 
 const BADGES = [
-  { key: 'level', label: 'Ranker', mode: 'days', formatValue: formatNumber, unit: '', totalLabel: 'Total levels gained', icon: crownIcon },
-  { key: 'xp', label: 'Grind King', mode: 'days', formatValue: formatCompact, unit: ' xp', totalLabel: 'Total XP gained', icon: flameIcon },
-  { key: 'quests', label: 'Quest God', mode: 'total', formatValue: formatNumber, unit: ' qp', icon: questPointsIconLarge },
+  { key: 'level', label: 'Ranker', formatValue: formatNumber, unit: '', icon: crownIcon },
+  { key: 'xp', label: 'Grind King', formatValue: formatCompact, unit: ' xp', icon: flameIcon },
+  { key: 'quests', label: 'Quest God', formatValue: formatNumber, unit: ' qp', icon: questPointsIconLarge },
 ];
 
 /** The metric keys, in the order `renderHighlights` expects — app.js builds
@@ -106,18 +97,12 @@ function dailyBreakdownExtra(breakdown, formatValue) {
  * colour, the category name beneath it, then who won and by how much: a
  * small trophy card rather than a leaderboard-style row, since this section
  * alone exists to name a champion rather than relay a figure. `entry` is
- * `{ winner, breakdown }` — `winner` is `{ player, value }` for a `'total'`
- * badge or `{ player, days, of, total }` for a `'days'` one, or null when
- * nobody has a claim on that badge this week (nobody gained anything, or
- * every day was a tie), in which case the medallion stays a muted, ringless
- * shell and has no tooltip.
- *
- * The headline figure is `winner.value` for a `'total'` badge (Quest God —
- * the number it was decided by) or `winner.total` for a `'days'` one
- * (Ranker/Grind King — a supporting stat, since day-count, not this total,
- * is what actually decided it).
+ * `{ winner, breakdown }` — `winner` is `{ player, value }` (app.js's own
+ * topWeeklyGainer), or null when nobody has a claim on that badge this week
+ * (nobody gained anything), in which case the medallion stays a muted,
+ * ringless shell and has no tooltip.
  */
-function badge({ label, mode, formatValue, unit, totalLabel, icon }, entry) {
+function badge({ label, formatValue, unit, icon }, entry) {
   const { winner, breakdown } = entry;
 
   const node = el(
@@ -133,17 +118,14 @@ function badge({ label, mode, formatValue, unit, totalLabel, icon }, entry) {
       winner
         ? el('p', { class: 'highlight-answer' }, [swatch(winner.player.colour), el('span', { class: 'highlight-name', text: winner.player.name })])
         : el('p', { class: 'highlight-answer' }, [el('span', { class: 'highlight-name', text: 'No gains yet' })]),
-      winner ? el('p', { class: 'highlight-value', text: `+${formatValue(mode === 'total' ? winner.value : winner.total)}` }) : null,
+      winner ? el('p', { class: 'highlight-value', text: `+${formatValue(winner.value)}` }) : null,
     ],
   );
 
   if (!winner) return node;
 
-  const summaryRow =
-    mode === 'days' ? [totalLabel, `+${formatValue(winner.total)}${unit}`] : [`${label} this week`, `+${formatValue(winner.value)}${unit}`];
-
   return bindTooltip(node, () =>
-    tooltipContent(winner.player.name, [summaryRow], winner.player.colour, dailyBreakdownExtra(breakdown, formatValue)),
+    tooltipContent(winner.player.name, [[`${label} this week`, `+${formatValue(winner.value)}${unit}`]], winner.player.colour, dailyBreakdownExtra(breakdown, formatValue)),
   );
 }
 

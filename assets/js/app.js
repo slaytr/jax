@@ -12,7 +12,6 @@ import { loadPrefs, savePrefs } from './prefs.js';
 import {
   CALENDAR_DAY,
   computeDailyBreakdown,
-  computeDailyLeaderCounts,
   computeGains,
   computeGainsSeries,
   computeLevelGains,
@@ -129,40 +128,13 @@ function topWeeklyGainer(result, valueKey, claimed = new Set()) {
   return top ? { player: top.player, value: top[valueKey] } : null;
 }
 
-/** Whoever led the most individual days this week for a metric, again
- * skipping anyone already `claimed` — the Ranker/Grind King badges. Null
- * when no unclaimed player outright led any day (every day tied, no history
- * yet, or every qualifying leader is already claimed).
- *
- * The returned `total` is deliberately *not* computeDailyLeaderCounts' own
- * sum-of-daily-gains figure — that's tallied over UTC-calendar-day buckets,
- * a different span than the Gains section's rolling exact-7×24h window, so
- * the two would show different numbers for the same player over what both
- * call "this week". Looking the winner up in `weeklyResult` instead (the
- * same computeLevelGains/computeGains `.week` result Gains itself renders)
- * keeps the figure shown here consistent with what's shown there — only
- * *who wins* the badge is decided by day-count; the number displayed for
- * them isn't. */
-function topDailyLeader(snapshots, players, metric, weeklyResult, claimed = new Set(), days = 7) {
-  const { rows, validDays } = computeDailyLeaderCounts(snapshots, players, metric, days);
-  const top = rows.find((row) => row.days > 0 && !claimed.has(row.player.slug));
-  if (!top) return null;
-
-  const total = weeklyResult.rows.find((row) => row.player.slug === top.player.slug)?.total ?? 0;
-  return { player: top.player, days: top.days, of: validDays, total };
-}
-
 /**
  * The Weekly Highlights row's three badges — always the *week* window
  * regardless of whatever period the Gains section itself is showing, same
- * reasoning as Account Standings' line view being pinned to month.
- *
- * Ranker (levels) and Grind King (XP) crown whoever finished #1 on the most
- * individual days this week (computeDailyLeaderCounts), not whoever ended
- * the week with the single biggest total — four days spent in the lead reads
- * as more impressive than one huge session. Quest God is still the week's
- * raw total, since RuneMetrics-sourced quest data is too sparse day-to-day
- * for a daily-leader count to mean much.
+ * reasoning as Account Standings' line view being pinned to month. Every
+ * badge is decided the same simple way: whoever ended the week with the
+ * single biggest total (topWeeklyGainer) — Ranker on levels gained, Grind
+ * King on xp gained, Quest God on quest points gained.
  *
  * Ranker and Grind King are mutually exclusive — one player can't hold both
  * crowns, so whoever already won Ranker is skipped when picking Grind King
@@ -174,15 +146,15 @@ function topDailyLeader(snapshots, players, metric, weeklyResult, claimed = new 
  * Each entry also carries its winner's last-7-days breakdown
  * (computeDailyBreakdown, against the raw snapshots rather than the
  * pre-aggregated `gains` bands) so the badge's hover tooltip can show which
- * days actually built that lead.
+ * days actually built that total.
  */
 function computeHighlights(gains) {
   const claimed = new Set();
 
-  const level = topDailyLeader(state.snapshots, state.players, 'level', gains.levels.week, claimed);
+  const level = topWeeklyGainer(gains.levels.week, 'total', claimed);
   if (level) claimed.add(level.player.slug);
 
-  const xp = topDailyLeader(state.snapshots, state.players, 'xp', gains.xp.week, claimed);
+  const xp = topWeeklyGainer(gains.xp.week, 'total', claimed);
 
   const winners = {
     level,

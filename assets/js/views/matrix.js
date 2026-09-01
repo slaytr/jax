@@ -3,6 +3,7 @@ import { formatNumber, formatRank } from '../format.js';
 import { buildMatrix, buildTotalsRow, leaderCounts, TOTAL_MEASURE } from '../compute.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
+import { xpForLevel } from '../xp-table.js';
 
 /**
  * The primary view: every skill level, side by side, one column per player.
@@ -40,6 +41,13 @@ function matrixCell(cell, skill, levelsGained) {
     ],
   );
 
+  // Total level (TOTAL_MEASURE, compute.js) has no xp curve of its own to
+  // read a "next level" threshold off — it's a sum across every skill's own
+  // level, not a level on any single curve — so only a real skill (a
+  // numeric id; TOTAL_MEASURE's is the string 'total') gets this row at all.
+  const isRealSkill = Number.isInteger(skill.id);
+  const nextLevelXp = isRealSkill ? xpForLevel(skill, cell.level + 1) : undefined;
+
   return bindTooltip(node, () =>
     tooltipContent(
       `${cell.player.name} · ${skill.name}`,
@@ -47,8 +55,11 @@ function matrixCell(cell, skill, levelsGained) {
         ['Level', `${formatNumber(cell.level)} / ${skill.max}`],
         ['Levels today', levelsGained > 0 ? `+${levelsGained}` : 'none'],
         ['Experience', `${formatNumber(cell.xp)} xp`],
+        isRealSkill
+          ? ['Next level', nextLevelXp === undefined ? 'maxed' : `${formatNumber(Math.max(0, nextLevelXp - cell.xp))} xp to go`]
+          : null,
         ['Rank', formatRank(cell.rank)],
-      ],
+      ].filter(Boolean),
       cell.player.colour,
     ),
   );
