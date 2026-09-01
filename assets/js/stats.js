@@ -22,9 +22,10 @@ import { renderQuestSeriesLinks } from './views/quest-series-links.js';
 import { renderQuestPlanner } from './views/quest-planner.js';
 import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, renderGoalCelebrationDialog, refreshGoals } from './views/player-goals.js';
 import { tabToggle } from './views/tabs.js';
-import { loadGoals, saveGoals } from './goals-storage.js';
-import { loadGoalLabels, saveGoalLabels } from './goal-labels-storage.js';
+import { loadGoalsAndLabels, createGoals, updateGoal, deleteGoal } from './goals-storage.js';
+import { putGoalLabel, deleteGoalLabel } from './goal-labels-storage.js';
 import { mountAuthWidget } from './views/auth-widget.js';
+import { getSession, subscribeSession } from './session.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -149,11 +150,44 @@ function renderFatal(message) {
   );
 }
 
+/**
+ * Reconciles the server's copy of this player's goals with what
+ * refreshGoals (player-goals.js, pure and unit-tested) just recomputed
+ * against live data — a goal isRenderable dropped entirely (a dangling
+ * skillId) gets deleted server-side too; a goal whose completedAt just
+ * flipped from null gets that stamp PATCHed through. Fire-and-forget: a
+ * sync failure here (network hiccup, or ownership changing mid-flight)
+ * only means completion gets re-checked and re-synced on the next visit,
+ * same as refreshGoals's own "first noticed complete on a visit" semantics
+ * already implied before there was a server to sync to at all.
+ */
+function syncGoalCompletion(slug, previousGoals, nextGoals) {
+  const nextIds = new Set(nextGoals.map((goal) => goal.id));
+  for (const goal of previousGoals) {
+    if (!nextIds.has(goal.id)) {
+      deleteGoal(slug, goal.id).catch((error) => console.error('Could not sync a dropped goal:', error));
+    }
+  }
+
+  const previousById = new Map(previousGoals.map((goal) => [goal.id, goal]));
+  for (const goal of nextGoals) {
+    const before = previousById.get(goal.id);
+    if (before && before.completedAt !== goal.completedAt) {
+      updateGoal(slug, goal.id, { completedAt: goal.completedAt, completedLevel: goal.completedLevel, completedXp: goal.completedXp }).catch(
+        (error) => console.error('Could not sync goal completion:', error),
+      );
+    }
+  }
+}
+
 async function boot() {
   const slug = document.body.dataset.player;
 
   try {
-    const data = await loadGroupData();
+    const [data, initialSession] = await Promise.all([
+      loadGroupData(),
+      getSession().catch(() => ({ user: null, player: null, unclaimed: [] })),
+    ]);
     const player = data.players.find((candidate) => candidate.slug === slug);
 
     document.title = `${player ? player.name : slug} · ${data.group.name} stats`;
@@ -313,6 +347,15 @@ async function boot() {
       }
     }
 
+    // Goals are shared now (see the plan) — this GET is public, same as the
+    // hiscore data above, so every viewer sees the same list regardless of
+    // whether they're signed in. `canEditGoals()` below is the only gate;
+    // it's a function rather than a plain boolean because `session` gets
+    // reassigned by the subscribeSession listener near the bottom of this
+    // function whenever the viewer signs in/out or claims a slug mid-visit.
+    let session = initialSession;
+    const canEditGoals = () => session.player?.slug === slug;
+
     // Goals are checked against this player's skills once, right after
     // loading them — skills don't change again for the rest of the visit
     // (only a real reload pulls fresh data), so there's nothing to gain by
@@ -321,10 +364,16 @@ async function boot() {
     // a reload, and never need resetting on a tab switch either: a native
     // <dialog> shown via showModal() makes the rest of the page inert, so
     // there's no way to reach the tab buttons while one is actually open.
-    let goals = loadGoals(player.slug);
+    const { goals: loadedGoals, labels: loadedLabels } = await loadGoalsAndLabels(player.slug);
+    let goals = loadedGoals;
+    let labels = loadedLabels;
     const refreshedGoals = refreshGoals(goals, player);
+    // Only the owner's own visit pushes recomputed completion back to the
+    // server — a signed-out or non-owner visitor still sees correct,
+    // freshly-recomputed completion state on screen (refreshGoals ran
+    // regardless), it just isn't this browser's place to persist it.
+    if (refreshedGoals.changed && canEditGoals()) syncGoalCompletion(player.slug, goals, refreshedGoals.goals);
     goals = refreshedGoals.goals;
-    if (refreshedGoals.changed) saveGoals(player.slug, goals);
     // Whichever goals refreshGoals just noticed crossing their target on
     // *this* visit (empty most of the time) — shown once, in
     // renderGoalCelebrationDialog, the first time the Goals tab is actually
@@ -353,13 +402,14 @@ async function boot() {
     // rebuilt into a Set here.
     let collapsedGoalGroups = new Set(Array.isArray(savedState.collapsedGoalGroups) ? savedState.collapsedGoalGroups : []);
 
-    // The label registry (name -> colour), separate from goals themselves —
-    // see goal-labels-storage.js. Creating a new label from inside the "new
-    // goal" dialog persists here immediately, without going through
-    // render(): that dialog manages its own DOM in place (player-goals.js's
+    // `labels` (the name -> colour registry, separate from goals themselves
+    // — see goal-labels-storage.js) was already fetched alongside goals
+    // above. Creating a new label from inside the "new goal" dialog updates
+    // this local copy immediately, without going through render(): that
+    // dialog manages its own DOM in place (player-goals.js's
     // labelPickerField), and a full re-render here would tear it down
     // mid-pick, losing whatever labels were already added to this goal.
-    let labels = loadGoalLabels(player.slug);
+    //
     // Which label the Goals tab's own list is filtered to, or 'all' — see
     // renderGoalsList's own validation of this against whichever labels
     // actually appear on a current goal (deleting the last goal that used
@@ -500,24 +550,30 @@ async function boot() {
         },
       });
 
+      const editingGoals = canEditGoals();
+
       const body =
         activeTab === 'goals'
           ? el('div', { class: 'player-row' }, [
               renderPlayerSkills(player, todayLevelGains, null, (skillId) => {
+                if (!editingGoals) return;
                 goalDialogSkillId = skillId;
                 render();
               }),
               renderGoalsList(player, goals, labels, {
+                readOnlyHint: editingGoals ? null : `Sign in with Discord and claim ${player.name} to set goals.`,
                 labelFilter: goalLabelFilter,
                 onLabelFilterChange: (value) => {
                   goalLabelFilter = value;
                   persistStatsState();
                   render();
                 },
-                onDeleteGoal: (goalId) => {
-                  deleteConfirmGoalId = goalId;
-                  render();
-                },
+                onDeleteGoal: editingGoals
+                  ? (goalId) => {
+                      deleteConfirmGoalId = goalId;
+                      render();
+                    }
+                  : null,
                 collapsedGroups: collapsedGoalGroups,
                 onToggleGroup: (title) => {
                   const next = new Set(collapsedGoalGroups);
@@ -649,10 +705,12 @@ async function boot() {
                     highlightedName: highlightedQuestName,
                     onHighlightNode,
                     existingQuestGoalNames,
-                    onCreateQuestGoal: (quest) => {
-                      questGoalDraftQuest = quest;
-                      render();
-                    },
+                    onCreateQuestGoal: editingGoals
+                      ? (quest) => {
+                          questGoalDraftQuest = quest;
+                          render();
+                        }
+                      : null,
                     isFullscreen: questGraphFullscreen,
                     onToggleFullscreen: () => {
                       questGraphFullscreen = !questGraphFullscreen;
@@ -716,8 +774,17 @@ async function boot() {
       const goalDialog = goalDialogSkill
         ? renderGoalDialog(goalDialogSkill, player, goals, labels, {
             onCreate: (draft) => {
-              goals = [...goals, draft];
-              saveGoals(player.slug, goals);
+              // renderGoalDialog never sets `kind` on a plain skill-grid
+              // draft (only buildQuestGoalDrafts does) — the API requires
+              // it on every goal, so it's filled in at this one boundary
+              // rather than changing what the dialog itself builds.
+              const goal = { ...draft, kind: draft.kind ?? 'skill' };
+              goals = [...goals, goal];
+              createGoals(player.slug, [goal]).catch((error) => {
+                console.error('Could not save the new goal:', error);
+                goals = goals.filter((candidate) => candidate.id !== goal.id);
+                render();
+              });
             },
             onClose: () => {
               goalDialogSkillId = null;
@@ -725,7 +792,7 @@ async function boot() {
             },
             onCreateLabel: (name, colour) => {
               labels = [...labels, { name, colour }];
-              saveGoalLabels(player.slug, labels);
+              putGoalLabel(player.slug, name, colour).catch((error) => console.error('Could not save the new label:', error));
             },
             // Deletes the label from the registry only — see
             // labelPickerField's own doc comment for why an existing
@@ -733,7 +800,7 @@ async function boot() {
             // reference into this array).
             onDeleteLabel: (name) => {
               labels = labels.filter((label) => label.name !== name);
-              saveGoalLabels(player.slug, labels);
+              deleteGoalLabel(player.slug, name).catch((error) => console.error('Could not delete the label:', error));
             },
           })
         : null;
@@ -742,8 +809,13 @@ async function boot() {
       const deleteConfirmDialog = deleteConfirmGoal
         ? renderDeleteConfirmDialog(deleteConfirmGoal, SKILLS.find((skill) => skill.id === deleteConfirmGoal.skillId), {
             onConfirm: () => {
-              goals = goals.filter((goal) => goal.id !== deleteConfirmGoal.id);
-              saveGoals(player.slug, goals);
+              const removed = deleteConfirmGoal;
+              goals = goals.filter((goal) => goal.id !== removed.id);
+              deleteGoal(player.slug, removed.id).catch((error) => {
+                console.error('Could not delete the goal:', error);
+                goals = [...goals, removed];
+                render();
+              });
             },
             onClose: () => {
               deleteConfirmGoalId = null;
@@ -763,7 +835,12 @@ async function boot() {
         ? renderQuestGoalDialog(questGoalDraftQuest, player, quests, {
             onConfirm: (drafts) => {
               goals = [...goals, ...drafts];
-              saveGoals(player.slug, goals);
+              createGoals(player.slug, drafts).catch((error) => {
+                console.error('Could not save the quest goals:', error);
+                const draftIds = new Set(drafts.map((draft) => draft.id));
+                goals = goals.filter((goal) => !draftIds.has(goal.id));
+                render();
+              });
             },
             onClose: () => {
               questGoalDraftQuest = null;
@@ -833,6 +910,15 @@ async function boot() {
         questGraphFullscreen = false;
         render();
       }
+    });
+
+    // Keeps `session` (and so canEditGoals()) current after a claim or
+    // sign-out that happens while already on this page — see session.js's
+    // own doc comment. The mountAuthWidget instance that actually publishes
+    // these lives independently, at module scope below.
+    subscribeSession((nextSession) => {
+      session = nextSession;
+      render();
     });
 
     if (activeTab === 'quests') ensureQuestsLoaded();

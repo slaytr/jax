@@ -293,7 +293,10 @@ function graphNode({
             el('span', { class: 'quest-graph-node-name', text: node.name }),
           ],
         ),
-        offerGoal
+        // stats.js passes onCreateQuestGoal as null for a viewer who
+        // doesn't own this player — same read-only convention as
+        // player-goals.js's deleteButton (onDelete null hides the ×).
+        offerGoal && onCreateQuestGoal
           ? el('button', {
               type: 'button',
               class: 'quest-graph-node-goal-btn',

@@ -2708,6 +2708,18 @@ body::after {
 /* Goals tab: the goal list is the Quests tab's 2nd-column card in every way
    that matters (same .player-row slot, same flex-grow sizing), just with
    its own card anatomy below. */
+
+.goals-readonly-hint {
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
 .goal-filters {
   margin-bottom: 0.7rem;
 }

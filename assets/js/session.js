@@ -16,6 +16,26 @@ export function getSession() {
   return apiGet('/me');
 }
 
+/**
+ * A tiny pub-sub so a page's own render loop can react to session changes
+ * it didn't initiate itself — specifically, auth-widget.js (mounted
+ * independently of any page's own state, see its own doc comment) calling
+ * claimPlayer()/logout() from inside its own closure. A page that needs to
+ * gate something on ownership (stats.js's create/delete goal buttons)
+ * fetches its own initial session (getSession(), above) for the first
+ * render, then subscribes here to stay current after that.
+ */
+const listeners = new Set();
+
+export function subscribeSession(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function publishSession(session) {
+  for (const listener of listeners) listener(session);
+}
+
 /** Full-page navigation into the Discord authorize screen — `returnTo` is
  * where the callback should land the browser back on afterwards (defaults
  * to wherever `login()` was called from). The server re-validates it's a

@@ -8,27 +8,19 @@
  * never having been created at all (a label can exist in the registry with
  * zero goals using it yet).
  *
- * Keyed per player slug (jax:goal-labels:<slug>), same reasoning as
- * goals-storage.js: a label a viewer made while looking at one player's
- * page has no business appearing on another player's.
+ * Backed by the API now (see the plan) — the label list itself comes back
+ * from goals-storage.js's loadGoalsAndLabels (one GET serves both), so this
+ * module only has the two writes. `name` is URL-encoded going into the path
+ * since a label name can contain spaces or other characters a raw path
+ * segment can't.
  */
 
-const keyFor = (slug) => `jax:goal-labels:${slug}`;
+import { apiPut, apiDelete } from './api-client.js';
 
-export function loadGoalLabels(slug) {
-  try {
-    const raw = localStorage.getItem(keyFor(slug));
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+export async function putGoalLabel(slug, name, colour) {
+  return apiPut(`/players/${slug}/goal-labels/${encodeURIComponent(name)}`, { colour });
 }
 
-export function saveGoalLabels(slug, labels) {
-  try {
-    localStorage.setItem(keyFor(slug), JSON.stringify(labels));
-  } catch {
-    // Storage blocked or full — nothing to do, the page still works.
-  }
+export async function deleteGoalLabel(slug, name) {
+  await apiDelete(`/players/${slug}/goal-labels/${encodeURIComponent(name)}`);
 }

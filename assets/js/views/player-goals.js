@@ -193,7 +193,11 @@ function metaLine(parts) {
   );
 }
 
+// stats.js passes null for onDelete when the viewer doesn't own this
+// player — read-only visitors and a signed-out visitor both see every
+// goal card, just without a way to delete one.
 function deleteButton(goal, onDelete) {
+  if (!onDelete) return null;
   return el('button', {
     type: 'button',
     class: 'goal-card-delete',
@@ -760,7 +764,7 @@ export function renderGoalsList(
   player,
   goals,
   labels,
-  { labelFilter, onLabelFilterChange, onDeleteGoal, collapsedGroups, onToggleGroup, focusGoalId, onFocusGoal },
+  { readOnlyHint = null, labelFilter, onLabelFilterChange, onDeleteGoal, collapsedGroups, onToggleGroup, focusGoalId, onFocusGoal },
 ) {
   const bySkillId = new Map(SKILLS.map((skill) => [skill.id, skill]));
   const labelsByName = new Map(labels.map((label) => [label.name, label.colour]));
@@ -795,7 +799,12 @@ export function renderGoalsList(
     filteredGoals.length === 0
       ? el('p', {
           class: 'chart-empty',
-          text: goals.length === 0 ? 'No goals yet — click a skill to set one.' : 'No goals match this label.',
+          text:
+            goals.length > 0
+              ? 'No goals match this label.'
+              : readOnlyHint
+                ? 'No goals set yet.'
+                : 'No goals yet — click a skill to set one.',
         })
       : orderSectionsByStatus(goalSections(filteredGoals)).map((section) => {
           const collapsed = section.title !== null && collapsedGroups.has(section.title);
@@ -824,6 +833,7 @@ export function renderGoalsList(
 
   return el('section', { class: 'lb', style: { '--accent': player.colour } }, [
     el('div', { class: 'lb-head' }, [el('div', { class: 'lb-title' }, [el('h2', { text: 'Goals' })])]),
+    readOnlyHint ? el('p', { class: 'goals-readonly-hint', text: readOnlyHint }) : null,
     focusPanel,
     filterControl,
     body,

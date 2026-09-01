@@ -8,29 +8,30 @@
  */
 
 import { el, replaceChildren } from '../dom.js';
-import { getSession, login, logout, claimPlayer } from '../session.js';
+import { getSession, login, logout, claimPlayer, publishSession } from '../session.js';
 
 /**
  * @param container element to render into (e.g. #auth-widget)
- * @param onSessionChange called with the new session after a claim or
- *   sign-out actually changes it, so the page can re-render anything that
- *   depends on ownership (a goal list's edit affordances, say). Not called
- *   on the initial mount — callers already have their own initial state.
+ *
+ * Every successful session fetch — the initial one included — is
+ * broadcast via session.js's publishSession, so any page that needs to
+ * gate something on ownership (stats.js's create/delete goal buttons) can
+ * subscribeSession() instead of this function taking a bespoke callback.
  */
-export function mountAuthWidget(container, { onSessionChange = () => {} } = {}) {
+export function mountAuthWidget(container) {
   let session = { user: null, player: null, unclaimed: [] };
   let claiming = false;
   let error = null;
 
-  async function refresh({ notify = false } = {}) {
+  async function refresh() {
     try {
       session = await getSession();
       error = null;
+      publishSession(session);
     } catch (cause) {
       error = cause.message;
     }
     render();
-    if (notify) onSessionChange(session);
   }
 
   function render() {
@@ -85,7 +86,7 @@ export function mountAuthWidget(container, { onSessionChange = () => {} } = {}) 
     try {
       await claimPlayer(slug);
       claiming = false;
-      await refresh({ notify: true });
+      await refresh();
     } catch (cause) {
       claiming = false;
       error = cause.message;
@@ -101,7 +102,7 @@ export function mountAuthWidget(container, { onSessionChange = () => {} } = {}) 
       render();
       return;
     }
-    await refresh({ notify: true });
+    await refresh();
   }
 
   refresh();

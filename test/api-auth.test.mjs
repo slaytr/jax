@@ -37,8 +37,12 @@ describe('auth + sessions API', { skip: hasDb ? false : 'DATABASE_URL not set' }
   });
 
   after(async () => {
-    await query('delete from sessions where discord_id like $1', ['test-discord-%']);
-    await query('delete from users where discord_id like $1', ['test-discord-%']);
+    // Exact IDs, not a LIKE prefix: node --test runs every file in this
+    // directory concurrently against the same real Postgres, and a broad
+    // 'test-discord-%' here would also delete sessions another test file
+    // (api-goals.test.mjs) is still using mid-run.
+    await query('delete from sessions where discord_id in ($1, $2)', [TEST_DISCORD_ID, OTHER_DISCORD_ID]);
+    await query('delete from users where discord_id in ($1, $2)', [TEST_DISCORD_ID, OTHER_DISCORD_ID]);
     await query('delete from players where slug = $1', [TEST_SLUG]);
     await fastify.close();
     await closePool();
