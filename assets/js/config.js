@@ -3,6 +3,15 @@
  */
 
 /**
+ * The site and the API are served from the same Railway origin (see the
+ * Postgres migration plan), so every fetch is root-relative — no more of
+ * the `new URL('../../data/...', import.meta.url)` gymnastics data.js used
+ * to need purely because a GitHub Pages *project* page put the site under
+ * `/jax/`.
+ */
+export const API_BASE = '/api';
+
+/**
  * RS3 skills in hiscore-feed id order. `name` is the in-game name, which differs
  * from the feed's own labels for two skills (Hitpoints → Constitution,
  * Runecraft → Runecrafting).

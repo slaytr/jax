@@ -27,6 +27,7 @@ import { renderHighlights, HIGHLIGHT_METRICS } from './views/highlights.js';
 import { renderGains } from './views/leaderboards.js';
 import { renderStandings } from './views/standings.js';
 import { renderMatrix } from './views/matrix.js';
+import { mountAuthWidget } from './views/auth-widget.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -298,5 +299,9 @@ async function boot() {
     document.body.dataset.ready = 'true';
   }
 }
+
+// Independent of the group-data load above: a session hiccup must never
+// hold up the scoreboard rendering, and vice versa.
+mountAuthWidget(document.getElementById('auth-widget'));
 
 boot();

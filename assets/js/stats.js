@@ -24,6 +24,7 @@ import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteC
 import { tabToggle } from './views/tabs.js';
 import { loadGoals, saveGoals } from './goals-storage.js';
 import { loadGoalLabels, saveGoalLabels } from './goal-labels-storage.js';
+import { mountAuthWidget } from './views/auth-widget.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -843,5 +844,9 @@ async function boot() {
     document.body.dataset.ready = 'true';
   }
 }
+
+// Independent of the player-data load in boot(): a session hiccup must
+// never hold up the stats page rendering, and vice versa.
+mountAuthWidget(document.getElementById('auth-widget'));
 
 boot();

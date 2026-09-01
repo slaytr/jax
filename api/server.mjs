@@ -16,6 +16,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 
 import readRoutes from './routes/read.mjs';
+import authRoutes from './routes/auth.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT ?? 4173);
@@ -46,6 +47,7 @@ export async function buildServer() {
   });
 
   await fastify.register(readRoutes);
+  await fastify.register(authRoutes);
 
   fastify.get('/healthz', async (request, reply) => reply.send({ ok: true }));
 

@@ -61,6 +61,7 @@ export function renderStatsShell(player, group) {
   </head>
   <body data-player="${player.slug}">
     <div class="shell">
+      <div class="auth-widget" id="auth-widget"></div>
       <header class="masthead" id="masthead"></header>
 
       <main id="panel" aria-label="${player.name}'s stats">
