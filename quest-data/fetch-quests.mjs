@@ -65,6 +65,22 @@ function parseQuestreqData(luaSource) {
   return out;
 }
 
+/**
+ * A Bucket field that's truthy but not cleanly numeric (an empty string
+ * quirk, stray whitespace, a value the wiki hasn't filled in the way the
+ * others are) coerces to `NaN` via a plain `Number(...)` — which then
+ * breaks the Postgres write in `--to-db` mode: `JSON.stringify` silently
+ * turns `NaN` into `null` (which is how this went unnoticed writing
+ * quests.json all along), but `pg` sends `NaN` to an `int` column as the
+ * literal string `"NaN"`, which Postgres rejects outright. This is the one
+ * guard that keeps a single odd wiki page from failing the whole `--to-db`
+ * run instead of just quietly becoming a `null` here too.
+ */
+const toFiniteNumber = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 /** `[[Target|Text]]` -> "Text", `[[Target]]` -> "Target" — Misc: requirement
  * strings carry raw wikitext links; this is about as far as unwrapping
  * them needs to go for a planner UI (no need for the actual link target). */
@@ -148,7 +164,7 @@ async function main() {
       row.page_name,
       (row.requirement_skill_level ?? []).map((entry) => {
         const [skill, level] = entry.split(':');
-        return { skill, level: Number(level) };
+        return { skill, level: toFiniteNumber(level) };
       }),
     ]),
   );
@@ -225,8 +241,8 @@ async function main() {
         // true and absent for false — there is no literal `true` value.
         members: Object.hasOwn(row, 'is_members_only'),
         series: row.official_series && row.official_series !== 'None' ? row.official_series : null,
-        seriesPosition: row.official_nth_in_series ? Number(row.official_nth_in_series) : null,
-        age: row.official_age ? Number(row.official_age) : null,
+        seriesPosition: row.official_nth_in_series ? toFiniteNumber(row.official_nth_in_series) : null,
+        age: row.official_age ? toFiniteNumber(row.official_age) : null,
         startArea: row.start_area ?? null,
         combatLevel: row.official_combat && row.official_combat !== 'none' ? row.official_combat : null,
         releaseDate: row.release_date ?? null,
