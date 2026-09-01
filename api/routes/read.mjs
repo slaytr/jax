@@ -8,77 +8,17 @@
 
 import { query } from '../db.mjs';
 import { ok, fail } from '../envelope.mjs';
-import { projectLatest, projectHistory, projectQuest, projectQuests } from '../projections.mjs';
+import { projectHistory, projectQuest, projectQuests } from '../projections.mjs';
+import { readCurrentLatest, fetchGroup } from '../store/current-state.mjs';
 
 const DEFAULT_HISTORY_DAYS = 33;
 const MAX_HISTORY_DAYS = 366;
 
-async function fetchGroup() {
-  const { rows } = await query('select name, tagline, hiscores_url, tracking_since from groups where id = 1');
-  return rows[0] ?? null;
-}
-
-async function fetchGroupRank() {
-  const { rows } = await query('select * from group_state where id = 1');
-  return rows[0] ?? null;
-}
-
-async function fetchPlayerStates() {
-  const { rows } = await query(`
-    select p.slug, p.name, p.hiscore_table, p.position,
-           ps.fetched_at, ps.stale, ps.error, ps.total_level, ps.total_xp, ps.total_rank,
-           ps.quest_points, ps.quests_complete, ps.quests_stale, ps.skills, ps.activities
-    from players p
-    left join player_state ps on ps.player_slug = p.slug
-    order by p.position
-  `);
-  return rows;
-}
-
-async function fetchQuestStatusByPlayer() {
-  const { rows } = await query('select player_slug, quest_name, status from player_quest_status');
-  const byPlayer = new Map();
-  for (const row of rows) {
-    if (!byPlayer.has(row.player_slug)) byPlayer.set(row.player_slug, { completedQuests: [], startedQuests: [] });
-    const bucket = byPlayer.get(row.player_slug);
-    if (row.status === 'completed') bucket.completedQuests.push(row.quest_name);
-    else bucket.startedQuests.push(row.quest_name);
-  }
-  return byPlayer;
-}
-
-const latestFetchedAt = (playerRows) => {
-  const timestamps = playerRows.map((row) => row.fetched_at).filter(Boolean);
-  if (timestamps.length === 0) return null;
-  const max = timestamps.reduce((latest, current) => (current > latest ? current : latest));
-  return max instanceof Date ? max.toISOString() : max;
-};
-
 async function handleLatest(request, reply) {
-  const group = await fetchGroup();
-  if (!group) {
+  const data = await readCurrentLatest();
+  if (!data) {
     return fail(reply, 503, 'Not initialized yet — run the migration and an update before the API has anything to serve.');
   }
-
-  const [groupRankRow, playerRows, questStatusByPlayer] = await Promise.all([
-    fetchGroupRank(),
-    fetchPlayerStates(),
-    fetchQuestStatusByPlayer(),
-  ]);
-
-  const players = playerRows.map((row) => ({
-    ...row,
-    ...(questStatusByPlayer.get(row.slug) ?? { completedQuests: [], startedQuests: [] }),
-  }));
-
-  const data = projectLatest({
-    fetchedAt: latestFetchedAt(playerRows),
-    trackingSince: group.tracking_since instanceof Date ? group.tracking_since.toISOString() : group.tracking_since,
-    group,
-    groupRankRow,
-    players,
-  });
-
   return ok(reply, data);
 }
 

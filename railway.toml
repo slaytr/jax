@@ -1,7 +1,24 @@
+# Config for the Railway CRON service only — see api/jobs/update-job.mjs.
+# The Postgres-backed web service (serves the static site + /api/*, see
+# api/server.mjs) is a *separate* Railway service in the same project,
+# pointed at this same repo, with its own Start Command set in the Railway
+# dashboard/CLI rather than here (Railway doesn't support two differently-
+# configured services from one railway.toml):
+#
+#   Start Command: node api/server.mjs
+#   Env: DATABASE_URL, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET,
+#        DISCORD_REDIRECT_URI, SESSION_SECRET, PORT
+#
+# This service just needs DATABASE_URL — no DISCORD_*/SESSION_SECRET (it
+# never serves HTTP), and no GITHUB_TOKEN/GITHUB_REPO any more: the old
+# scripts/railway-update.sh cloned the repo to commit data/ back to git;
+# this job writes straight to Postgres instead, so there's nothing to
+# clone or commit.
+
 [build]
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "bash scripts/railway-update.sh"
+startCommand = "node api/jobs/update-job.mjs"
 cronSchedule = "0 * * * *"
 restartPolicyType = "NEVER"

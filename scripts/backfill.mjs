@@ -15,8 +15,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { pool, withTransaction, closePool } from '../api/db.mjs';
-import { SKILL_COUNT } from './hiscores.mjs';
+import { withTransaction, closePool } from '../api/db.mjs';
+import { upsertRoster, upsertLatest, insertSnapshotEntry } from '../api/store/upserts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = join(ROOT, 'data');
@@ -46,112 +46,6 @@ async function historyFiles() {
   return files;
 }
 
-async function backfillRoster(client, roster) {
-  const group = roster.group ?? { name: 'Group', tagline: '' };
-  await client.query(
-    `insert into groups (id, name, tagline, hiscores_url)
-     values (1, $1, $2, $3)
-     on conflict (id) do update set name = excluded.name, tagline = excluded.tagline, hiscores_url = excluded.hiscores_url`,
-    [group.name, group.tagline ?? '', group.hiscoresUrl ?? ''],
-  );
-
-  for (const [index, player] of roster.players.entries()) {
-    await client.query(
-      `insert into players (slug, name, hiscore_table, position)
-       values ($1, $2, $3, $4)
-       on conflict (slug) do update set name = excluded.name, hiscore_table = excluded.hiscore_table, position = excluded.position`,
-      [player.slug, player.name, player.table ?? 'main', index],
-    );
-  }
-}
-
-async function backfillLatest(client, latest) {
-  if (!latest) return;
-
-  if (latest.trackingSince) {
-    await client.query('update groups set tracking_since = $1 where id = 1', [latest.trackingSince]);
-  }
-
-  const rank = latest.groupRank;
-  if (rank) {
-    await client.query(
-      `insert into group_state
-         (id, rank, total_level, total_xp, size, founder, external_id, competitive, total_groups, rivals, source_url, stale, error, checked_at)
-       values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       on conflict (id) do update set
-         rank = excluded.rank, total_level = excluded.total_level, total_xp = excluded.total_xp,
-         size = excluded.size, founder = excluded.founder, external_id = excluded.external_id,
-         competitive = excluded.competitive, total_groups = excluded.total_groups, rivals = excluded.rivals,
-         source_url = excluded.source_url, stale = excluded.stale, error = excluded.error, checked_at = excluded.checked_at`,
-      [
-        rank.rank,
-        rank.totalLevel,
-        rank.totalXp,
-        rank.size,
-        rank.founder,
-        rank.id,
-        rank.competitive,
-        rank.totalGroups,
-        JSON.stringify(rank.rivals ?? []),
-        rank.sourceUrl,
-        rank.stale,
-        rank.error,
-        rank.checkedAt,
-      ],
-    );
-  }
-
-  for (const player of latest.players ?? []) {
-    await client.query(
-      `insert into player_state
-         (player_slug, fetched_at, stale, error, total_level, total_xp, total_rank,
-          quest_points, quests_complete, quests_stale, skills, activities)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       on conflict (player_slug) do update set
-         fetched_at = excluded.fetched_at, stale = excluded.stale, error = excluded.error,
-         total_level = excluded.total_level, total_xp = excluded.total_xp, total_rank = excluded.total_rank,
-         quest_points = excluded.quest_points, quests_complete = excluded.quests_complete,
-         quests_stale = excluded.quests_stale, skills = excluded.skills, activities = excluded.activities`,
-      [
-        player.slug,
-        latest.fetchedAt,
-        player.stale ?? false,
-        player.error ?? null,
-        player.total?.level ?? 0,
-        player.total?.xp ?? 0,
-        player.total?.rank ?? null,
-        player.questPoints ?? null,
-        player.questsComplete ?? null,
-        player.questsStale ?? false,
-        JSON.stringify(player.skills ?? []),
-        JSON.stringify(player.activities ?? []),
-      ],
-    );
-
-    await client.query('delete from player_quest_status where player_slug = $1', [player.slug]);
-    const completed = (player.completedQuests ?? []).map((name) => [player.slug, name, 'completed']);
-    const started = (player.startedQuests ?? []).map((name) => [player.slug, name, 'started']);
-    for (const row of [...completed, ...started]) {
-      await client.query(
-        `insert into player_quest_status (player_slug, quest_name, status) values ($1, $2, $3)
-         on conflict (player_slug, quest_name) do update set status = excluded.status`,
-        row,
-      );
-    }
-  }
-}
-
-/** Pads a sparse per-skill-id vector (only some ids present, as in older
- * shards) out to SKILL_COUNT — a history snapshot's `p`/`l` are already
- * dense arrays in practice, but this keeps the insert honest either way. */
-function toVector(value) {
-  const vector = new Array(SKILL_COUNT).fill(0);
-  if (Array.isArray(value)) {
-    for (let i = 0; i < Math.min(value.length, SKILL_COUNT); i += 1) vector[i] = value[i] ?? 0;
-  }
-  return vector;
-}
-
 async function backfillHistory(client) {
   const files = await historyFiles();
   let snapshotCount = 0;
@@ -162,31 +56,9 @@ async function backfillHistory(client) {
     if (!Array.isArray(shard?.snapshots)) continue;
 
     for (const snapshot of shard.snapshots) {
-      const takenAt = new Date(snapshot.t * 1000).toISOString();
-      const { rows } = await client.query(
-        `insert into snapshots (taken_at, group_rank) values ($1, $2)
-         on conflict (taken_at) do update set group_rank = excluded.group_rank
-         returning id`,
-        [takenAt, snapshot.r ?? null],
-      );
-      const snapshotId = rows[0].id;
+      const { playerCount } = await insertSnapshotEntry(client, snapshot);
       snapshotCount += 1;
-
-      const slugs = Object.keys(snapshot.p ?? {});
-      for (const slug of slugs) {
-        // snapshot.l is absent entirely on pre-schema-upgrade snapshots
-        // (see the levels column comment in the migration) — NULL, not a
-        // zero vector, preserves that "no data" distinction.
-        const levels = snapshot.l ? toVector(snapshot.l[slug]) : null;
-        await client.query(
-          `insert into player_snapshots (snapshot_id, player_slug, xp, levels, quest_points)
-           values ($1, $2, $3, $4, $5)
-           on conflict (snapshot_id, player_slug) do update set
-             xp = excluded.xp, levels = excluded.levels, quest_points = excluded.quest_points`,
-          [snapshotId, slug, toVector(snapshot.p[slug]), levels, snapshot.q?.[slug] ?? null],
-        );
-        playerSnapshotCount += 1;
-      }
+      playerSnapshotCount += playerCount;
     }
   }
 
@@ -268,10 +140,10 @@ async function main() {
   const questData = await readJson(join(ROOT, 'quest-data', 'quests.json'));
 
   await withTransaction(async (client) => {
-    await backfillRoster(client, roster);
+    await upsertRoster(client, roster);
     console.log(`Roster: ${roster.players.length} players.`);
 
-    await backfillLatest(client, latest);
+    await upsertLatest(client, latest);
     console.log(latest ? `Latest: ${latest.players?.length ?? 0} player states.` : 'Latest: no data/latest.json, skipped.');
 
     const historyResult = await backfillHistory(client);

@@ -103,3 +103,18 @@ export async function requireOwner(request, reply) {
   }
   request.ownedPlayer = player;
 }
+
+/**
+ * Composes with requireSession like requireOwner, but for routes that need
+ * "any owner" rather than a specific slug's owner — POST /api/refresh (the
+ * plan: "any logged-in owner" may trigger a full group refresh). A
+ * signed-in visitor who hasn't claimed a roster slug yet is still turned
+ * away, same 403 reasoning as requireOwner.
+ */
+export async function requireAnyOwner(request, reply) {
+  const player = await ownedPlayer(request.user.discordId);
+  if (!player) {
+    return fail(reply, 403, 'Claim a roster player before triggering a refresh.');
+  }
+  request.ownedPlayer = player;
+}

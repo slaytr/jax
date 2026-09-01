@@ -28,6 +28,7 @@ import { renderGains } from './views/leaderboards.js';
 import { renderStandings } from './views/standings.js';
 import { renderMatrix } from './views/matrix.js';
 import { mountAuthWidget } from './views/auth-widget.js';
+import { mountRefreshButton } from './views/refresh-button.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -303,5 +304,6 @@ async function boot() {
 // Independent of the group-data load above: a session hiccup must never
 // hold up the scoreboard rendering, and vice versa.
 mountAuthWidget(document.getElementById('auth-widget'));
+mountRefreshButton(document.getElementById('refresh-button'), { scope: 'group' });
 
 boot();

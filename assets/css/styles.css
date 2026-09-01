@@ -128,15 +128,26 @@ body::after {
   padding: 1.5rem 0 0;
 }
 
-/* ---------------------------------------------------------- auth widget */
+/* ------------------------------------------------- header row (top-right) */
 
-.auth-widget {
+/* Wraps the refresh button and the auth widget together, right-aligned
+   above the masthead. Layout lives here, not on .auth-widget itself — that
+   class is reused for the widget's own internal row (name + sign-out
+   button), which needs to flex without also owning page-level positioning. */
+.header-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.6rem;
   padding-top: 1rem;
+}
+
+.auth-widget {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.72rem;
 }
@@ -197,6 +208,39 @@ body::after {
   color: var(--ink);
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Same visual language as .auth-button (auth-widget.js) — the refresh
+   control (refresh-button.js) sits right beside it in .header-row and
+   should read as a matching pair, not a competing style. */
+.refresh-button {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.refresh-button:hover:not(:disabled) {
+  border-color: var(--ember);
+  color: var(--ember);
+}
+
+.refresh-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.refresh-error {
+  margin-left: 0.5rem;
+  color: var(--warn);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
 }
 
 #panel {

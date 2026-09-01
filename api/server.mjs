@@ -18,6 +18,7 @@ import fastifyCookie from '@fastify/cookie';
 import readRoutes from './routes/read.mjs';
 import authRoutes from './routes/auth.mjs';
 import goalsRoutes from './routes/goals.mjs';
+import refreshRoutes from './routes/refresh.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT ?? 4173);
@@ -50,6 +51,7 @@ export async function buildServer() {
   await fastify.register(readRoutes);
   await fastify.register(authRoutes);
   await fastify.register(goalsRoutes);
+  await fastify.register(refreshRoutes);
 
   fastify.get('/healthz', async (request, reply) => reply.send({ ok: true }));
 

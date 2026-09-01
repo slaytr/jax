@@ -25,6 +25,7 @@ import { tabToggle } from './views/tabs.js';
 import { loadGoalsAndLabels, createGoals, updateGoal, deleteGoal } from './goals-storage.js';
 import { putGoalLabel, deleteGoalLabel } from './goal-labels-storage.js';
 import { mountAuthWidget } from './views/auth-widget.js';
+import { mountRefreshButton } from './views/refresh-button.js';
 import { getSession, subscribeSession } from './session.js';
 
 const dom = {
@@ -934,5 +935,6 @@ async function boot() {
 // Independent of the player-data load in boot(): a session hiccup must
 // never hold up the stats page rendering, and vice versa.
 mountAuthWidget(document.getElementById('auth-widget'));
+mountRefreshButton(document.getElementById('refresh-button'), { scope: 'player', slug: document.body.dataset.player });
 
 boot();

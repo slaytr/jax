@@ -1,2 +1,4 @@
-[phases.setup]
-aptPkgs = ["git"]
+# git was only needed by scripts/railway-update.sh, which cloned this repo
+# to commit data/ back to it — the cron job now writes straight to
+# Postgres (see api/jobs/update-job.mjs) and railway.toml's own comment,
+# so there's nothing left to clone or commit and nothing here needs git.
