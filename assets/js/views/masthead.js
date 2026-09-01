@@ -38,29 +38,31 @@ function rankDeltaBadge(rankDelta) {
   ]);
 }
 
-/** One roster member's link in the "Stats:" line — a plain inline link to
- * their own /stats/<slug>/ page, led by a swatch so identity still comes
- * from more than colour alone (the link text itself stays an ink token,
- * never the player's own hue — see the dataviz skill's own text-vs-mark
- * rule). There's no "current" player here — the group page isn't any one
- * player's, so every name is just a link. */
+/** One roster member's nameplate in the player nav bar (playerNav, below) —
+ * a link to their own /stats/<slug>/ page, led by a swatch so identity still
+ * comes from more than colour alone at rest (the link text itself stays an
+ * ink token, never the player's own hue — see the dataviz skill's own
+ * text-vs-mark rule); `--accent` carries that colour instead, for the pill's
+ * own hover/focus treatment (styles.css) to read off. There's no "current"
+ * player here — the group page isn't any one player's, so every nameplate
+ * is just a link. */
 const playerNavItem = (player) =>
   el('a', { class: 'player-nav-item', style: { '--accent': player.colour }, href: `stats/${player.slug}/` }, [
     swatch(player.colour),
     el('span', { text: player.name }),
   ]);
 
-/** "Personal stat pages: Name · Name · Name…" — every roster member's
- * stats-page link, inline with the title rather than off in the metric
- * strip's corner, since it's a way to *leave* this page, not one more
- * figure the strip relays. */
-function playerNavLine(players) {
-  const items = players.flatMap((player, index) => [
-    index > 0 ? el('span', { class: 'dot', 'aria-hidden': 'true', text: '·' }) : null,
-    playerNavItem(player),
+/** The player roster as its own nav bar — a real `<nav>`, landmark-labelled
+ * for the same reason the page's own tab strips get an aria-label, sitting
+ * below `.topbar`'s brass rule (renderMasthead) rather than tucked inside
+ * the identity block: this is the page's second, quieter piece of
+ * navigation (leaving to a member's own page), so it reads as its own row
+ * instead of a line of the title block. */
+function playerNav(players) {
+  return el('nav', { class: 'player-nav', 'aria-label': "This group's stat pages" }, [
+    el('span', { class: 'player-nav-label', text: 'Stat pages' }),
+    ...players.map(playerNavItem),
   ]);
-
-  return el('p', { class: 'identity-stats' }, [el('span', { class: 'identity-stats-label', text: 'Personal stat pages:' }), ...items]);
 }
 
 /** Group XP trend. Unlabelled by design — exact numbers live in the Gains view. */
@@ -118,8 +120,6 @@ export function renderMasthead(container, state) {
         // actually something to flag (a stale reading), so the row simply
         // isn't there the rest of the time rather than sitting empty.
         staleCount > 0 ? el('p', { class: 'identity-sub' }, [el('span', { class: 'warn', text: `${staleCount} cached` })]) : null,
-
-        playerNavLine(players),
       ]),
 
       el('div', { class: 'metrics' }, [
@@ -137,5 +137,6 @@ export function renderMasthead(container, state) {
         ),
       ]),
     ]),
+    playerNav(players),
   );
 }

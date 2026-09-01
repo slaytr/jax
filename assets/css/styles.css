@@ -201,51 +201,62 @@ body::after {
   color: var(--warn);
 }
 
-/* "Personal stat pages: Name · Name · Name…" — sits inline with the title block
-   (.identity), on its own wrapped line beneath the tagline, same voice as
-   .identity-sub rather than the numeric metric strip: this is a way to
-   leave the page, not one more figure being relayed. */
-.identity-stats {
-  margin: 0.15rem 0 0;
+/* The player roster's own nav bar (playerNav, masthead.js) — sits below
+   .topbar's own brass rule as the page's second, quieter navigation: away
+   to one member's own stat page, rather than a figure this page itself is
+   relaying. A row of real nameplates, each its own tappable pill, in place
+   of the plain inline text links with dot separators this used to be. */
+.player-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  margin: 1.1rem 0 0;
+}
+
+.player-nav-label {
+  margin-right: 0.2rem;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-}
-
-.identity-stats-label {
-  color: var(--ink-muted);
-  letter-spacing: 0.06em;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: var(--ink-muted);
 }
 
-.identity-stats .dot {
-  color: var(--hairline-strong);
-}
-
-/* Each roster member's link — plain text (a swatch carries identity, never
-   the link's own colour; see playerNavItem, masthead.js), brightening to
-   var(--ink) on hover/focus rather than the player's own hue, so it never
-   competes with `.wordmark`'s glow. */
+/* One nameplate. A swatch still carries identity at rest (the link text
+   itself stays an ink token — see the dataviz skill's own text-vs-mark
+   rule), but unlike a plain text link, the whole pill now brightens toward
+   the player's own colour (--accent, set per item — playerNavItem) on
+   hover/focus, so a destination this concrete reads as one on approach,
+   not just once you're looking straight at its dot. */
 .player-nav-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
   color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
   text-decoration: none;
+  transition:
+    color 0.16s var(--ease),
+    border-color 0.16s var(--ease),
+    background-color 0.16s var(--ease);
 }
 
-.player-nav-item:hover,
-.player-nav-item:focus-visible {
+.player-nav-item:hover {
   color: var(--ink);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-1));
 }
 
 .player-nav-item:focus-visible {
   outline: 2px solid var(--ember);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
 /* Metric strip — the numbers the scoreboard exists to relay.
@@ -592,29 +603,33 @@ body::after {
 .highlights-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 0.7rem;
 }
 
 .highlights .lb-icon polygon {
   fill: var(--ember);
 }
 
-/* A left accent stripe in the winner's own colour, same idea as .lb-entry's
-   --accent, rather than tinting the whole card — keeps three different
-   player colours sitting side by side from fighting each other. */
+/* One medallion — icon ring, category name, winner, figure — a small
+   trophy plaque stacked top to bottom rather than a flat leaderboard-style
+   row: this section alone exists to name a champion, not relay a figure,
+   and reads that way at a glance now instead of blending into every other
+   card on the page. */
 .highlight-badge {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.25rem;
   min-width: 0;
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 0.75rem 0.7rem;
   background: var(--surface-1);
   border: 1px solid var(--hairline);
-  border-left: 3px solid var(--accent, var(--hairline-strong));
   border-radius: var(--radius);
+  text-align: center;
   transition:
     background-color 0.16s var(--ease),
-    border-color 0.16s var(--ease);
+    border-color 0.16s var(--ease),
+    transform 0.16s var(--ease);
 }
 
 .highlight-badge:not(.is-empty) {
@@ -623,7 +638,9 @@ body::after {
 
 .highlight-badge:not(.is-empty):hover,
 .highlight-badge:not(.is-empty):focus-visible {
-  background: rgba(217, 89, 38, 0.08);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-1));
+  transform: translateY(-2px);
 }
 
 .highlight-badge:focus-visible {
@@ -635,50 +652,67 @@ body::after {
   opacity: 0.6;
 }
 
-/* "Grind King: PlayerName +8.03M xp" — the title is the whole point of the
-   badge, so it carries the visual weight (the display font, same family as
-   the wordmark) while the winner's name and figure read as a plain answer to
-   it, not a second headline competing for attention. */
-.highlight-text {
+/* The icon ring — the winner's own colour standing in for a medal ribbon,
+   same --accent-on-a-ring language .skill-cell.is-selected's own box-shadow
+   uses. A crisp inset ring at rest; hovering/focusing adds a soft outward
+   glow (box-shadow, not a blurred filter — cheaper and stays sharp at this
+   size) for a touch of ember light without tipping into decoration. */
+.highlight-medal {
   display: flex;
-  flex: 1 1 auto;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  min-width: 0;
-  margin: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.1rem;
+  border-radius: 50%;
+  background: var(--surface-0);
+  box-shadow: inset 0 0 0 2px var(--accent, var(--hairline-strong));
+  color: var(--accent, var(--ink-muted));
+  transition:
+    box-shadow 0.16s var(--ease),
+    color 0.16s var(--ease);
 }
 
-/* The two halves of .highlight-text — "Ranker:" and "🔵 Melooms +142" — each
-   its own inline-flex run so they still read as one line at this width; the
-   mobile breakpoint stacks them (see the narrow-viewport rules below). */
-.highlight-title,
-.highlight-answer {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  min-width: 0;
+.highlight-badge:not(.is-empty):hover .highlight-medal,
+.highlight-badge:not(.is-empty):focus-visible .highlight-medal {
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    0 0 14px -2px var(--accent);
+}
+
+/* currentColor-filled (see .highlight-medal's own `color`) so Ranker's
+   crown and Grind King's flame both pick up the winner's colour without
+   either icon needing its own fill rule; Quest God's medallion is a real
+   <img> (the game's own quest-points icon, questPointsIconLarge —
+   highlights.js) rather than a drawn glyph, so it ignores fill/currentColor
+   entirely and just sits inside the same ring, sized to match. */
+.highlight-medal-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .highlight-label {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   color: #fdf5e7;
-  white-space: nowrap;
 }
 
-.highlight-sep {
-  color: var(--ink-muted);
-}
-
-.highlight-name {
+.highlight-answer {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.highlight-name {
   overflow: hidden;
-  font-size: 0.92rem;
+  font-size: 0.72rem;
   color: var(--ink-2);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -688,15 +722,13 @@ body::after {
   color: var(--ink-muted);
 }
 
-/* The gain figure, in the same voice as Account Standings' own headline
-   totals (.lb-value) — a plain bold number, not the small green gain chip
-   used everywhere else a gain rides beside a bigger total. Pinned to the
-   card's far edge rather than trailing the name, via the auto left margin
-   (a sibling of .highlight-title/.highlight-answer within .highlight-text,
-   not nested inside .highlight-answer — see highlights.js). */
+/* The gain figure — the plaque's own base line rather than a number
+   trailing a name, so it carries the mono/bold-figure voice a headline
+   total gets elsewhere (Account Standings' own .lb-value), just kept
+   compact (this card's whole point is to stay a quick glance, not a fourth
+   thing on the page competing for size with the real data below it). */
 .highlight-value {
-  margin-left: auto;
-  padding-left: 0.5rem;
+  margin: 0.05rem 0 0;
   font-family: var(--font-mono);
   font-size: 1.1rem;
   font-weight: 500;
@@ -2694,6 +2726,18 @@ body::after {
   font-weight: 400;
 }
 
+/* A finished group reads as done even collapsed to just its heading — same
+   gain colour a completed card's own checkmark uses (.goal-card.is-complete
+   .goal-card-target), just promoted to the group title. */
+.goal-group-check {
+  flex: none;
+  color: var(--gain);
+}
+
+.goal-group.is-complete .goal-group-name {
+  color: var(--gain);
+}
+
 .goals-list {
   display: flex;
   flex-direction: column;
@@ -3980,21 +4024,26 @@ body[data-ready] .loading {
   }
 
   /* Squeezed to fit three across a phone-width screen: tighter gap/padding,
-     smaller type, and the figure dropped entirely (see .highlight-value
-     below) — there isn't room for "Ranker: 🔵 Melooms +142" on one line, so
-     the badge collapses to a title line over a name line instead. */
+     a smaller medallion, smaller type. Already a top-to-bottom stack at
+     every width (unlike the old flat row this replaced), so there's no
+     layout to collapse here — everything just shrinks in place, figure
+     included. */
   .highlights-row {
     gap: 0.4rem;
   }
 
   .highlight-badge {
-    padding: 0.5rem 0.6rem;
+    padding: 0.7rem 0.4rem 0.6rem;
   }
 
-  .highlight-text {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
+  .highlight-medal {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .highlight-medal-icon {
+    width: 16px;
+    height: 16px;
   }
 
   .highlight-label {
@@ -4005,10 +4054,8 @@ body[data-ready] .loading {
     font-size: 0.68rem;
   }
 
-  /* The figure is the first thing to go at this width — the title and name
-     alone are the point on a squeezed phone-width row. */
   .highlight-value {
-    display: none;
+    font-size: 1.05rem;
   }
 
   .tabs {

@@ -476,6 +476,26 @@ function goalSections(goals) {
   return sections;
 }
 
+/** A section is "done" once every goal inside it is — a completed quest
+ * (its skill-requirement siblings included) or the ungrouped "Skills"
+ * catch-all once every goal in it has finished. */
+const sectionIsComplete = (section) => section.goals.length > 0 && section.goals.every((goal) => goal.completedAt);
+
+/** Same "active stays on top" reasoning as orderByStatus, one level up:
+ * fully-done sections drop below every section that still has something
+ * active in it, rather than sitting wherever they land alphabetically.
+ * Completed sections themselves sort most-recently-finished first, using
+ * the latest completedAt across each section's own goals. */
+const orderSectionsByStatus = (sections) => {
+  const active = sections.filter((section) => !sectionIsComplete(section));
+  const completed = sections
+    .filter(sectionIsComplete)
+    .sort((a, b) => latestCompletion(b) - latestCompletion(a));
+  return [...active, ...completed];
+};
+
+const latestCompletion = (section) => Math.max(...section.goals.map((goal) => Date.parse(goal.completedAt)));
+
 /** Every distinct label name actually used by at least one of `goals`,
  * alphabetised — the filter dropdown below reads off this, not the full
  * label registry, so it only ever offers something narrowing the list down
@@ -513,7 +533,11 @@ function labelFilterSelect({ value, options, onChange }) {
  * `player`, segmented into one visual block per group (goalSections above)
  * so a viewer with several goals going at once can tell them apart at a
  * glance; within each block, active-then-completed ordering still applies
- * (goalListItems).
+ * (goalListItems). The blocks themselves get the same treatment one level up
+ * (orderSectionsByStatus) — a fully finished group (every goal inside it
+ * complete) drops below every group still in progress, marked with its own
+ * checkmark in the heading so that holds even collapsed down to just the
+ * title.
  *
  * `goals` is already up to date (stats.js runs refreshGoals before every
  * render) — this module only renders, it never decides completion itself.
@@ -558,9 +582,10 @@ export function renderGoalsList(player, goals, labels, { labelFilter, onLabelFil
           class: 'chart-empty',
           text: goals.length === 0 ? 'No goals yet — click a skill to set one.' : 'No goals match this label.',
         })
-      : goalSections(filteredGoals).map((section) => {
+      : orderSectionsByStatus(goalSections(filteredGoals)).map((section) => {
           const collapsed = section.title !== null && collapsedGroups.has(section.title);
-          return el('div', { class: `goal-group${collapsed ? ' is-collapsed' : ''}` }, [
+          const complete = sectionIsComplete(section);
+          return el('div', { class: `goal-group${collapsed ? ' is-collapsed' : ''}${complete ? ' is-complete' : ''}` }, [
             section.title
               ? el(
                   'button',
@@ -572,6 +597,7 @@ export function renderGoalsList(player, goals, labels, { labelFilter, onLabelFil
                   },
                   [
                     el('span', { class: 'goal-group-chevron', 'aria-hidden': 'true' }),
+                    complete ? el('span', { class: 'goal-group-check', 'aria-hidden': 'true', text: '✓' }) : null,
                     el('span', { class: 'goal-group-name', text: section.title }),
                     el('span', { class: 'goal-group-count', text: String(section.goals.length) }),
                   ],
