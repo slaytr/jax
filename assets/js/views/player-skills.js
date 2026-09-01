@@ -15,9 +15,10 @@ const EMPTY_SKILL = Object.freeze({ level: 1, xp: 0, rank: null });
  * instead of repeating on every one of these cells.
  *
  * The bar below the figure is progress *to the next level* (xpProgress,
- * xp-table.js) rather than the matrix's own "share of the skill's level
- * cap" — a near-full bar means "about to level up", not "close to 99/120".
- * It's painted with `.cell-rule-fill`'s shared `background: var(--accent)`,
+ * xp-table.js — same formula the group matrix's own buildMatrix, compute.js,
+ * now shares) — a near-full bar means "about to level up", not "close to
+ * 99/120". It's painted with `.cell-rule-fill`'s shared `background:
+ * var(--accent)`,
  * so it needs `--accent` set somewhere above it in the tree — unlike the
  * matrix, which sets it per cell (one player per column), every cell here
  * is the *same* player, so `renderPlayerSkills` sets it once on the whole

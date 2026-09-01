@@ -78,4 +78,47 @@ describe('refreshGoals', () => {
     assert.equal(changed, true);
     assert.equal(next[0].completedAt !== null, true);
   });
+
+  describe('justCompleted', () => {
+    it('reports a goal that crossed its target on this call', () => {
+      const goal = skillGoal({ skillId: 1, targetType: 'level', targetValue: 50 });
+      const { justCompleted } = refreshGoals([goal], player({ 1: { level: 50, xp: 999999 } }));
+
+      assert.equal(justCompleted.length, 1);
+      assert.equal(justCompleted[0].id, goal.id);
+      assert.equal(justCompleted[0].completedAt !== null, true, 'the returned entry is the already-completed version');
+    });
+
+    it('does not re-report a goal that was already complete before this call', () => {
+      const goal = skillGoal({ skillId: 1, targetType: 'level', targetValue: 50, completedAt: '2026-07-01T00:00:00.000Z', completedLevel: 50, completedXp: 900000 });
+      const { justCompleted, changed } = refreshGoals([goal], player({ 1: { level: 60, xp: 999999 } }));
+
+      assert.deepEqual(justCompleted, []);
+      assert.equal(changed, false, 'nothing about an already-completed goal changes on a later visit');
+    });
+
+    it('collects every goal that completes together on the same call, not just the first', () => {
+      const a = skillGoal({ id: 'a', skillId: 1, targetType: 'level', targetValue: 50 });
+      const b = skillGoal({ id: 'b', skillId: 4, targetType: 'level', targetValue: 40 }); // Constitution, per config.js
+      const { justCompleted } = refreshGoals([a, b], player({ 1: { level: 50, xp: 999999 }, 4: { level: 40, xp: 999999 } }));
+
+      assert.deepEqual(justCompleted.map((goal) => goal.id).sort(), ['a', 'b']);
+    });
+
+    it('is empty when nothing completed this call, even if something else changed (a goal was dropped)', () => {
+      const goals = [skillGoal({ skillId: null }), skillGoal({ id: 'b', skillId: 1 })];
+      const { justCompleted, changed } = refreshGoals(goals, player({ 1: { level: 20, xp: 5000 } }));
+
+      assert.deepEqual(justCompleted, []);
+      assert.equal(changed, true, 'the drop alone still counts as a change worth persisting');
+    });
+
+    it('reports a quest goal the same way as a skill goal', () => {
+      const goal = questGoal();
+      const { justCompleted } = refreshGoals([goal], player({}, { completedQuests: ['Dragon Slayer'] }));
+
+      assert.equal(justCompleted.length, 1);
+      assert.equal(justCompleted[0].questName, 'Dragon Slayer');
+    });
+  });
 });

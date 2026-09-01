@@ -70,18 +70,31 @@ const isRenderable = (goal) => goal.kind === 'quest' || SKILLS.some((skill) => s
  * *which* changed if it ever needs to) plus whether anything actually
  * changed — either a completion or a drop — stats.js only needs to persist
  * when it did.
+ *
+ * `justCompleted` is every goal that transitioned to complete on *this* call
+ * specifically — checkCompletion always returns the identical object
+ * unchanged for a goal that isn't newly completing (already complete, or
+ * still short of its target), so `updated !== goal` inside the map below can
+ * only mean one thing. This is the "first noticed complete on a visit" this
+ * file's own checkCompletion doc comment describes — stats.js uses it to
+ * decide what the Goals tab's completion celebration (renderGoalCelebration
+ * Dialog) has to show, once, the next time that tab is actually open.
  */
 export function refreshGoals(goals, player) {
   let changed = false;
+  const justCompleted = [];
   const renderable = goals.filter(isRenderable);
   if (renderable.length !== goals.length) changed = true;
 
   const next = renderable.map((goal) => {
     const updated = checkCompletion(goal, player);
-    if (updated !== goal) changed = true;
+    if (updated !== goal) {
+      changed = true;
+      justCompleted.push(updated);
+    }
     return updated;
   });
-  return { goals: next, changed };
+  return { goals: next, changed, justCompleted };
 }
 
 const startValueOf = (goal) => (goal.targetType === 'level' ? goal.startLevel : goal.startXp);
@@ -190,6 +203,27 @@ function deleteButton(goal, onDelete) {
   });
 }
 
+/** Every clickable goal row/card — a top-level card, or a quest's own
+ * nested requirement row — takes this same handler, so clicking any of
+ * them sets it as the Goals tab's one focus goal (renderFocusGoal),
+ * replacing whichever was focused before; clicking the already-focused one
+ * again clears it, same toggle-off convention as the skill grid's own
+ * cells. `event.target.closest('button, a')` bails out for a click that
+ * actually landed on the delete button or the wiki-guide link nested
+ * inside this same row — those already handle themselves and shouldn't
+ * also flip the focus. stopPropagation matters for a requirement row
+ * specifically: it sits inside its own quest's card, which is *itself*
+ * clickable, so without it a click meant to focus just the requirement
+ * would bubble up and immediately get overridden by the quest card's own
+ * handler focusing the quest instead. */
+const toggleFocus = (goal, { focusGoalId, onFocusGoal }) => (event) => {
+  if (event.target.closest('button, a')) return;
+  event.stopPropagation();
+  onFocusGoal(focusGoalId === goal.id ? null : goal.id);
+};
+
+const isFocusedClass = (goal, { focusGoalId }) => (goal.id === focusGoalId ? ' is-focused' : '');
+
 /** The one place a goal's labels actually show — its group, by contrast,
  * only ever shows as the heading of whichever section it sorts the goal
  * into (renderGoalsList); there's no per-card group chip to keep the two
@@ -215,38 +249,80 @@ function labelChips(goal, labelsByName) {
   );
 }
 
-/** One compact line, same anatomy as a quest's own skill-requirement rows
- * (compactSkillGoalRow) — icon, name, progress bar, then target and
- * percent, delete last — reusing their `.goal-subgoal-*` classes so every
- * skill goal's bar lines up at the same fixed width everywhere on the
- * page, nested or not. Progress here stays since-start (xpProgressFraction
- * from goal.startXp), unlike a quest requirement's current/target: this is
- * a personal milestone the viewer chose from wherever they were standing,
- * not a fixed floor they were already partway to. Always measured in xp,
- * even for a `level`-type goal (targetXpOf) — a level number alone only
- * moves in big jumps, so a goal like "level 74 to 75" would otherwise sit
- * at a flat 0% for the whole grind rather than crawling up with real xp
- * gained. Labels (label-picker, unlike a quest requirement which never
- * carries any) still get their own row underneath when present —
- * labelChips already returns null otherwise, so a label-less goal stays a
- * single line. */
-function activeSkillGoalCard(goal, skill, player, labelsByName, onDelete) {
+/** icon, name, start value, progress bar, percent, then current/target —
+ * the single-line anatomy every skill goal renders as, whether it's nested
+ * under a quest (compactSkillGoalRow) or standing on its own
+ * (activeSkillGoalCard), so the same numbers always line up in the same
+ * order. The bar itself (`.goal-subgoal-track`, flex:1) lands at the same
+ * physical width and the same x-offset from the card's own left edge
+ * either way, because .goal-subgoals (the nested list this row sits in
+ * when it's a quest requirement) carries no indent of its own — every
+ * fixed-width column ahead of the bar (icon/name/start) is identical in
+ * both places, so there's nothing left to make the two disagree. */
+function skillProgressRowContent(goal, skill, { startValue, currentValue, targetValue, fraction, onDelete }) {
+  const complete = Boolean(goal.completedAt);
+  const percent = Math.round((complete ? 1 : fraction) * 100);
+
+  return [
+    el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
+    el('span', { class: 'goal-subgoal-name', text: skill.name }),
+    el('span', { class: 'goal-subgoal-start', text: formatNumber(startValue) }),
+    el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
+      el('span', { class: 'goal-subgoal-fill', style: complete ? { width: '100%' } : progressFillStyle(fraction) }),
+    ]),
+    el('span', { class: 'goal-subgoal-percent', text: `${percent}%` }),
+    el('span', {
+      class: 'goal-subgoal-figures',
+      text: complete ? `✓ ${formatNumber(targetValue)}` : `${formatNumber(currentValue)} / ${formatNumber(targetValue)}`,
+    }),
+    deleteButton(goal, onDelete),
+  ];
+}
+
+/** Every number a skill goal's own progress readout needs — current
+ * value/xp, the xp threshold it's racing toward, and how far through that
+ * span the player already is (0-1) — shared by every place a skill goal's
+ * bar gets drawn (compactSkillGoalRow, activeSkillGoalCard, and the focus
+ * panel's own bigger one, renderFocusGoal). `requirementScoped` picks
+ * which of two spans that fraction is measured across: true scopes it to
+ * just this requirement's own startLevel->targetLevel threshold (a quest
+ * requirement); false measures since the goal's own startXp instead (a
+ * personal milestone the viewer chose from wherever they were standing,
+ * not a fixed floor they were already partway to) — see
+ * compactSkillGoalRow's own doc comment for why those two disagree. Always
+ * measured in xp, even for a `level`-type goal (targetXpOf) — a level
+ * number alone only moves in big jumps, so a goal like "level 74 to 75"
+ * would otherwise sit at a flat 0% for the whole grind rather than
+ * crawling up with real xp gained. */
+function skillGoalProgress(goal, skill, player, requirementScoped) {
   const value = player.skillById?.[goal.skillId];
+  const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
   const currentXp = value?.xp ?? goal.startXp;
   const targetXp = targetXpOf(goal, skill, currentXp);
-  const fraction = xpProgressFraction(goal.startXp, currentXp, targetXp);
-  const percent = Math.round(fraction * 100);
+  const baseXp = requirementScoped ? baseXpOf(goal, skill) : goal.startXp;
+  const fraction = xpProgressFraction(baseXp, currentXp, targetXp);
+  return { currentValue, currentXp, targetXp, fraction };
+}
 
-  return el('li', { class: 'goal-card' }, [
-    el('div', { class: 'goal-subgoal-row' }, [
-      el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
-      el('span', { class: 'goal-subgoal-name', text: skill.name }),
-      el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
-        el('span', { class: 'goal-subgoal-fill', style: progressFillStyle(fraction) }),
-      ]),
-      el('span', { class: 'goal-subgoal-figures', text: `${goalTargetLabel(goal)} · ${percent}%` }),
-      deleteButton(goal, onDelete),
-    ]),
+/** Labels (label-picker, unlike a quest requirement which never carries
+ * any) still get their own row underneath when present — labelChips
+ * already returns null otherwise, so a label-less goal stays a single
+ * line. */
+function activeSkillGoalCard(goal, skill, player, labelsByName, actions) {
+  const { currentValue, fraction } = skillGoalProgress(goal, skill, player, false);
+
+  return el('li', { class: `goal-card${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) }, [
+    el(
+      'div',
+      { class: 'goal-subgoal-row' },
+      skillProgressRowContent(goal, skill, {
+        startValue: startValueOf(goal),
+        currentValue,
+        targetValue: goal.targetValue,
+        fraction,
+        onDelete: actions.onDelete,
+      }),
+    ),
     labelChips(goal, labelsByName),
   ]);
 }
@@ -255,22 +331,28 @@ function activeSkillGoalCard(goal, skill, player, labelsByName, onDelete) {
  * `ratePerDay` floors its elapsed time at one hour — a goal completed
  * within minutes of being set (two visits close together, or a big xp
  * lamp/reward landing right after) would otherwise divide by a near-zero
- * span and report an absurd rate rather than just a fast one.
+ * span and report an absurd rate rather than just a fast one. Shared with
+ * the focus panel (renderFocusGoal) so a completed goal's own stats read
+ * identically whether it's shown compact here or in fuller detail there.
  */
-function completedSkillGoalCard(goal, skill, labelsByName, onDelete) {
+function completedSkillStats(goal) {
   const startedMs = Date.parse(goal.startedAt);
   const completedMs = Date.parse(goal.completedAt);
   const levelsGained = (goal.completedLevel ?? goal.startLevel) - goal.startLevel;
   const xpGained = (goal.completedXp ?? goal.startXp) - goal.startXp;
   const days = Math.max((completedMs - startedMs) / 86400000, 1 / 24);
-  const ratePerDay = xpGained / days;
+  return { startedMs, completedMs, levelsGained, xpGained, ratePerDay: xpGained / days };
+}
 
-  return el('li', { class: 'goal-card is-complete' }, [
+function completedSkillGoalCard(goal, skill, labelsByName, actions) {
+  const { startedMs, completedMs, levelsGained, xpGained, ratePerDay } = completedSkillStats(goal);
+
+  return el('li', { class: `goal-card is-complete${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) }, [
     el('div', { class: 'goal-card-head' }, [
       el('img', { class: 'goal-card-icon', src: iconFor(skill), alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'goal-card-name', text: skill.name }),
       el('span', { class: 'goal-card-target', text: `✓ ${goalTargetLabel(goal)}` }),
-      deleteButton(goal, onDelete),
+      deleteButton(goal, actions.onDelete),
     ]),
     labelChips(goal, labelsByName),
     metaLine([
@@ -311,33 +393,33 @@ function questWikiLink(questName) {
   );
 }
 
-function activeQuestGoalCard(goal, player, labelsByName, onDelete) {
+function activeQuestGoalCard(goal, player, labelsByName, actions) {
   const completedSet = new Set(player.completedQuests ?? []);
   const startedSet = new Set(player.startedQuests ?? []);
   const status = statusOf({ name: goal.questName }, completedSet, startedSet);
 
-  return el('li', { class: 'goal-card' }, [
+  return el('li', { class: `goal-card${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) }, [
     el('div', { class: 'goal-card-head' }, [
       el('img', { class: 'goal-card-icon', src: QUEST_POINTS_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'goal-card-name', text: goal.questName }),
       questWikiLink(goal.questName),
       el('span', { class: 'goal-card-current', text: status === 'in-progress' ? 'In progress' : 'Not started' }),
       el('span', { class: 'goal-card-head-spacer' }),
-      deleteButton(goal, onDelete),
+      deleteButton(goal, actions.onDelete),
     ]),
     labelChips(goal, labelsByName),
     metaLine([`Started ${formatRelativeTime(goal.startedAt)}`]),
   ]);
 }
 
-function completedQuestGoalCard(goal, labelsByName, onDelete) {
-  return el('li', { class: 'goal-card is-complete' }, [
+function completedQuestGoalCard(goal, labelsByName, actions) {
+  return el('li', { class: `goal-card is-complete${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) }, [
     el('div', { class: 'goal-card-head' }, [
       el('img', { class: 'goal-card-icon', src: QUEST_POINTS_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
       el('span', { class: 'goal-card-name', text: goal.questName }),
       questWikiLink(goal.questName),
       el('span', { class: 'goal-card-target', text: '✓ Completed' }),
-      deleteButton(goal, onDelete),
+      deleteButton(goal, actions.onDelete),
     ]),
     labelChips(goal, labelsByName),
     metaLine([
@@ -347,14 +429,14 @@ function completedQuestGoalCard(goal, labelsByName, onDelete) {
   ]);
 }
 
-function goalCard(goal, bySkillId, player, labelsByName, onDelete) {
+function goalCard(goal, bySkillId, player, labelsByName, actions) {
   if (goal.kind === 'quest') {
-    return goal.completedAt ? completedQuestGoalCard(goal, labelsByName, onDelete) : activeQuestGoalCard(goal, player, labelsByName, onDelete);
+    return goal.completedAt ? completedQuestGoalCard(goal, labelsByName, actions) : activeQuestGoalCard(goal, player, labelsByName, actions);
   }
   const skill = bySkillId.get(goal.skillId);
   return goal.completedAt
-    ? completedSkillGoalCard(goal, skill, labelsByName, onDelete)
-    : activeSkillGoalCard(goal, skill, player, labelsByName, onDelete);
+    ? completedSkillGoalCard(goal, skill, labelsByName, actions)
+    : activeSkillGoalCard(goal, skill, player, labelsByName, actions);
 }
 
 /** Active ones first (creation order), completed ones shuffled to the
@@ -390,34 +472,20 @@ const orderByStatus = (goals) => {
  * already partway through its start level's own xp reads as that much
  * progress immediately, and a requirement spanning several levels no
  * longer inherits the whole game's worth of xp sunk before it existed. */
-function compactSkillGoalRow(goal, skill, player, onDelete) {
-  const value = player.skillById?.[goal.skillId];
-  const currentValue = goal.targetType === 'level' ? (value?.level ?? goal.startLevel) : (value?.xp ?? goal.startXp);
-  const currentXp = value?.xp ?? goal.startXp;
-  const startValue = startValueOf(goal);
-  const baseXp = baseXpOf(goal, skill);
-  const targetXp = targetXpOf(goal, skill, currentXp);
+function compactSkillGoalRow(goal, skill, player, actions) {
+  const { currentValue, fraction } = skillGoalProgress(goal, skill, player, true);
 
-  const fraction = goal.completedAt ? 1 : xpProgressFraction(baseXp, currentXp, targetXp);
-  const percent = Math.round(fraction * 100);
-
-  return el('li', { class: `goal-subgoal-row${goal.completedAt ? ' is-complete' : ''}` }, [
-    el('img', { class: 'goal-subgoal-icon', src: iconFor(skill), alt: '', width: 16, height: 16, decoding: 'async' }),
-    el('span', { class: 'goal-subgoal-name', text: skill.name }),
-    el('div', { class: 'goal-subgoal-track', role: 'presentation' }, [
-      el('span', {
-        class: 'goal-subgoal-fill',
-        style: goal.completedAt ? { width: '100%' } : progressFillStyle(fraction),
-      }),
-    ]),
-    el('span', {
-      class: 'goal-subgoal-figures',
-      text: goal.completedAt
-        ? `✓ ${formatNumber(startValue)} → ${formatNumber(goal.targetValue)}`
-        : `${formatNumber(startValue)} → ${formatNumber(currentValue)} / ${formatNumber(goal.targetValue)} · ${percent}%`,
+  return el(
+    'li',
+    { class: `goal-subgoal-row${goal.completedAt ? ' is-complete' : ''}${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) },
+    skillProgressRowContent(goal, skill, {
+      startValue: startValueOf(goal),
+      currentValue,
+      targetValue: goal.targetValue,
+      fraction,
+      onDelete: actions.onDelete,
     }),
-    deleteButton(goal, onDelete),
-  ]);
+  );
 }
 
 /** The quest itself, with every skill-requirement goal sharing its group
@@ -427,14 +495,14 @@ function compactSkillGoalRow(goal, skill, player, onDelete) {
  * requirement checklist attached to the quest card that owns it, not
  * scattered loosely under a section heading that already repeats the same
  * quest's name. */
-function questGoalCard(quest, childGoals, bySkillId, player, labelsByName, onDelete) {
-  const card = goalCard(quest, bySkillId, player, labelsByName, onDelete);
+function questGoalCard(quest, childGoals, bySkillId, player, labelsByName, actions) {
+  const card = goalCard(quest, bySkillId, player, labelsByName, actions);
   if (childGoals.length > 0) {
     card.append(
       el(
         'ul',
         { class: 'goal-subgoals' },
-        orderByStatus(childGoals).map((goal) => compactSkillGoalRow(goal, bySkillId.get(goal.skillId), player, onDelete)),
+        orderByStatus(childGoals).map((goal) => compactSkillGoalRow(goal, bySkillId.get(goal.skillId), player, actions)),
       ),
     );
   }
@@ -446,13 +514,13 @@ function questGoalCard(quest, childGoals, bySkillId, player, labelsByName, onDel
  * shares `group: quest.name`) collapses down to a single top-level item:
  * the quest card, with its skill-requirement siblings nested inside it
  * (questGoalCard) instead of appearing as their own list entries. */
-function goalListItems(sectionGoals, bySkillId, player, labelsByName, onDeleteGoal) {
+function goalListItems(sectionGoals, bySkillId, player, labelsByName, actions) {
   const quest = sectionGoals.find((goal) => goal.kind === 'quest');
   if (quest) {
     const children = sectionGoals.filter((goal) => goal !== quest);
-    return [questGoalCard(quest, children, bySkillId, player, labelsByName, onDeleteGoal)];
+    return [questGoalCard(quest, children, bySkillId, player, labelsByName, actions)];
   }
-  return orderByStatus(sectionGoals).map((goal) => goalCard(goal, bySkillId, player, labelsByName, onDeleteGoal));
+  return orderByStatus(sectionGoals).map((goal) => goalCard(goal, bySkillId, player, labelsByName, actions));
 }
 
 /**
@@ -528,6 +596,131 @@ function labelFilterSelect({ value, options, onChange }) {
   ]);
 }
 
+/** A clear (×) button, same look as a card's own delete button
+ * (.goal-card-delete) since it plays the same "quiet until needed" role —
+ * just clearing the toolbar's focus goal (actions.onFocusGoal(null))
+ * rather than deleting anything. */
+function clearFocusButton(onClearFocus) {
+  return el('button', {
+    type: 'button',
+    class: 'goal-card-delete',
+    'aria-label': 'Clear focus goal',
+    onclick: onClearFocus,
+    text: '×',
+  });
+}
+
+/**
+ * The Goals tab's toolbar picks out exactly one goal — any kind, a nested
+ * requirement included (toggleFocus, attached to every clickable row/card)
+ * — to show in fuller detail than its own compact row or card carries: an
+ * elapsed-time/rate/ETA readout for a skill goal, or a quest's own full
+ * requirement checklist regardless of whether that quest's section happens
+ * to be collapsed elsewhere on the page. `goals` is the full, unfiltered
+ * list rather than just the one focused goal — a nested requirement's own
+ * parent quest, and a quest's own requirement siblings, are both found by
+ * scanning back through it. Reuses skillProgressRowContent/
+ * compactSkillGoalRow rather than inventing a second bar/checklist anatomy
+ * just for this panel — toggleFocus on those still applies here too, so
+ * clicking the focused goal's own bar (or one of a focused quest's
+ * requirement rows) clears or replaces the focus exactly like it does
+ * anywhere else in the list.
+ */
+function renderFocusGoal(goal, { goals, bySkillId, player, actions }) {
+  const clear = clearFocusButton(() => actions.onFocusGoal(null));
+
+  if (goal.kind === 'quest') {
+    const completedSet = new Set(player.completedQuests ?? []);
+    const startedSet = new Set(player.startedQuests ?? []);
+    const status = statusOf({ name: goal.questName }, completedSet, startedSet);
+    const requirements = goals.filter((other) => other.kind === 'skill' && other.group === goal.group);
+
+    return el('div', { class: `goal-focus${goal.completedAt ? ' is-complete' : ''}` }, [
+      el('div', { class: 'goal-focus-head' }, [
+        el('span', { class: 'goal-focus-eyebrow', text: 'Focus' }),
+        el('img', { class: 'goal-card-icon', src: QUEST_POINTS_ICON, alt: '', width: 18, height: 18, decoding: 'async' }),
+        el('span', { class: 'goal-card-name', text: goal.questName }),
+        questWikiLink(goal.questName),
+        el('span', {
+          class: goal.completedAt ? 'goal-card-target' : 'goal-card-current',
+          text: goal.completedAt ? '✓ Completed' : status === 'in-progress' ? 'In progress' : 'Not started',
+        }),
+        el('span', { class: 'goal-card-head-spacer' }),
+        clear,
+      ]),
+      metaLine(
+        goal.completedAt
+          ? [
+              `Completed ${COMPLETED_DATE.format(new Date(goal.completedAt))}`,
+              `Took ${formatSpan(Date.parse(goal.completedAt) - Date.parse(goal.startedAt))}`,
+            ]
+          : [`Started ${formatRelativeTime(goal.startedAt)}`],
+      ),
+      requirements.length > 0
+        ? el(
+            'ul',
+            { class: 'goal-subgoals' },
+            orderByStatus(requirements).map((req) => compactSkillGoalRow(req, bySkillId.get(req.skillId), player, actions)),
+          )
+        : null,
+    ]);
+  }
+
+  const skill = bySkillId.get(goal.skillId);
+  const parentQuest = goal.group ? goals.find((other) => other.kind === 'quest' && other.group === goal.group) : null;
+  const { currentValue, currentXp, targetXp, fraction } = skillGoalProgress(goal, skill, player, Boolean(parentQuest));
+
+  const detailParts = goal.completedAt
+    ? (() => {
+        const { startedMs, completedMs, levelsGained, xpGained, ratePerDay } = completedSkillStats(goal);
+        return [
+          `Completed ${COMPLETED_DATE.format(new Date(completedMs))}`,
+          `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'}`,
+          `+${formatNumber(xpGained)} xp`,
+          `Took ${formatSpan(completedMs - startedMs)}`,
+          `${formatCompact(ratePerDay)} xp/day avg`,
+        ];
+      })()
+    : (() => {
+        const currentLevel = player.skillById?.[goal.skillId]?.level ?? goal.startLevel;
+        const days = Math.max((Date.now() - Date.parse(goal.startedAt)) / 86400000, 1 / 24);
+        const xpGained = currentXp - goal.startXp;
+        const levelsGained = currentLevel - goal.startLevel;
+        const ratePerDay = xpGained / days;
+        const etaDays = ratePerDay > 0 ? (targetXp - currentXp) / ratePerDay : null;
+        return [
+          `Started ${formatRelativeTime(goal.startedAt)}`,
+          `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'} so far`,
+          `+${formatNumber(xpGained)} xp so far`,
+          `${formatCompact(ratePerDay)} xp/day avg`,
+          etaDays !== null ? `ETA ~${formatSpan(etaDays * 86400000)}` : 'no progress yet',
+        ];
+      })();
+
+  return el('div', { class: `goal-focus${goal.completedAt ? ' is-complete' : ''}` }, [
+    el('div', { class: 'goal-focus-head' }, [
+      el('span', { class: 'goal-focus-eyebrow', text: 'Focus' }),
+      el('img', { class: 'goal-card-icon', src: iconFor(skill), alt: '', width: 18, height: 18, decoding: 'async' }),
+      el('span', { class: 'goal-card-name', text: skill.name }),
+      parentQuest ? el('span', { class: 'goal-focus-context', text: `Requirement for ${parentQuest.questName}` }) : null,
+      el('span', { class: 'goal-card-head-spacer' }),
+      clear,
+    ]),
+    el(
+      'div',
+      { class: `goal-subgoal-row${isFocusedClass(goal, actions)}`, onclick: toggleFocus(goal, actions) },
+      skillProgressRowContent(goal, skill, {
+        startValue: startValueOf(goal),
+        currentValue,
+        targetValue: goal.targetValue,
+        fraction,
+        onDelete: actions.onDelete,
+      }),
+    ),
+    metaLine(detailParts),
+  ]);
+}
+
 /**
  * The Goals tab's second column — every goal this browser has set for
  * `player`, segmented into one visual block per group (goalSections above)
@@ -545,13 +738,15 @@ function labelFilterSelect({ value, options, onChange }) {
  * turned into a name -> colour Map once here rather than in every card.
  *
  * `filters` is `{ labelFilter, onLabelFilterChange, onDeleteGoal,
- * collapsedGroups, onToggleGroup }` — a label name or 'all' plus its setter,
- * held in stats.js like every other piece of this page's interactive state.
- * The filter select only appears once there's at least one label actually in
- * use (distinctLabelNames) — nothing to filter by otherwise. A `labelFilter`
- * that no longer matches any current goal (its last goal, or the label
- * itself, got deleted) falls back to 'all' rather than silently showing an
- * empty list forever.
+ * collapsedGroups, onToggleGroup, focusGoalId, onFocusGoal }` — a label
+ * name or 'all' plus its setter, held in stats.js like every other piece
+ * of this page's interactive state. The filter select only appears once
+ * there's at least one label actually in use (distinctLabelNames) —
+ * nothing to filter by otherwise. A `labelFilter` that no longer matches
+ * any current goal (its last goal, or the label itself, got deleted) falls
+ * back to 'all' rather than silently showing an empty list forever.
+ * `focusGoalId` gets the same treatment: a stale id (its goal got deleted)
+ * falls back to no focus rather than rendering nothing.
  *
  * `collapsedGroups` is a `Set` of group titles currently collapsed to just
  * their heading (its own goals hidden, not removed) — only a *named* group
@@ -560,18 +755,35 @@ function labelFilterSelect({ value, options, onChange }) {
  * against, same reasoning as it having no heading to click in the first
  * place. `onToggleGroup(title)` flips one name's membership.
  */
-export function renderGoalsList(player, goals, labels, { labelFilter, onLabelFilterChange, onDeleteGoal, collapsedGroups, onToggleGroup }) {
+export function renderGoalsList(
+  player,
+  goals,
+  labels,
+  { labelFilter, onLabelFilterChange, onDeleteGoal, collapsedGroups, onToggleGroup, focusGoalId, onFocusGoal },
+) {
   const bySkillId = new Map(SKILLS.map((skill) => [skill.id, skill]));
   const labelsByName = new Map(labels.map((label) => [label.name, label.colour]));
+
+  // Bundles every per-goal callback a card/row needs (delete, plus the
+  // click-to-focus toggle) into the one extra param threaded through the
+  // whole card-building chain below, rather than growing every function's
+  // own argument list every time this file gains another goal-level action.
+  const focusedGoal = goals.find((goal) => goal.id === focusGoalId) ?? null;
+  const actions = { onDelete: onDeleteGoal, focusGoalId: focusedGoal ? focusGoalId : null, onFocusGoal };
 
   const usedLabelNames = distinctLabelNames(goals);
   const effectiveFilter = usedLabelNames.includes(labelFilter) ? labelFilter : 'all';
   const filterControl =
     usedLabelNames.length > 0
-      ? el('div', { class: 'goal-filters' }, [
-          labelFilterSelect({ value: effectiveFilter, options: usedLabelNames, onChange: onLabelFilterChange }),
-        ])
+      ? labelFilterSelect({ value: effectiveFilter, options: usedLabelNames, onChange: onLabelFilterChange })
       : null;
+
+  // Resolved from the full `goals`, not the label-filtered list below — a
+  // focus a viewer picked deliberately shouldn't vanish just because they
+  // then filtered the list down to a label that goal doesn't carry.
+  const focusPanel = focusedGoal ? renderFocusGoal(focusedGoal, { goals, bySkillId, player, actions }) : null;
+
+  const toolbar = focusPanel || filterControl ? el('div', { class: 'goal-toolbar' }, [focusPanel, filterControl]) : null;
 
   const filteredGoals =
     effectiveFilter === 'all' ? goals : goals.filter((goal) => (goal.labels ?? []).includes(effectiveFilter));
@@ -603,13 +815,13 @@ export function renderGoalsList(player, goals, labels, { labelFilter, onLabelFil
                   ],
                 )
               : null,
-            collapsed ? null : el('ul', { class: 'goals-list' }, goalListItems(section.goals, bySkillId, player, labelsByName, onDeleteGoal)),
+            collapsed ? null : el('ul', { class: 'goals-list' }, goalListItems(section.goals, bySkillId, player, labelsByName, actions)),
           ]);
         });
 
   return el('section', { class: 'lb', style: { '--accent': player.colour } }, [
     el('div', { class: 'lb-head' }, [el('div', { class: 'lb-title' }, [el('h2', { text: 'Goals' })])]),
-    filterControl,
+    toolbar,
     body,
   ]);
 }
@@ -967,6 +1179,65 @@ export function renderDeleteConfirmDialog(goal, skill, { onConfirm, onClose }) {
 
   dialog.addEventListener('close', onClose);
 
+  return dialog;
+}
+
+/** One completed goal's own line in the celebration dialog below — icon,
+ * name, and the target it just reached, the same "icon + name + ✓ target"
+ * reading a completed goal card's own head row already gives
+ * (completedSkillGoalCard/completedQuestGoalCard), just compact enough to
+ * list several side by side. */
+function celebrationRow(goal, bySkillId) {
+  const isQuest = goal.kind === 'quest';
+  const skill = isQuest ? null : bySkillId.get(goal.skillId);
+
+  return el('li', { class: 'goal-celebration-row' }, [
+    el('img', {
+      class: 'goal-celebration-icon',
+      src: isQuest ? QUEST_POINTS_ICON : iconFor(skill),
+      alt: '',
+      width: 20,
+      height: 20,
+      decoding: 'async',
+    }),
+    el('span', { class: 'goal-celebration-name', text: isQuest ? goal.questName : skill.name }),
+    el('span', { class: 'goal-celebration-target', text: isQuest ? '✓ Completed' : `✓ ${goalTargetLabel(goal)}` }),
+  ]);
+}
+
+/**
+ * The Goals tab's own "you did it" popup — shown once, the first time the
+ * tab is actually open after refreshGoals (stats.js) notices one or more
+ * goals cross their target on this visit (`justCompleted`, refreshGoals'
+ * own return value above). Every goal that completed together shows in one
+ * dialog rather than one popup per goal — a single page load can complete
+ * more than one at once (one big xp reward crossing several skill goals'
+ * targets at the same time, say).
+ *
+ * Same shape as this file's other dialogs: `onClose` fires from the
+ * dialog's own native `close` event (the single "Nice!" button, or Escape),
+ * and stats.js clears its own "what's left to celebrate" state there — this
+ * never shows again for a goal it's already covered, even flipping back to
+ * the Goals tab later in the same visit.
+ */
+export function renderGoalCelebrationDialog(goals, { onClose }) {
+  const bySkillId = new Map(SKILLS.map((skill) => [skill.id, skill]));
+  const heading = goals.length === 1 ? 'Goal complete!' : `${goals.length} goals complete!`;
+
+  const dialog = el('dialog', { class: 'goal-dialog goal-celebration-dialog' }, [
+    el('div', { class: 'goal-form' }, [
+      el('h3', { class: 'goal-dialog-title goal-celebration-title' }, [
+        el('span', { class: 'goal-celebration-star', 'aria-hidden': 'true', text: '★' }),
+        el('span', { text: heading }),
+      ]),
+      el('ul', { class: 'goal-celebration-list' }, goals.map((goal) => celebrationRow(goal, bySkillId))),
+      el('div', { class: 'goal-dialog-actions' }, [
+        el('button', { type: 'button', class: 'goal-btn goal-btn-success', text: 'Nice!', onclick: () => dialog.close() }),
+      ]),
+    ]),
+  ]);
+
+  dialog.addEventListener('close', onClose);
   return dialog;
 }
 

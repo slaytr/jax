@@ -1877,16 +1877,19 @@ body::after {
   color: var(--gain);
 }
 
-/* Quests tab: the Skills grid's replacement, same 200px width as
-   .skill-grid so switching tabs never reflows anything beside it — plus a
-   filter/sort toolbar above the list itself (below), which is why the
-   whole card runs a bit taller than Skills' own ~350px now; the list's own
-   height still matches roughly what Skills' grid took. */
+/* Quests tab: the Skills grid's replacement — wider than Skills' own 200px
+   (quest names need the room; Skills only ever shows a level number), plus
+   a filter/sort toolbar above the list itself (below). */
 .quest-list-card {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 200px;
+  width: 400px;
+  /* Unlike Skills' old fixed 200px, 400px is wider than a phone screen —
+     this is what keeps a narrow viewport from being forced into horizontal
+     overflow by it (the ≤720px breakpoint's own margin: 0 auto below only
+     centres within whatever width is actually available). */
+  max-width: 100%;
 }
 
 .quest-filters {
@@ -2637,7 +2640,12 @@ body::after {
 /* Goals tab: the goal list is the Quests tab's 2nd-column card in every way
    that matters (same .player-row slot, same flex-grow sizing), just with
    its own card anatomy below. */
-.goal-filters {
+.goal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
   margin-bottom: 0.7rem;
 }
 
@@ -2656,6 +2664,57 @@ body::after {
 .goal-filter-select:focus-visible {
   outline: 2px solid var(--ember);
   outline-offset: -2px;
+}
+
+/* The one goal a click anywhere in the list below has picked out
+   (renderFocusGoal, player-goals.js) — sits in the same toolbar row as the
+   label filter, on the opposite end (.goal-toolbar's justify-content). A
+   brass border (the site's existing highlight colour, not a new one) marks
+   it as distinct from an ordinary .goal-card rather than just another
+   entry in the list; flex-basis gives it room to breathe next to a
+   200px-wide select without either fighting the other for space. */
+.goal-focus {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.goal-focus.is-complete {
+  border-color: var(--gain-bg);
+}
+
+.goal-focus-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.goal-focus-eyebrow {
+  flex: none;
+  color: var(--medal-gold);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* "Requirement for <Quest>" — only shown for a nested requirement's own
+   focus panel, so a viewer who focused it straight from a quest's
+   checklist still knows which quest it belongs to. */
+.goal-focus-context {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
 }
 
 .goal-group + .goal-group {
@@ -2747,6 +2806,8 @@ body::after {
   list-style: none;
 }
 
+/* Clickable — see toggleFocus (player-goals.js): any card sets itself as
+   the toolbar's one focus goal (renderFocusGoal, .goal-focus below). */
 .goal-card {
   display: flex;
   flex-direction: column;
@@ -2755,33 +2816,61 @@ body::after {
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--surface-1);
+  cursor: pointer;
+  transition: border-color 0.14s var(--ease), background-color 0.14s var(--ease);
+}
+
+.goal-card:hover {
+  border-color: var(--hairline-strong);
 }
 
 .goal-card.is-complete {
   border-color: var(--gain-bg);
 }
 
+.goal-card.is-focused {
+  border-color: var(--brass);
+  background: var(--surface-2);
+}
+
 /* A quest goal's own skill-requirement goals (buildQuestGoalDrafts,
    quest-goal.js), nested inside its <li> rather than listed as flat
-   siblings — indented under a dashed divider so the checklist reads as
-   belonging to the quest card above it. */
+   siblings — set off under a dashed divider so the checklist reads as
+   belonging to the quest card above it. No left indent (a plain skill
+   goal's own row never gets one either) — every row's icon, name, and bar
+   line up at the same x regardless of which card they're in. */
 .goal-subgoals {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   margin: 0.15rem 0 0;
-  padding: 0.5rem 0 0 1.35rem;
+  padding: 0.5rem 0 0;
   border-top: 1px dashed var(--hairline);
   list-style: none;
 }
 
 /* One requirement per line — icon, name, and its own progress bar together,
    target/✓ and delete trailing — dense on purpose, unlike a full goal-card's
-   separate head/progress/meta rows (compactSkillGoalRow, player-goals.js). */
+   separate head/progress/meta rows (compactSkillGoalRow, player-goals.js).
+   Clickable, same as .goal-card — see toggleFocus. */
 .goal-subgoal-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  padding: 0.1rem 0.3rem;
+  margin: -0.1rem -0.3rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.14s var(--ease);
+}
+
+.goal-subgoal-row:hover {
+  background: var(--surface-2);
+}
+
+.goal-subgoal-row.is-focused {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--brass);
 }
 
 .goal-subgoal-icon {
@@ -2792,9 +2881,8 @@ body::after {
 }
 
 /* A fixed column width (not a max-width) — every row's name takes the same
-   space regardless of "Attack" vs "Dungeoneering", so the track after it
-   (flex: 1) always gets the same remaining width and every skill's bar
-   reads as the same physical length, not just the same percentage. */
+   space regardless of "Attack" vs "Dungeoneering", so every skill's own
+   start/bar/percent/current cluster lines up at the same starting point. */
 .goal-subgoal-name {
   flex: none;
   width: 6.5rem;
@@ -2806,9 +2894,34 @@ body::after {
   font-weight: 500;
 }
 
+/* Where the goal started — always to the bar's immediate left. Same
+   fixed-width-column reasoning as .goal-subgoal-name, just right-aligned
+   since it butts up against the track rather than leading the row. */
+.goal-subgoal-start {
+  flex: none;
+  width: 3.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* flex:1 — fills whatever the fixed-width columns around it leave over,
+   so the bar reads as the row's own headline element rather than a thin
+   accent squeezed in among the numbers. This only lands at the same
+   physical width in a nested row and a standalone one because
+   .goal-subgoals carries no indent of its own (see above) — both rows
+   sit under the same 0.75rem of .goal-card padding either way, so the
+   same fixed-width run of icon/name/start before it leaves the same
+   remaining space behind. */
 .goal-subgoal-track {
   position: relative;
   flex: 1;
+  min-width: 0;
   height: 4px;
   border-radius: 999px;
   background: var(--hairline);
@@ -2830,14 +2943,24 @@ body::after {
   background: var(--gain);
 }
 
-/* Same fixed-width reasoning as .goal-subgoal-name, from the other end —
-   "40 → 66 / 80 · 65%" and "✓ 30 → 40" are different lengths, but the
-   track between them (flex: 1) should still land on the same width either
-   way. Right-aligned so the numbers stay flush against the delete button
-   rather than drifting with the track. */
+/* Between the bar and the current/target figures — its own fixed column so
+   it neither drifts with the bar nor crowds the numbers after it. */
+.goal-subgoal-percent {
+  flex: none;
+  width: 2.2rem;
+  text-align: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fixed width, same reasoning as .goal-subgoal-start — long enough for a
+   big xp goal's "128,157 / 13,034,431" without pushing the bar around;
+   overflow still falls back to an ellipsis for anything longer. */
 .goal-subgoal-figures {
   flex: none;
-  width: 10rem;
+  width: 8rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2848,6 +2971,7 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
+.goal-subgoal-row.is-complete .goal-subgoal-percent,
 .goal-subgoal-row.is-complete .goal-subgoal-figures {
   color: var(--gain);
 }
@@ -3058,6 +3182,65 @@ body::after {
   margin: 0;
   color: var(--ink-2);
   font-size: 0.76rem;
+}
+
+/* The "you did it" popup (renderGoalCelebrationDialog, player-goals.js) —
+   same dialog chrome as every other goal dialog, just its own title/list
+   treatment: a star-led heading and green, checkmarked rows reusing the
+   site's own "completed = green" language (.goal-card.is-complete and
+   friends) rather than a one-off celebratory palette. */
+.goal-celebration-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.goal-celebration-star {
+  color: var(--medal-gold);
+  font-size: 1.1rem;
+}
+
+.goal-celebration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.goal-celebration-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--gain-bg);
+  border-radius: var(--radius);
+  background: var(--gain-bg);
+}
+
+.goal-celebration-icon {
+  flex: none;
+}
+
+.goal-celebration-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.goal-celebration-target {
+  flex: none;
+  color: var(--gain);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
 }
 
 /* The "track this quest" confirmation's own preview of which skill goals
@@ -3387,6 +3570,17 @@ body::after {
 
 .goal-btn-primary:hover {
   background: rgba(217, 89, 38, 0.12);
+}
+
+/* The celebration dialog's own "Nice!" button — green rather than the
+   generic ember primary, matching its own already-green rows. */
+.goal-btn-success {
+  border-color: var(--gain);
+  color: var(--gain);
+}
+
+.goal-btn-success:hover {
+  background: var(--gain-bg);
 }
 
 /* Same salmon-red as .delta.is-worse — the site's one other "this reads as

@@ -4,6 +4,7 @@
  */
 
 import { SKILLS, TRACKED_SKILLS, UPDATE_SCHEDULE } from './config.js';
+import { xpProgress } from './xp-table.js';
 
 /**
  * When the next update is due, estimated as one schedule interval after the
@@ -40,8 +41,11 @@ function isBetter(metric, candidate, incumbent, invert = false) {
 
 /**
  * One row per skill, one cell per player, with the row leader marked.
- * `share` scales the in-cell progress rule: level against the skill cap, xp and
- * rank against the best value in the row so the row is self-normalising.
+ * `share` scales the in-cell progress rule: for `metric === 'level'`, how far
+ * into the *current* level's own xp a player sits (xpProgress, xp-table.js —
+ * the same "progress to next level" bar the per-player skill grid already
+ * uses), not the level's own share of the skill's cap; xp and rank instead
+ * scale against the best value in the row so the row is self-normalising.
  *
  * @param invert Highlight the row's weakest account instead of its strongest —
  *   the skill matrix's "lowest level" toggle.
@@ -64,7 +68,7 @@ export function buildMatrix(players, metric, invert = false) {
     const cells = entries.map(({ player, value }) => {
       const share =
         metric === 'level'
-          ? Math.min(1, value.level / skill.max)
+          ? xpProgress(skill, value.level, value.xp)
           : metric === 'xp'
             ? value.xp / maxXp
             : value.rank === null

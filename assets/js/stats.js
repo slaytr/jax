@@ -20,7 +20,7 @@ import { renderPlayerQuestList, SORT_OPTIONS, STATUS_OPTIONS, SKILL_OPTIONS, sta
 import { renderQuestDependencyGraph, clearFullscreenPortal } from './views/quest-dependency-graph.js';
 import { renderQuestSeriesLinks } from './views/quest-series-links.js';
 import { renderQuestPlanner } from './views/quest-planner.js';
-import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, refreshGoals } from './views/player-goals.js';
+import { renderGoalsList, renderGoalDialog, renderQuestGoalDialog, renderDeleteConfirmDialog, renderGoalCelebrationDialog, refreshGoals } from './views/player-goals.js';
 import { tabToggle } from './views/tabs.js';
 import { loadGoals, saveGoals } from './goals-storage.js';
 import { loadGoalLabels, saveGoalLabels } from './goal-labels-storage.js';
@@ -324,6 +324,17 @@ async function boot() {
     const refreshedGoals = refreshGoals(goals, player);
     goals = refreshedGoals.goals;
     if (refreshedGoals.changed) saveGoals(player.slug, goals);
+    // Whichever goals refreshGoals just noticed crossing their target on
+    // *this* visit (empty most of the time) — shown once, in
+    // renderGoalCelebrationDialog, the first time the Goals tab is actually
+    // open (immediately, if that's the tab a link/reload already lands on;
+    // otherwise the moment a viewer switches to it). Cleared on that
+    // dialog's own close, same never-persisted reasoning as the other goal
+    // dialogs' own open/closed state below — a goal already celebrated once
+    // this visit never needs to be again, and refreshGoals itself won't
+    // re-report it next reload either (checkCompletion only ever sets
+    // completedAt once).
+    let celebratingGoals = refreshedGoals.justCompleted;
     let goalDialogSkillId = null;
     let deleteConfirmGoalId = null;
     // Which quest's "track this as a goal?" confirmation is open (the
@@ -353,6 +364,12 @@ async function boot() {
     // actually appear on a current goal (deleting the last goal that used
     // one, or the label itself, shouldn't leave the list silently empty).
     let goalLabelFilter = typeof savedState.goalLabelFilter === 'string' ? savedState.goalLabelFilter : 'all';
+    // The one goal (any kind — a nested quest requirement included)
+    // currently picked out for the toolbar's own focus panel, or null. Not
+    // persisted, same never-needs-to-survive-a-reload reasoning as
+    // goalDialogSkillId/deleteConfirmGoalId above — renderGoalsList already
+    // falls back to no focus if this ever names a goal that got deleted.
+    let focusGoalId = null;
 
     function persistStatsState() {
       saveStatsState({
@@ -505,6 +522,11 @@ async function boot() {
                   else next.add(title);
                   collapsedGoalGroups = next;
                   persistStatsState();
+                  render();
+                },
+                focusGoalId,
+                onFocusGoal: (goalId) => {
+                  focusGoalId = goalId;
                   render();
                 },
               }),
@@ -679,9 +701,11 @@ async function boot() {
       // Built ahead of replaceChildren, like `tabs`/`body` above, rather
       // than appended after: a <dialog> only needs showModal() called on it
       // once it's actually in the document, done just below. None of the
-      // three goal dialogs below ever open at once — each only opens from a
-      // button on whichever tab is currently showing, and a native <dialog>
-      // makes the rest of the page (including the tab strip) inert the
+      // four goal dialogs below ever open at once — each only opens from a
+      // button (or, for celebrationDialog, just landing on the Goals tab
+      // with something to celebrate) on whichever tab is currently showing,
+      // and a native <dialog> makes the rest of the page (including the tab
+      // strip and every skill cell that could open another one) inert the
       // moment one is open — so there's no need to guard against more than
       // one being non-null together.
       const goalDialogSkill = goalDialogSkillId === null ? null : SKILLS.find((skill) => skill.id === goalDialogSkillId);
@@ -744,7 +768,29 @@ async function boot() {
           })
         : null;
 
-      replaceChildren(dom.panel, el('div', { class: 'page-tabs' }, [tabs]), body, goalDialog, deleteConfirmDialog, questGoalDialog);
+      // Only while the Goals tab itself is actually showing — a viewer who
+      // loaded straight onto Stats/Quests shouldn't be met with a popup
+      // about a tab they haven't opened yet; the moment they do switch to
+      // Goals, this same celebratingGoals list is still sitting there ready.
+      const celebrationDialog =
+        activeTab === 'goals' && celebratingGoals.length > 0
+          ? renderGoalCelebrationDialog(celebratingGoals, {
+              onClose: () => {
+                celebratingGoals = [];
+                render();
+              },
+            })
+          : null;
+
+      replaceChildren(
+        dom.panel,
+        el('div', { class: 'page-tabs' }, [tabs]),
+        body,
+        goalDialog,
+        deleteConfirmDialog,
+        questGoalDialog,
+        celebrationDialog,
+      );
 
       // The dependency map's fullscreen overlay covers the whole viewport
       // (styles.css's .quest-flowchart.is-fullscreen) but sits in normal
@@ -771,6 +817,7 @@ async function boot() {
       goalDialog?.showModal();
       deleteConfirmDialog?.showModal();
       questGoalDialog?.showModal();
+      celebrationDialog?.showModal();
     }
 
     // Escape is the standard way out of any fullscreen-shaped UI; the
