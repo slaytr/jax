@@ -13,7 +13,12 @@
     "server": "node api/server.mjs",
     "test": "node --test test/*.test.mjs",
     "migrate": "node api/migrate.mjs",
-    "backfill": "node scripts/backfill.mjs"
+    "backfill": "node scripts/backfill.mjs",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "migrate:local": "node --env-file=.env.local api/migrate.mjs",
+    "sync:prod": "node --env-file=.env.local scripts/sync-from-prod.mjs",
+    "server:local": "node --env-file=.env.local api/server.mjs"
   },
   "engines": {
     "node": ">=20"

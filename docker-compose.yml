@@ -1,0 +1,19 @@
+# Local Postgres for dev — see README's "Local development" section.
+# `docker compose up -d`, then copy .env.local.example to .env.local
+# (already points at this).
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: jax_dev
+      POSTGRES_USER: jax
+      POSTGRES_PASSWORD: jax
+    ports:
+      # Change the host side (left of the colon) if 5432 is already taken
+      # locally — update .env.local's DATABASE_URL to match.
+      - '5432:5432'
+    volumes:
+      - jax-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  jax-postgres-data:

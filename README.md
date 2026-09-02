@@ -138,8 +138,39 @@ files alone with no API behind them, so the page loads but every fetch
 404s — useful only for checking that assets/HTML themselves are intact,
 not for an actual working preview; use `npm run server` for that.
 
-The project has **no dependencies and no build step** — plain ES modules, served
-exactly as committed.
+### Local database
+
+A local Postgres, separate from production, so local dev never touches
+real data by accident:
+
+```bash
+npm run db:up            # docker compose up -d — local Postgres on :5432
+cp .env.local.example .env.local
+npm run migrate:local    # apply api/migrations/*.sql to it
+npm run sync:prod        # mirror production's data in — see below
+npm run server:local     # serve the site + API against it, at :4173
+```
+
+No Docker? Any local Postgres works — just point `.env.local`'s
+`DATABASE_URL` at it instead of docker-compose.yml's.
+
+`npm run sync:prod` (`scripts/sync-from-prod.mjs`, or `/sync-db` if you're
+using Claude Code) truncates and reloads every table in your local database
+from production's — real roster, real hiscore history, real goals, so
+local dev looks like the real thing. Requires the Railway CLI logged in
+(`railway login`); it shells out to `railway ssh` because your machine
+can't reach `postgres.railway.internal` directly (see "Why the fetching
+happens server-side" below) — the actual dump-and-reload runs entirely
+through the `pg` package already used everywhere else in `api/`, no
+`pg_dump` involved. Safe to re-run any time; it's a full mirror, not an
+incremental sync, so it always leaves local exactly matching prod at that
+moment. Skips `sessions`/`refresh_runs`/`schema_migrations` — see the
+script's own comment for why each of those wouldn't mean anything copied
+into a different environment.
+
+The project has **no build step** — plain ES modules, served exactly as
+committed; `npm install` is still needed for its few runtime dependencies
+(Fastify, `pg`, …).
 
 ## How the data is produced
 
