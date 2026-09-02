@@ -1,8 +1,21 @@
 /* ============================================================================
    Jax — Group Ironman hiscores
    Aesthetic: "forge ledger" — blackened steel, brass hairlines, ember light,
-   chiselled display caps over a dense tabular ledger.
-   Dark surface only, by design: the palette is validated against #0c0a09.
+   chiselled display caps over a dense tabular ledger. Dark is the original,
+   default theme (no attribute needed — an existing visitor's bookmark
+   changes nothing); [data-theme="light"] is its companion, "illuminated
+   ledger": the same ledger under a study lamp instead of forge-light — aged
+   vellum, ink-brown text, brass hairlines carried straight across, and a
+   gold-leaf wordmark in place of the glowing one (illuminated manuscripts
+   really were lettered in gold leaf — the two names aren't a coincidence).
+   Player colours (config.js's SERIES_COLOURS) are deliberately identical in
+   both: they're always paired with the player's own name, never asked to
+   carry identity alone, so the same five hues that were validated for
+   colour-blindness against #0c0a09 read fine as swatches/underlines against
+   parchment too. What *does* change between themes is anything used as
+   literal foreground text on its own — --gain, --warn, --medal-gold — since
+   a light, glowing hue built for near-black text contrast goes the wrong
+   direction entirely on a pale page.
    ========================================================================= */
 
 :root {
@@ -55,6 +68,57 @@
   --page-max: 1440px;
   --radius: 3px;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* The two decorative treatments below aren't plain colour tokens (a
+     multi-stop gradient each), so they get their own custom properties
+     purely so [data-theme="light"] can swap them wholesale rather than
+     duplicating the rules that use them. */
+  --wordmark-gradient: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
+  --forge-glow: radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
+    radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
+    linear-gradient(180deg, #100d0b 0%, var(--surface-0) 38%, #080706 100%);
+  --grain-opacity: 0.32;
+}
+
+/* "Illuminated ledger" — see the aesthetic note above. Every value here is
+   this file's own judgement call, not run through the same colour-blindness
+   validator the dark palette's README note references — reasonable, since
+   nothing here is asked to carry identity alone (see that same note), but
+   worth knowing if this ever needs the same rigor applied. */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --surface-0: #efe6cc;
+  --surface-1: #e8dcbc;
+  --surface-2: #dfd0a8;
+
+  --ink: #2b2013;
+  --ink-2: #5c4d34;
+  --ink-muted: #8a7a5c;
+
+  --hairline: rgba(43, 32, 19, 0.12);
+  --hairline-strong: rgba(43, 32, 19, 0.22);
+  --brass: rgba(150, 108, 20, 0.55);
+
+  /* Darkened from the dark theme's own values — each was tuned to glow
+     against near-black, which reads as low-contrast (or outright
+     invisible) foreground text on a pale page. --ember and the ribbon
+     colours (--crimson/--leaf/--medal-silver/--medal-bronze) aren't listed
+     here: they're always paired with a fixed, self-contained ribbon text
+     colour (see .lb-ribbon), never asked to contrast against the page
+     surface itself, so the dark theme's values already work unchanged. */
+  --gain: #1f7a4d;
+  --gain-bg: rgba(31, 122, 77, 0.14);
+  --warn: #8a5a00;
+  --medal-gold: #8a6114;
+
+  --wordmark-gradient: linear-gradient(168deg, #6b4a1a 10%, #8a6a2e 55%, #b08a3e 95%);
+  /* A soft vignette standing in for the dark theme's forge-glow bloom — an
+     aged page's own darkened edges, not a light source, so it's quieter by
+     design rather than a straight colour-inverted copy of the original. */
+  --forge-glow: radial-gradient(140ch 70ch at 50% -20%, rgba(120, 90, 40, 0.07), transparent 65%),
+    linear-gradient(180deg, #f2ead4 0%, var(--surface-0) 45%, #e6d9b8 100%);
+  --grain-opacity: 0.18;
 }
 
 *,
@@ -79,27 +143,25 @@ body {
   overflow-x: hidden;
 }
 
-/* Forge light: a warm bloom behind the masthead, and a cold floor below it. */
+/* Forge light in dark mode, a soft vignette in light mode — see --forge-glow. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background:
-    radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
-    radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
-    linear-gradient(180deg, #100d0b 0%, var(--surface-0) 38%, #080706 100%);
+  background: var(--forge-glow);
 }
 
-/* Grain: keeps the large dark fields from banding. */
+/* Grain: keeps the large fields from banding — aged-paper texture in light
+   mode, steel grain in dark, same technique either way (see --grain-opacity). */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.32;
+  opacity: var(--grain-opacity);
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
@@ -243,6 +305,29 @@ body::after {
   font-size: 0.7rem;
 }
 
+/* Same family as .auth-button/.refresh-button — the three top-right
+   controls should read as one quiet row, not competing styles. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.theme-toggle:hover {
+  border-color: var(--ember);
+  color: var(--ember);
+}
+
 #panel {
   margin-top: 2rem;
 }
@@ -272,7 +357,7 @@ body::after {
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
+  background: var(--wordmark-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

@@ -26,6 +26,7 @@ import { loadGoalsAndLabels, createGoals, updateGoal, deleteGoal } from './goals
 import { putGoalLabel, deleteGoalLabel } from './goal-labels-storage.js';
 import { mountAuthWidget } from './views/auth-widget.js';
 import { mountRefreshButton } from './views/refresh-button.js';
+import { mountThemeSwitcher } from './views/theme-switcher.js';
 import { getSession, subscribeSession } from './session.js';
 
 const dom = {
@@ -936,5 +937,6 @@ async function boot() {
 // never hold up the stats page rendering, and vice versa.
 mountAuthWidget(document.getElementById('auth-widget'));
 mountRefreshButton(document.getElementById('refresh-button'), { scope: 'player', slug: document.body.dataset.player });
+mountThemeSwitcher(document.getElementById('theme-switcher'));
 
 boot();

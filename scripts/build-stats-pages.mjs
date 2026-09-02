@@ -46,6 +46,17 @@ export function renderStatsShell(player, group) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Applies a saved light-theme choice before first paint — see
+         assets/js/theme.js's own doc comment for why this can't just wait
+         for that module to load. Deliberately inline and non-module: this
+         has to run synchronously, before the browser paints anything. -->
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('jax:theme') === 'light') document.documentElement.dataset.theme = 'light';
+        } catch (e) {}
+      })();
+    </script>
     <title>${title}</title>
     <meta name="description" content="${description}" />
     <meta name="theme-color" content="#0c0a09" />
@@ -62,6 +73,7 @@ export function renderStatsShell(player, group) {
   <body data-player="${player.slug}">
     <div class="shell">
       <div class="header-row">
+        <div id="theme-switcher"></div>
         <div id="refresh-button"></div>
         <div class="auth-widget" id="auth-widget"></div>
       </div>
@@ -83,8 +95,8 @@ export function renderStatsShell(player, group) {
     <script type="module" src="../../assets/js/stats.js"></script>
     <noscript>
       <p class="loading">
-        This page renders the committed hiscore snapshot in the browser and needs JavaScript enabled.
-        The underlying data is readable directly at <code>../../data/latest.json</code>.
+        This page renders live hiscore data in the browser and needs JavaScript enabled.
+        The underlying data is readable directly at <code>/api/latest</code>.
       </p>
     </noscript>
   </body>

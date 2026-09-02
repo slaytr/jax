@@ -29,6 +29,7 @@ import { renderStandings } from './views/standings.js';
 import { renderMatrix } from './views/matrix.js';
 import { mountAuthWidget } from './views/auth-widget.js';
 import { mountRefreshButton } from './views/refresh-button.js';
+import { mountThemeSwitcher } from './views/theme-switcher.js';
 
 const dom = {
   masthead: document.getElementById('masthead'),
@@ -305,5 +306,6 @@ async function boot() {
 // hold up the scoreboard rendering, and vice versa.
 mountAuthWidget(document.getElementById('auth-widget'));
 mountRefreshButton(document.getElementById('refresh-button'), { scope: 'group' });
+mountThemeSwitcher(document.getElementById('theme-switcher'));
 
 boot();
