@@ -9,11 +9,21 @@ services:
       POSTGRES_USER: jax
       POSTGRES_PASSWORD: jax
     ports:
-      # Change the host side (left of the colon) if 5432 is already taken
-      # locally — update .env.local's DATABASE_URL to match.
-      - '5432:5432'
+      # 5433, not Postgres's usual 5432 — deliberately, since 5432 is
+      # exactly where a machine's own already-installed Postgres (a
+      # Windows service, Homebrew, apt, ...) is most likely already
+      # listening, and this container's credentials won't match whatever
+      # that install's actually are. Change the host side (left of the
+      # colon) again if 5433 is somehow also taken — update
+      # .env.local's DATABASE_URL to match either way.
+      - '5433:5432'
     volumes:
-      - jax-postgres-data:/var/lib/postgresql/data
+      # Not /var/lib/postgresql/data — the official image changed its
+      # expected mount point starting at Postgres 18 (pg_ctlcluster-style
+      # major-version-specific subdirectories under this one instead); the
+      # old path makes the container refuse to start outright, not just
+      # warn. See https://github.com/docker-library/postgres/pull/1259.
+      - jax-postgres-data:/var/lib/postgresql
 
 volumes:
   jax-postgres-data:

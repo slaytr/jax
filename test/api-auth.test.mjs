@@ -20,6 +20,7 @@ describe('auth + sessions API', { skip: hasDb ? false : 'DATABASE_URL not set' }
   let loginWithProfile;
 
   const TEST_SLUG = 'test-claim-player';
+  const OTHER_SLUG = 'test-claim-player-2';
   const TEST_DISCORD_ID = 'test-discord-999';
   const OTHER_DISCORD_ID = 'test-discord-other';
 
@@ -34,6 +35,15 @@ describe('auth + sessions API', { skip: hasDb ? false : 'DATABASE_URL not set' }
        on conflict (slug) do update set discord_id = null`,
       [TEST_SLUG, 'Test Claim Player'],
     );
+    // A second, otherwise-unrelated player — not a real roster slug — so the
+    // "already own one, try to claim another" test doesn't depend on the
+    // real roster (e.g. 'jelly-tax') existing in whatever database this
+    // suite happens to run against (a fresh, schema-only local DB has none).
+    await query(
+      `insert into players (slug, name, hiscore_table, position) values ($1, $2, 'main', 998)
+       on conflict (slug) do update set discord_id = null`,
+      [OTHER_SLUG, 'Test Claim Player 2'],
+    );
   });
 
   after(async () => {
@@ -43,7 +53,7 @@ describe('auth + sessions API', { skip: hasDb ? false : 'DATABASE_URL not set' }
     // (api-goals.test.mjs) is still using mid-run.
     await query('delete from sessions where discord_id in ($1, $2)', [TEST_DISCORD_ID, OTHER_DISCORD_ID]);
     await query('delete from users where discord_id in ($1, $2)', [TEST_DISCORD_ID, OTHER_DISCORD_ID]);
-    await query('delete from players where slug = $1', [TEST_SLUG]);
+    await query('delete from players where slug in ($1, $2)', [TEST_SLUG, OTHER_SLUG]);
     await fastify.close();
     await closePool();
   });
@@ -87,10 +97,10 @@ describe('auth + sessions API', { skip: hasDb ? false : 'DATABASE_URL not set' }
     await query('update players set discord_id = $1 where slug = $2', [TEST_DISCORD_ID, TEST_SLUG]);
     const session = await loginWithProfile({ discordId: TEST_DISCORD_ID, username: 'Tester', avatar: null });
 
-    const response = await fastify.inject({ method: 'POST', url: '/api/me/claim', cookies: { sid: session.id }, payload: { slug: 'jelly-tax' } });
+    const response = await fastify.inject({ method: 'POST', url: '/api/me/claim', cookies: { sid: session.id }, payload: { slug: OTHER_SLUG } });
     assert.equal(response.statusCode, 409);
 
-    const { rows } = await query('select discord_id from players where slug = $1', ['jelly-tax']);
+    const { rows } = await query('select discord_id from players where slug = $1', [OTHER_SLUG]);
     assert.equal(rows[0].discord_id, null);
   });
 
