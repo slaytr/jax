@@ -1,0 +1,50 @@
+name: Deploy to Railway
+
+# Deploys the two Postgres-backed Railway services (web, cron — see
+# railway.toml's own header comment and the Postgres migration plan) on
+# every push to this branch, plus on demand via workflow_dispatch.
+#
+# Scoped to feat/postgres-api specifically, not main: the old GitHub
+# Pages + Railway cron pipeline still lives on main untouched (see the
+# Postgres migration plan's backward-compatible rollout), so this must not
+# fire there. Update (or add to) the branch list once that branch is
+# merged and the old pipeline is retired.
+on:
+  push:
+    branches: [feat/postgres-api]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm test
+
+  deploy-web:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy web service
+        run: railway up --service web --ci
+
+  deploy-cron:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy cron service
+        run: railway up --service cron --ci
