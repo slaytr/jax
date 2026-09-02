@@ -20,6 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fetchAllPlayers } from './hiscores.mjs';
 import { fetchGroupRank } from './group-rank.mjs';
 import { fetchAllQuestPoints } from './quests.mjs';
+import { fetchAllLatestActivity } from './activity.mjs';
 import { isRedundant, mergePlayers, toSnapshot, HISTORY_VERSION } from './snapshots.mjs';
 import { appendDailySnapshot } from './history-store.mjs';
 
@@ -77,6 +78,12 @@ const defaultLog = {
         ? `  ok    ${player.name.padEnd(16)} ${result.questPoints} quest points (${result.questsComplete} quests)`
         : `  FAIL  ${player.name.padEnd(16)} quests: ${result.error}`,
     ),
+  activity: (player, result) =>
+    console.log(
+      result.ok
+        ? `  ok    ${player.name.padEnd(16)} ${result.text ?? '(no activity yet)'}`
+        : `  FAIL  ${player.name.padEnd(16)} activity: ${result.error}`,
+    ),
 };
 
 /**
@@ -102,9 +109,9 @@ async function resolveGroupRank(group, previous, log) {
  * latest.json this ran with (or null on a first run — every "carry the
  * previous value forward" fallback below degrades gracefully from that).
  *
- * Returns `{results, groupRank, quests, snapshot, latest}`:
- * - `results`/`quests` are the raw per-player fetch outcomes, useful to a
- *   caller that wants to know exactly what succeeded/failed this cycle
+ * Returns `{results, groupRank, quests, activity, snapshot, latest}`:
+ * - `results`/`quests`/`activity` are the raw per-player fetch outcomes,
+ *   useful to a caller that wants to know exactly what succeeded/failed this cycle
  *   (api/store/write-run.mjs uses `results` to decide what to write).
  * - `snapshot`/`latest` are the same shapes toSnapshot()/mergePlayers()
  *   have always produced — a history shard entry and a full latest.json.
@@ -125,9 +132,10 @@ export async function runUpdate({ roster, previousLatest = null, log = defaultLo
   const group = roster.group ?? { name: 'Group', tagline: '' };
   const groupRank = await resolveGroupRank(group, previousLatest?.groupRank ?? null, log);
   const quests = await fetchAllQuestPoints(roster.players, log.quest);
+  const activity = await fetchAllLatestActivity(roster.players, log.activity);
 
   const snapshot = toSnapshot(results, epochSeconds, groupRank, quests);
-  const players = mergePlayers(roster.players, results, previousLatest?.players ?? [], quests);
+  const players = mergePlayers(roster.players, results, previousLatest?.players ?? [], quests, activity);
 
   const latest = {
     version: HISTORY_VERSION,
@@ -145,7 +153,7 @@ export async function runUpdate({ roster, previousLatest = null, log = defaultLo
     players,
   };
 
-  return { results, groupRank, quests, snapshot, latest };
+  return { results, groupRank, quests, activity, snapshot, latest };
 }
 
 /** Fetches just one player — the ad-hoc single-player refresh endpoint's
@@ -156,19 +164,22 @@ export async function runPlayerUpdate({ player, previousPlayer = null, log = def
   const epochSeconds = Math.floor(Date.now() / 1000);
 
   const [result] = await fetchAllPlayers([player], log.player);
-  // fetchAllQuestPoints, unlike fetchAllPlayers, returns an object keyed by
-  // slug rather than an array — see its own return shape in quests.mjs.
+  // fetchAllQuestPoints/fetchAllLatestActivity, unlike fetchAllPlayers,
+  // return an object keyed by slug rather than an array — see their own
+  // return shapes in quests.mjs/activity.mjs.
   const questsBySlug = await fetchAllQuestPoints([player], log.quest);
   const quest = questsBySlug[player.slug];
+  const activityBySlug = await fetchAllLatestActivity([player], log.activity);
+  const activity = activityBySlug[player.slug];
 
   // toSnapshot()/mergePlayers() both take a full-group results array, but
   // work just as well handed an array of one — the "only successful
   // fetches make it in" filtering they already do is exactly what a single
   // player's carried-forward-on-failure fallback needs too.
   const snapshotEntry = result.ok ? toSnapshot([result], epochSeconds, null, questsBySlug) : null;
-  const [merged] = mergePlayers([player], [result], previousPlayer ? [previousPlayer] : [], questsBySlug);
+  const [merged] = mergePlayers([player], [result], previousPlayer ? [previousPlayer] : [], questsBySlug, activityBySlug);
 
-  return { result, quest, player: merged, snapshotEntry };
+  return { result, quest, activity, player: merged, snapshotEntry };
 }
 
 async function main() {

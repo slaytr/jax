@@ -89,6 +89,33 @@ async function loadTable(client, table, rows) {
   return rows.length;
 }
 
+/**
+ * Every synced table whose primary key is a serial/bigserial, so its
+ * sequence needs re-syncing after a bulk load — `snapshots` is the only
+ * one today (everything else keys off a natural id: a slug, a Discord id,
+ * a client-generated uuid, or a composite key).
+ */
+const SERIAL_PK_TABLES = { snapshots: { column: 'id', sequence: 'snapshots_id_seq' } };
+
+/**
+ * `loadTable` inserts each row with its own explicit primary-key value
+ * (preserving `snapshots.id` is what lets `player_snapshots.snapshot_id`
+ * still point at the right row) — `RESTART IDENTITY` above resets the
+ * sequence to its start, and an explicit-value insert never advances a
+ * sequence the way relying on its own DEFAULT nextval() would. Left alone,
+ * the sequence stays stuck at 1 while the table's real rows go far past
+ * it, so the very next *ordinary* insert (no explicit id — every write
+ * this app makes outside this script) collides with a row this sync just
+ * loaded. Re-synced here, once, right after the bulk load.
+ */
+async function resyncSerialSequences(client) {
+  for (const [table, { column, sequence }] of Object.entries(SERIAL_PK_TABLES)) {
+    await client.query(`select setval($1, coalesce((select max(${column}) from ${table}), 1), exists(select 1 from ${table}))`, [
+      sequence,
+    ]);
+  }
+}
+
 async function restore(payload) {
   await withTransaction(async (client) => {
     // One TRUNCATE with CASCADE handles the whole dependency graph
@@ -100,6 +127,8 @@ async function restore(payload) {
       const count = await loadTable(client, table, payload[table] ?? []);
       console.log(`  ${table}: ${count} row(s)`);
     }
+
+    await resyncSerialSequences(client);
   });
 }
 

@@ -43,13 +43,14 @@ export async function upsertPlayerState(client, fetchedAt, player) {
   await client.query(
     `insert into player_state
        (player_slug, fetched_at, stale, error, total_level, total_xp, total_rank,
-        quest_points, quests_complete, quests_stale, skills, activities)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        quest_points, quests_complete, quests_stale, skills, activities, latest_activity)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      on conflict (player_slug) do update set
        fetched_at = excluded.fetched_at, stale = excluded.stale, error = excluded.error,
        total_level = excluded.total_level, total_xp = excluded.total_xp, total_rank = excluded.total_rank,
        quest_points = excluded.quest_points, quests_complete = excluded.quests_complete,
-       quests_stale = excluded.quests_stale, skills = excluded.skills, activities = excluded.activities`,
+       quests_stale = excluded.quests_stale, skills = excluded.skills, activities = excluded.activities,
+       latest_activity = excluded.latest_activity`,
     [
       player.slug,
       fetchedAt,
@@ -63,6 +64,7 @@ export async function upsertPlayerState(client, fetchedAt, player) {
       player.questsStale ?? false,
       JSON.stringify(player.skills ?? []),
       JSON.stringify(player.activities ?? []),
+      player.latestActivity ? JSON.stringify(player.latestActivity) : null,
     ],
   );
 

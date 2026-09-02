@@ -42,8 +42,8 @@ function rankDeltaBadge(rankDelta) {
  * a link to their own /stats/<slug>/ page, led by a swatch so identity still
  * comes from more than colour alone at rest (the link text itself stays an
  * ink token, never the player's own hue — see the dataviz skill's own
- * text-vs-mark rule); `--accent` carries that colour instead, for the pill's
- * own hover/focus treatment (styles.css) to read off. There's no "current"
+ * text-vs-mark rule); `--accent` carries that colour instead, for the link's
+ * own underline hover/focus treatment (styles.css) to read off. There's no "current"
  * player here — the group page isn't any one player's, so every nameplate
  * is just a link. */
 const playerNavItem = (player) =>

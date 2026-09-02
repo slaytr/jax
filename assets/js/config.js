@@ -74,10 +74,11 @@ export const iconFor = (skill) => new URL(`../icons/${skill.slug}.png`, import.m
 export const QUEST_POINTS_ICON = new URL('../icons/quest-points.png', import.meta.url).href;
 export const TOTAL_LEVEL_ICON = new URL('../icons/stats.png', import.meta.url).href;
 
-/** The wiki's own "this article has a quick guide" book icon (scripts/fetch-icons.mjs),
- * reused so a goal card's link to that guide (quest-goal.js's questWikiUrl) carries a
- * mark players already associate with quick guides on the wiki itself. */
-export const QUICK_GUIDE_ICON = new URL('../icons/quick-guide.png', import.meta.url).href;
+/** The wiki's own logo (scripts/fetch-icons.mjs) — marks every link out to a
+ * runescape.wiki quick guide, on goal cards and quest graph nodes alike
+ * (quest-goal.js's questWikiUrl), so a click's destination is recognisable
+ * before it's followed. */
+export const WIKI_ICON = new URL('../icons/wiki.png', import.meta.url).href;
 
 /**
  * When the update job is scheduled to run, in UTC — on the hour, every hour.

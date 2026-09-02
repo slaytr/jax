@@ -72,6 +72,7 @@ export function projectPlayerState(row) {
     questsStale: row.quests_stale,
     skills: row.skills ?? [],
     activities: row.activities ?? [],
+    latestActivity: row.latest_activity ?? null,
   };
 }
 

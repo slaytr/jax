@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { refreshGoals } from '../assets/js/views/player-goals.js';
+import { refreshGoals } from '../assets/js/goal-status.js';
 
 const skillGoal = (overrides) => ({
   id: 'g1',

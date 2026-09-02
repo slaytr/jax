@@ -1,7 +1,8 @@
 import { el, svgEl, replaceChildren } from '../dom.js';
 import { dependencyGraphFor, visibleDependencyGraph, ancestorNames } from '../quest-graph.js';
 import { statusOf, STATUS_MARKER, skillLevelsByName } from './player-quests.js';
-import { SKILLS, iconFor } from '../config.js';
+import { SKILLS, iconFor, WIKI_ICON } from '../config.js';
+import { questWikiUrl } from '../quest-goal.js';
 
 const SKILL_BY_NAME = new Map(SKILLS.map((skill) => [skill.name, skill]));
 
@@ -292,6 +293,19 @@ function graphNode({
             STATUS_MARKER[status] ? el('span', { class: 'quest-graph-node-check', 'aria-hidden': 'true', text: STATUS_MARKER[status] }) : null,
             el('span', { class: 'quest-graph-node-name', text: node.name }),
           ],
+        ),
+        el(
+          'a',
+          {
+            class: 'goal-card-wiki-link quest-graph-node-wiki-link',
+            href: questWikiUrl(node.name),
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            'aria-label': `Open ${node.name} quick guide on the wiki`,
+            title: 'Quick guide (wiki)',
+            onclick: (event) => event.stopPropagation(),
+          },
+          el('img', { src: WIKI_ICON, alt: '', width: 12, height: 12, decoding: 'async' }),
         ),
         // stats.js passes onCreateQuestGoal as null for a viewer who
         // doesn't own this player — same read-only convention as

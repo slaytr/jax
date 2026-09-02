@@ -94,7 +94,7 @@ const totalsFrom = (skills) => {
  * their previous numbers and is flagged stale — a transient Jagex outage must
  * not blank the leaderboard.
  */
-export function mergePlayers(roster, results, previousPlayers = [], questsBySlug = {}) {
+export function mergePlayers(roster, results, previousPlayers = [], questsBySlug = {}, activityBySlug = {}) {
   const previousBySlug = new Map(previousPlayers.map((player) => [player.slug, player]));
   const resultBySlug = new Map(results.map((result) => [result.slug, result]));
 
@@ -127,6 +127,19 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
     };
   };
 
+  /** Same independent-of-the-hiscore-fetch reasoning as questsFor — a
+   * RuneMetrics hiccup (or a private profile) keeps whatever the last
+   * successful read found rather than blanking it. `null` (not carried
+   * forward at all) only for a player this app has genuinely never
+   * fetched a real activity for. */
+  const activityFor = (slug, previous) => {
+    const activity = activityBySlug[slug];
+    if (activity?.ok && activity.text) {
+      return { text: activity.text, details: activity.details ?? null, date: activity.date };
+    }
+    return previous?.latestActivity ?? null;
+  };
+
   return roster.map((entry) => {
     const result = resultBySlug.get(entry.slug);
     const previous = previousBySlug.get(entry.slug);
@@ -140,6 +153,7 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
         error: null,
         total: totalsFrom(result.skills),
         ...questsFor(entry.slug, previous),
+        latestActivity: activityFor(entry.slug, previous),
         skills: result.skills,
         activities: result.activities,
       };
@@ -147,7 +161,7 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
 
     const error = result?.error ?? 'player was not fetched';
     if (previous) {
-      return { ...previous, ...questsFor(entry.slug, previous), stale: true, error };
+      return { ...previous, ...questsFor(entry.slug, previous), latestActivity: activityFor(entry.slug, previous), stale: true, error };
     }
 
     return {
@@ -158,6 +172,7 @@ export function mergePlayers(roster, results, previousPlayers = [], questsBySlug
       error,
       total: { level: 0, xp: 0, rank: null },
       ...questsFor(entry.slug, null),
+      latestActivity: activityFor(entry.slug, null),
       skills: [],
       activities: [],
     };

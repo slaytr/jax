@@ -1,9 +1,11 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatCompact, formatSpan, formatRelativeTime } from '../format.js';
 import { xpForLevel, levelForXp } from '../xp-table.js';
-import { SKILLS, iconFor, QUEST_POINTS_ICON, QUICK_GUIDE_ICON } from '../config.js';
+import { SKILLS, iconFor, QUEST_POINTS_ICON, WIKI_ICON } from '../config.js';
 import { statusOf } from './player-quests.js';
 import { notMetSkillRequirements, treeSkillRequirements, skillValuesByName, buildQuestGoalDrafts, questWikiUrl } from '../quest-goal.js';
+
+export { refreshGoals } from '../goal-status.js';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
@@ -17,85 +19,6 @@ const COMPLETED_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month:
  * goal referencing a label name the registry no longer has an entry for. */
 const LABEL_COLOURS = ['#0b8fa3', '#cc3346', '#199e70', '#3987e5', '#dd6296', '#d95926', '#c98500', '#8b6fd9'];
 const DEFAULT_LABEL_COLOUR = '#776d5f';
-
-/**
- * A skill goal is complete once the player's *live* skill value (data.js's
- * skillById) reaches its target — checked against level or xp depending on
- * how it was set. A quest goal (`kind: 'quest'`, see quest-goal.js) is
- * complete once its `questName` matches an entry in the player's own
- * RuneMetrics completed list (statusOf, player-quests.js — the exact same
- * title-matching the Quests tab's own list and the dependency map use, so a
- * goal and the map agree on when a quest counts as done).
- *
- * Either way this only runs when someone actually loads the page, not
- * continuously in the background (there's no server here to watch for it),
- * so `completedAt` really means "first noticed complete on a visit", not
- * the exact in-game moment — close enough for a personal tracker, but worth
- * knowing if a duration ever looks a little longer than expected.
- */
-function checkCompletion(goal, player) {
-  if (goal.completedAt) return goal;
-
-  if (goal.kind === 'quest') {
-    const completedSet = new Set(player.completedQuests ?? []);
-    const startedSet = new Set(player.startedQuests ?? []);
-    if (statusOf({ name: goal.questName }, completedSet, startedSet) !== 'completed') return goal;
-    return { ...goal, completedAt: new Date().toISOString() };
-  }
-
-  const value = player.skillById?.[goal.skillId];
-  if (!value) return goal;
-
-  const reached = goal.targetType === 'level' ? value.level >= goal.targetValue : value.xp >= goal.targetValue;
-  if (!reached) return goal;
-
-  return { ...goal, completedAt: new Date().toISOString(), completedLevel: value.level, completedXp: value.xp };
-}
-
-/** A `kind: 'skill'` goal whose `skillId` doesn't resolve to any current
- * SKILLS entry can't be rendered (activeSkillGoalCard/completedSkillGoalCard
- * both need the real skill for its name and icon — iconFor would throw on
- * undefined) — dropped here rather than crashing every future render. The
- * only way to reach this today is a quest-goal draft built before
- * quest-goal.js's notMetSkillRequirements started excluding the "quest
- * points" pseudo-skill requirement; kept as a general safety net rather than
- * a one-off migration, since any other future cause of a dangling skillId
- * should self-heal the same way instead of needing its own cleanup pass. */
-const isRenderable = (goal) => goal.kind === 'quest' || SKILLS.some((skill) => skill.id === goal.skillId);
-
-/**
- * Re-checks every goal against the player's current skills, and drops any
- * that can no longer be rendered at all (isRenderable). Returns a new array
- * (goals that didn't change are the same object, so a caller can still tell
- * *which* changed if it ever needs to) plus whether anything actually
- * changed — either a completion or a drop — stats.js only needs to persist
- * when it did.
- *
- * `justCompleted` is every goal that transitioned to complete on *this* call
- * specifically — checkCompletion always returns the identical object
- * unchanged for a goal that isn't newly completing (already complete, or
- * still short of its target), so `updated !== goal` inside the map below can
- * only mean one thing. This is the "first noticed complete on a visit" this
- * file's own checkCompletion doc comment describes — stats.js uses it to
- * decide what the Goals tab's completion celebration (renderGoalCelebration
- * Dialog) has to show, once, the next time that tab is actually open.
- */
-export function refreshGoals(goals, player) {
-  let changed = false;
-  const justCompleted = [];
-  const renderable = goals.filter(isRenderable);
-  if (renderable.length !== goals.length) changed = true;
-
-  const next = renderable.map((goal) => {
-    const updated = checkCompletion(goal, player);
-    if (updated !== goal) {
-      changed = true;
-      justCompleted.push(updated);
-    }
-    return updated;
-  });
-  return { goals: next, changed, justCompleted };
-}
 
 const startValueOf = (goal) => (goal.targetType === 'level' ? goal.startLevel : goal.startXp);
 
@@ -393,7 +316,7 @@ function questWikiLink(questName) {
       title: 'Quick guide (wiki)',
       onClick: (event) => event.stopPropagation(),
     },
-    el('img', { src: QUICK_GUIDE_ICON, alt: '', width: 14, height: 12, decoding: 'async' }),
+    el('img', { src: WIKI_ICON, alt: '', width: 14, height: 14, decoding: 'async' }),
   );
 }
 

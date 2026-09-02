@@ -349,6 +349,24 @@ body::after {
   margin-top: 2rem;
 }
 
+/* The home ↔ player-page transition (App.vue's <Transition name="panel-swap"
+   mode="out-in">) — the masthead above #panel never remounts across a route
+   change, only this content does. mode="out-in" means the leave finishes
+   before the enter starts, so this reads as one thing rotating out and the
+   next rotating in, not a crossfade. */
+.panel-swap-enter-active,
+.panel-swap-leave-active {
+  transition:
+    opacity 0.22s var(--ease),
+    transform 0.22s var(--ease);
+}
+
+.panel-swap-enter-from,
+.panel-swap-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
 .topbar {
   display: flex;
   flex-wrap: wrap;
@@ -366,14 +384,37 @@ body::after {
   flex-wrap: wrap;
 }
 
-.wordmark {
+/* The wordmark is a real link (back to the group page) rather than plain
+   text, so .wordmark-heading resets the <h1> wrapper's own margin and
+   .wordmark itself (now the <a>) drops the underline a link would
+   otherwise get — everything else about the gradient-clipped mark is
+   unchanged.
+
+   font-size/line-height: 0 here (not just the margin reset) collapse the
+   wrapper <h1>'s own invisible "strut" — its default heading font-size
+   otherwise sets a taller line box than the actual .wordmark link's own
+   text, padding this row with blank space no plain text is drawn into.
+   Zeroing both here (rather than sizing them to duplicate .wordmark's own
+   clamp()) means whatever .wordmark itself sizes to is the only thing that
+   sets this row's height — same principle the player masthead's own single
+   <h1 class="wordmark-heading wordmark"> (PlayerMasthead.vue, no separate
+   wrapper at all) already gets for free, which is what keeps the two
+   mastheads' heights matching. */
+.wordmark-heading {
   margin: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.wordmark {
+  display: inline-block;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(1.9rem, 3.6vw, 2.6rem);
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  text-decoration: none;
   background: var(--wordmark-gradient);
   -webkit-background-clip: text;
   background-clip: text;
@@ -421,13 +462,14 @@ body::after {
 /* The player roster's own nav bar (playerNav, masthead.js) — sits below
    .topbar's own brass rule as the page's second, quieter navigation: away
    to one member's own stat page, rather than a figure this page itself is
-   relaying. A row of real nameplates, each its own tappable pill, in place
-   of the plain inline text links with dot separators this used to be. */
+   relaying. A row of real nameplates, each a swatch-led text link with its
+   own underline, in place of the rounded chip/pill treatment this used to
+   have — closer to a ledger's own index than a row of modern UI chips. */
 .player-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1.1rem;
   margin: 1.1rem 0 0;
 }
 
@@ -442,18 +484,16 @@ body::after {
 
 /* One nameplate. A swatch still carries identity at rest (the link text
    itself stays an ink token — see the dataviz skill's own text-vs-mark
-   rule), but unlike a plain text link, the whole pill now brightens toward
-   the player's own colour (--accent, set per item — playerNavItem) on
-   hover/focus, so a destination this concrete reads as one on approach,
+   rule); the player's own colour (--accent, set per item — playerNavItem)
+   shows up as the underline on hover/focus/current instead of a filled
+   background, so a destination this concrete reads as one on approach,
    not just once you're looking straight at its dot. */
 .player-nav-item {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem 0.75rem 0.3rem 0.6rem;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
-  background: var(--surface-1);
+  padding-bottom: 0.2rem;
+  border-bottom: 1.5px solid transparent;
   color: var(--ink-2);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -461,19 +501,25 @@ body::after {
   text-decoration: none;
   transition:
     color 0.16s var(--ease),
-    border-color 0.16s var(--ease),
-    background-color 0.16s var(--ease);
+    border-color 0.16s var(--ease);
 }
 
 .player-nav-item:hover {
   color: var(--ink);
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface-1));
 }
 
 .player-nav-item:focus-visible {
   outline: 2px solid var(--ember);
   outline-offset: 2px;
+}
+
+/* "You are here" — the nameplate for whichever player's page is currently
+   routed to, same treatment as :hover so arriving reads the same as
+   approaching did. */
+.player-nav-item.router-link-active {
+  color: var(--ink);
+  border-color: var(--accent);
 }
 
 /* Metric strip — the numbers the scoreboard exists to relay.
@@ -499,14 +545,20 @@ body::after {
   border-left: 0;
 }
 
-/* The player page's own .topbar (renderPlayerMasthead) holds just identity
-   and the activity calendar — the metric strip moved to a full-width row of
-   its own below (.metrics-row) rather than fighting the two of them plus
-   five metric columns for space on one line. Two items, one fixed-width
-   (.activity-cal) and one that's already fairly narrow (.identity), fit
-   .topbar's base space-between layout without any further help, so nothing
-   here needs to override the shared .topbar/.metrics rules the group
-   masthead (masthead.js) also uses. */
+/* The old static page's own player .topbar (renderPlayerMasthead) holds
+   just identity and the activity calendar — the metric strip moved to a
+   full-width row of its own below (.metrics-row) rather than fighting the
+   two of them plus five metric columns for space on one line. Two items,
+   one fixed-width (.activity-cal) and one that's already fairly narrow
+   (.identity), fit .topbar's base space-between layout without any further
+   help, so nothing here needs to override the shared .topbar/.metrics
+   rules the group masthead (masthead.js) also uses.
+
+   The Vue build's own PlayerMasthead.vue no longer needs this: now that
+   its own activity calendar has moved out to PlayerView.vue, its .topbar
+   goes back to the plain identity+metrics shape the group masthead uses
+   (this rule's own base .topbar, no override) — which is also what keeps
+   the home and player mastheads the same height. */
 .topbar.has-activity-cal {
   /* No metric strip left in this row to keep a bottom border/padding for —
      .metrics-row carries that now, right below whichever of identity/
@@ -697,7 +749,6 @@ body::after {
 
 .activity-cal-cell.is-untracked {
   background: var(--surface-1);
-  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
 .activity-cal-cell.is-placeholder {
@@ -817,14 +868,150 @@ body::after {
 
 /* -------------------------------------------------- weekly highlights */
 
+/* The row Weekly highlights used to have entirely to itself, now split
+   with the activity feed beside it — both panels stretch to the taller of
+   the two, so a short "no activity yet" placeholder doesn't leave the
+   highlights panel looking like it's the one that's shrunk. */
+.highlights-split {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.highlights-split > .lb {
+  display: flex;
+  flex-direction: column;
+}
+
 .highlights-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
+  /* Stretches to fill the same height as the activity feed's own list
+     (.activity-feed-list, itself flex:1) — .highlights-split's grid row
+     already matches the two .lb columns' heights, so this is what makes
+     the badges themselves grow into that space rather than leaving it as
+     dead air below a shorter row. */
+  flex: 1;
 }
 
 .highlights .lb-icon polygon {
   fill: var(--ember);
+}
+
+.activity-feed .lb-icon rect,
+.activity-feed .lb-icon path {
+  fill: var(--ink-2);
+}
+
+/* One row per player's own latest RuneMetrics activity (level-up, quest
+   completion), most recent first — see scripts/activity.mjs and
+   HighlightsRow.vue's own activityFeed. A plain list, not .lb-row's
+   grid-of-buttons: nothing here is selectable, and a name/sentence/age
+   reads better as a left-to-right line than a stack. */
+.activity-feed-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+/* Four aligned columns — swatch, name, activity, age — so every row's
+   activity reads at the same x position instead of drifting with how long
+   each player's name happens to be. */
+.activity-feed-list li {
+  display: grid;
+  /* Time is a fixed track, not auto — each <li> is its own independent
+     grid (this is a flex list, not one shared table), so an auto column
+     sizes to that one row's own age string. "59 minutes ago" is the
+     longest this ever renders (formatRelativeTime), so a fixed width wide
+     enough for that keeps every row's activity column the same width —
+     otherwise activity-feed-levelup's centering (styles.css) drifts
+     row to row along with it. */
+  grid-template-columns: auto minmax(0, 5rem) 1fr 5.5rem;
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.22rem 0.5rem 0.22rem 0.35rem;
+  border-radius: var(--radius);
+  cursor: default;
+  transition: background-color 0.16s var(--ease);
+}
+
+.activity-feed-list li:hover,
+.activity-feed-list li:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.activity-feed-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.activity-feed-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.activity-feed-levelup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.activity-feed-skill-icon {
+  flex: none;
+}
+
+.activity-feed-time {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Before the first update cycle has ever recorded anything (or every
+   player's RuneMetrics profile is private) — a quiet placeholder rather
+   than an empty half of the row. */
+.activity-feed-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+@media (max-width: 720px) {
+  .highlights-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* One medallion — icon ring, category name, winner, figure — a small
@@ -836,6 +1023,7 @@ body::after {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
   min-width: 0;
   padding: 0.8rem 0.75rem 0.7rem;
@@ -897,12 +1085,12 @@ body::after {
     0 0 14px -2px var(--accent);
 }
 
-/* currentColor-filled (see .highlight-medal's own `color`) so Ranker's
-   crown and Grind King's flame both pick up the winner's colour without
-   either icon needing its own fill rule; Quest God's medallion is a real
-   <img> (the game's own quest-points icon, questPointsIconLarge —
-   highlights.js) rather than a drawn glyph, so it ignores fill/currentColor
-   entirely and just sits inside the same ring, sized to match. */
+/* currentColor-filled (see .highlight-medal's own `color`) so Grind King's
+   crown picks up the winner's colour without its own fill rule; Ranker and
+   Quest God's medallions are real <img>s (TOTAL_LEVEL_ICON and the game's
+   own quest-points icon — highlights.js) rather than drawn glyphs, so they
+   ignore fill/currentColor entirely and just sit inside the same ring,
+   sized to match. */
 .highlight-medal-icon {
   width: 18px;
   height: 18px;
@@ -1137,6 +1325,15 @@ body::after {
   position: relative;
   display: inline-flex;
   flex: none;
+  /* Every .tab below is forced to flex-basis:0/min-width:0 so the three
+     tabs land at exactly equal thirds (see that rule's own comment) — but
+     with flex-basis:0 on every child, .tabs has nothing telling it "Month"
+     needs room, so its own auto width could settle narrower than the
+     longest label needs, clipping or wrapping it. This floor is sized for
+     "Month" (the longest label) three times over, so it never does; .lb-head
+     (this control's flex parent) still wraps it down to its own row first
+     if a narrow viewport can't fit even that. */
+  min-width: 11rem;
   border: 1px solid var(--hairline-strong);
   border-radius: 3px;
   overflow: hidden;
@@ -1161,7 +1358,7 @@ body::after {
      "Day" regardless of equal flex-grow, throwing off the indicator's plain
      one-third math below. This makes all three tabs genuinely equal width. */
   min-width: 0;
-  padding: 0.3rem 0.7rem;
+  padding: 0.3rem 0.5rem;
   border: 0;
   border-left: 1px solid var(--hairline-strong);
   background: none;
@@ -1172,6 +1369,7 @@ body::after {
   text-transform: uppercase;
   text-align: center;
   color: var(--ink-muted);
+  white-space: nowrap;
   cursor: pointer;
   transition: color 0.16s var(--ease);
 }
@@ -1866,13 +2064,35 @@ body::after {
   margin-bottom: 0;
 }
 
-/* The Gains column (second child — Skills' own fixed-200px .skill-grid
-   already gives the first its width). Without a flex-basis a block child
-   sized to fill its parent (.chart-section's grid cells, .bar-chart-svg)
-   collapses to its text's min-content instead of actually growing to fill
-   the row; the min-width keeps its three cards from squeezing past
-   legibility before wrapping below Skills instead. */
-.player-row .lb:nth-child(2) {
+/* The Goals tab's own sidebar column — Set Skill Goals' .skill-grid above
+   Set Quest Goals' .quest-list-card, PlayerView.vue — stacked in place of
+   the single narrow .lb the Stats tab's own .player-row has instead
+   (Skills alone), so the "main content column" rule below still only ever
+   sees two children on either tab. Each child already fixes its own
+   200px-wide inner content (.skill-grid, .quest-list-card); this wrapper
+   just stacks them without adding a card of its own around the pair. */
+.player-goals-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* The main content column — Gains on the Stats tab, the Goals list on the
+   Goals tab. A *direct*-child combinator matters here: .player-goals-sidebar
+   stacks two .lb cards of its own (Set Skill Goals, Set Quest Goals), and
+   a descendant-only `.player-row .lb:last-child` would also match whichever
+   of those happens to be last within that wrapper — stretching Set Quest
+   Goals' own .quest-list-card out to this same 620px instead of staying the
+   200px it is on the actual Quests tab. `>` keeps this scoped to
+   .player-row's own immediate children, where it's still the one and only
+   :last-child on either tab (the narrow column ahead of it is a single .lb
+   on Stats — Skills — or the non-.lb sidebar wrapper on Goals). Without a
+   flex-basis a block child sized to fill its parent (.chart-section's grid
+   cells, .bar-chart-svg) collapses to its text's min-content instead of
+   actually growing to fill the row; the min-width keeps its three cards
+   from squeezing past legibility before wrapping below the narrow column
+   instead. */
+.player-row > .lb:last-child {
   flex: 1 1 620px;
   min-width: 620px;
 }
@@ -4033,10 +4253,15 @@ body::after {
    (same width-fight .player-row already resolves at wider widths), so its
    fixed-200px grid can centre in that width instead of sitting flush left. */
 @media (max-width: 720px) {
-  /* Skills' own <section> — fixed-200px .skill-grid needed something wider
+  /* The narrow column ahead of the main content one needed something wider
      than itself to centre within; without this it stayed shrink-to-fit and
-     `margin: auto` below had no spare width to distribute. */
-  .player-row > .lb:first-child {
+     `margin: auto` below had no spare width to distribute. Two selectors,
+     not one, since which element that actually is differs by tab: Skills'
+     own .lb on Stats, but the non-.lb .player-goals-sidebar wrapper (Set
+     Skill Goals + Set Quest Goals stacked) on Goals — see that class' own
+     doc comment above. */
+  .player-row > .lb:first-child,
+  .player-goals-sidebar {
     width: 100%;
   }
 
@@ -4048,8 +4273,11 @@ body::after {
   /* The 620px floor existed only to keep three cramped columns legible
      beside Skills; single-column stacking needs no minimum; the row's own
      full width is already enough for a card this well below the desktop
-     "how much room does the 2-across mini stack need" threshold. */
-  .player-row .lb:nth-child(2) {
+     "how much room does the 2-across mini stack need" threshold. Direct
+     child, same reasoning as the desktop rule above — otherwise this also
+     matches Set Quest Goals' own .quest-list-card (last within
+     .player-goals-sidebar), dropping ITS 200px floor too. */
+  .player-row > .lb:last-child {
     flex-basis: 100%;
     min-width: 0;
   }

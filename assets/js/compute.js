@@ -7,14 +7,29 @@ import { SKILLS, TRACKED_SKILLS, UPDATE_SCHEDULE } from './config.js';
 import { xpProgress } from './xp-table.js';
 
 /**
- * When the next update is due, estimated as one schedule interval after the
- * last successful fetch rather than the cron's wall-clock slot — so a late
- * or skipped run pushes the countdown out instead of it snapping back to 0.
+ * When the next update is due — the next real wall-clock slot the cron is
+ * actually scheduled to run at (UPDATE_SCHEDULE's own minute-of-hour,
+ * hours.railway.toml's own `0 * * * *`), not `fetchedAt` plus one
+ * interval. `fetchedAt` only gates the null case (no countdown until
+ * there's at least one fetch to show a masthead for) — the target itself
+ * is computed from the current time, so it always points at the next real
+ * cron tick regardless of exactly when the last one happened to land.
  */
-export function nextRunEstimate(fetchedAt) {
+export function nextRunEstimate(fetchedAt, { now = () => new Date() } = {}) {
   if (!fetchedAt) return null;
-  const intervalMs = (24 * 60 * 60 * 1000) / UPDATE_SCHEDULE.hours.length;
-  return new Date(new Date(fetchedAt).getTime() + intervalMs);
+
+  const { minute, hours } = UPDATE_SCHEDULE;
+  const current = now();
+  // 25, not 24 — covers the (currently impossible, since hours lists all
+  // 24) case where the schedule has gaps and the very next slot is almost
+  // a full day out.
+  for (let offset = 0; offset <= 25; offset += 1) {
+    const candidate = new Date(
+      Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), current.getUTCHours() + offset, minute, 0, 0),
+    );
+    if (candidate > current && hours.includes(candidate.getUTCHours())) return candidate;
+  }
+  return null;
 }
 
 const EMPTY_SKILL = Object.freeze({ level: 1, xp: 0, rank: null });
@@ -305,6 +320,11 @@ export function computeQuestGains(snapshots, players, window) {
     hasSpan,
     spanSeconds,
     coversWindow: hasSpan && baseline.t <= cutoff,
+    // Mirrors computeGains' own `from` — lets a caller re-run this same
+    // function against a snapshot list truncated to this timestamp to get
+    // the immediately preceding period's own figures (the Gains grid's own
+    // "Hot" ribbon, GainsGrid.vue, does this for all three metrics).
+    from: baseline ? new Date(baseline.t * 1000).toISOString() : null,
     rows: rows
       .map((row) => ({ ...row, share: best > 0 ? row.gained / best : 0 }))
       .sort((a, b) => b.gained - a.gained),

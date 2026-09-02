@@ -1,7 +1,7 @@
 import { el, svgEl, swatch } from '../dom.js';
 import { formatNumber, formatCompact, formatWeekday } from '../format.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
-import { QUEST_POINTS_ICON } from '../config.js';
+import { QUEST_POINTS_ICON, TOTAL_LEVEL_ICON } from '../config.js';
 
 /**
  * Weekly Highlights: three superlative medallions crowning whoever led
@@ -23,7 +23,7 @@ import { QUEST_POINTS_ICON } from '../config.js';
  */
 
 /** The section header's own mark — a five-point star, distinct from any of
- * the three medallion icons below (crownIcon, flameIcon) so nothing in this
+ * the three medallion icons below (rankerIcon, crownIcon) so nothing in this
  * section repeats its own iconography. */
 function starIcon() {
   const svg = svgEl('svg', { class: 'lb-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
@@ -31,27 +31,18 @@ function starIcon() {
   return svg;
 }
 
-/** Ranker's own medallion glyph — a banded crown, read literally: topping
- * the levels leaderboard is the closest thing this scoreboard has to a
- * throne. */
-function crownIcon() {
-  const svg = svgEl('svg', { class: 'highlight-medal-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    svgEl('polygon', { points: '2,12 2,6 5.5,9.5 9,3 12.5,9.5 16,6 16,12' }),
-    svgEl('rect', { x: 2, y: 12, width: 14, height: 2.6, rx: 0.6 }),
-  );
-  return svg;
+/** Ranker's own medallion — the same total-level stats icon used on the
+ * skill matrix and account standings, rather than a drawn glyph: topping
+ * the levels leaderboard is measured in that same total-level currency. */
+function rankerIcon() {
+  return el('img', { class: 'highlight-medal-icon is-photo', src: TOTAL_LEVEL_ICON, alt: '', width: 22, height: 22, decoding: 'async' });
 }
 
-/** Grind King's own medallion glyph — a flame, the most literal read of
- * "grinding" this side of an actual forge. */
-function flameIcon() {
+/** Grind King's own medallion glyph — a crown, the most literal read of
+ * "grinding" your way to the top. */
+function crownIcon() {
   const svg = svgEl('svg', { class: 'highlight-medal-icon', viewBox: '0 0 18 18', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    svgEl('path', {
-      d: 'M9,1.8 C6.7,5.1 5,7.6 5,10.6 C5,14 6.7,16.4 9,16.4 C11.3,16.4 13,14 13,10.6 C13,8.7 12,7.2 10.8,5.9 C11.1,7.5 10.1,8.4 9.3,7.7 C9.9,5.8 9.7,3.4 9,1.8 Z',
-    }),
-  );
+  svg.append(svgEl('polygon', { points: '2,14 2,6 5.5,9.5 9,3.5 12.5,9.5 16,6 16,14' }));
   return svg;
 }
 
@@ -64,8 +55,8 @@ function questPointsIconLarge() {
 }
 
 const BADGES = [
-  { key: 'level', label: 'Ranker', formatValue: formatNumber, unit: '', icon: crownIcon },
-  { key: 'xp', label: 'Grind King', formatValue: formatCompact, unit: ' xp', icon: flameIcon },
+  { key: 'level', label: 'Ranker', formatValue: formatNumber, unit: '', icon: rankerIcon },
+  { key: 'xp', label: 'Grind King', formatValue: formatCompact, unit: ' xp', icon: crownIcon },
   { key: 'quests', label: 'Quest God', formatValue: formatNumber, unit: ' qp', icon: questPointsIconLarge },
 ];
 

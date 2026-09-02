@@ -30,7 +30,7 @@ async function fetchPlayerStateRows() {
   const { rows } = await query(`
     select p.slug, p.name, p.hiscore_table, p.position,
            ps.fetched_at, ps.stale, ps.error, ps.total_level, ps.total_xp, ps.total_rank,
-           ps.quest_points, ps.quests_complete, ps.quests_stale, ps.skills, ps.activities
+           ps.quest_points, ps.quests_complete, ps.quests_stale, ps.skills, ps.activities, ps.latest_activity
     from players p
     left join player_state ps on ps.player_slug = p.slug
     order by p.position
