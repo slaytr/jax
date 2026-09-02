@@ -73,6 +73,20 @@
      multi-stop gradient each), so they get their own custom properties
      purely so [data-theme="light"] can swap them wholesale rather than
      duplicating the rules that use them. */
+  /* The text colour for "this is ember-accented/active/selected" states —
+     a tab, a toggle, a selected list row — always paired with a translucent
+     ember-tinted background at ~13% opacity, so it's really the surface's
+     own warm-highlighted foreground colour, not a standalone brand colour.
+     Cream reads fine over that tint on a near-black surface; on parchment
+     the same tint barely shows and cream nearly vanishes against it, so
+     light mode swaps this for --ink instead (see below). */
+  --ember-ink: #fdf5e7;
+  /* Same role as --ember-ink, for the green/red family instead of ember —
+     a completed checkmark, a "not met" requirement, a delta badge, a
+     destructive button: all translucent-tinted text over the page surface,
+     built for a near-black ground the same way --ember-ink was. */
+  --positive-ink: #8fd0a4;
+  --negative-ink: #efa08a;
   --wordmark-gradient: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
   --forge-glow: radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
     radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
@@ -111,6 +125,9 @@
   --gain-bg: rgba(31, 122, 77, 0.14);
   --warn: #8a5a00;
   --medal-gold: #8a6114;
+  --ember-ink: var(--ink);
+  --positive-ink: var(--gain);
+  --negative-ink: var(--crimson);
 
   --wordmark-gradient: linear-gradient(168deg, #6b4a1a 10%, #8a6a2e 55%, #b08a3e 95%);
   /* A soft vignette standing in for the dark theme's forge-glow bloom — an
@@ -545,12 +562,12 @@ body::after {
 }
 
 .delta.is-better {
-  color: #8fd0a4;
+  color: var(--positive-ink);
   background: rgba(25, 158, 112, 0.16);
 }
 
 .delta.is-worse {
-  color: #efa08a;
+  color: var(--negative-ink);
   background: rgba(217, 89, 38, 0.16);
 }
 
@@ -752,7 +769,7 @@ body::after {
 }
 
 .matrix-invert.is-active {
-  color: #fdf5e7;
+  color: var(--ember-ink);
   border-color: var(--ember);
   background: rgba(217, 89, 38, 0.13);
 }
@@ -898,7 +915,7 @@ body::after {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 .highlight-answer {
@@ -994,12 +1011,12 @@ body::after {
 }
 
 .activity-badge.is-hot-streak {
-  color: #f2a37a;
+  color: var(--ember-ink);
   background: rgba(217, 89, 38, 0.18);
 }
 
 .activity-badge.is-grinder {
-  color: #e3c675;
+  color: var(--ember-ink);
   background: rgba(201, 162, 39, 0.2);
 }
 
@@ -1040,7 +1057,7 @@ body::after {
 }
 
 .gains-view-toggle.is-active {
-  color: #fdf5e7;
+  color: var(--ember-ink);
   border-color: var(--ember);
   background: rgba(217, 89, 38, 0.13);
 }
@@ -1173,7 +1190,7 @@ body::after {
 }
 
 .tab.is-active {
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 /* The three periods share one bordered block so a player can be followed down
@@ -1628,7 +1645,7 @@ body::after {
 
 .player-sort:hover .player-name,
 .player-sort:focus-visible .player-name {
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 .player-sort:focus-visible {
@@ -1803,7 +1820,7 @@ body::after {
 
 /* Leader: a gold star after the figure rather than a border treatment. */
 .cell.is-leader .cell-primary {
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 .cell-star {
@@ -2066,7 +2083,7 @@ body::after {
 .quest-series-link.is-selected {
   border-color: var(--ember);
   background: rgba(217, 89, 38, 0.13);
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 /* Every quest in the series completed (its own completed/total, not just
@@ -2154,7 +2171,7 @@ body::after {
 }
 
 .quest-list-item.is-completed .quest-list-check {
-  color: #8fd0a4;
+  color: var(--positive-ink);
 }
 
 .quest-list-item.is-in-progress .quest-list-check {
@@ -2201,7 +2218,7 @@ body::after {
 }
 
 .quest-list-item.is-selected .quest-list-name {
-  color: #fdf5e7;
+  color: var(--ember-ink);
   font-weight: 500;
 }
 
@@ -2394,7 +2411,7 @@ body::after {
 }
 
 .quest-graph-fullscreen-btn[aria-pressed='true'] {
-  color: #fdf5e7;
+  color: var(--ember-ink);
   border-color: var(--ember);
   background: rgba(217, 89, 38, 0.13);
 }
@@ -2685,7 +2702,7 @@ body::after {
 }
 
 .quest-graph-node-skill.is-not-met {
-  color: #efa08a;
+  color: var(--negative-ink);
 }
 
 .quest-graph-node.is-completed {
@@ -2693,7 +2710,7 @@ body::after {
 }
 
 .quest-graph-node.is-completed .quest-graph-node-check {
-  color: #8fd0a4;
+  color: var(--positive-ink);
 }
 
 /* Warn, not ember — ember is reserved for .is-target's own "this is the
@@ -2818,7 +2835,7 @@ body::after {
 }
 
 .quest-graph-legend-skill.is-not-met {
-  color: #efa08a;
+  color: var(--negative-ink);
 }
 
 .quest-graph-legend-highlight {
@@ -3653,7 +3670,7 @@ body::after {
 
 .goal-label-row-delete:hover,
 .goal-label-row-delete:focus-visible {
-  color: #efa08a;
+  color: var(--negative-ink);
   background: var(--surface-2);
 }
 
@@ -3789,8 +3806,8 @@ body::after {
    negative" text colour — rather than inventing a new one for this single
    destructive button. */
 .goal-btn-danger {
-  border-color: #efa08a;
-  color: #efa08a;
+  border-color: var(--negative-ink);
+  color: var(--negative-ink);
 }
 
 .goal-btn-danger:hover {
@@ -3863,7 +3880,7 @@ body::after {
 
 .bar-chart-activate:hover .chart-card-label,
 .bar-chart-activate:focus-visible .chart-card-label {
-  color: #fdf5e7;
+  color: var(--ember-ink);
 }
 
 .bar-chart-activate:focus-visible {
