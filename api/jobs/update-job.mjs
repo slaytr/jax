@@ -21,6 +21,7 @@ import { isRedundant } from '../../scripts/snapshots.mjs';
 import { readCurrentLatest, readMostRecentSnapshot } from '../store/current-state.mjs';
 import { writeRun, writePlayerRun } from '../store/write-run.mjs';
 import { closePool } from '../db.mjs';
+import { runMigrations } from '../migrate.mjs';
 
 const ROSTER_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'data', 'players.json');
 
@@ -72,6 +73,14 @@ export async function runSinglePlayerUpdateCycle(slug) {
 }
 
 async function main() {
+  // Same reasoning as server.mjs's own boot sequence: this writes through
+  // api/store/upserts.mjs, which can reference a column a just-added
+  // migration hasn't necessarily reached this service's own database
+  // connection for yet — the cron service redeploys independently of the
+  // web one, so it needs this same guarantee rather than assuming the web
+  // service's own boot got there first.
+  await runMigrations();
+
   console.log('Running group update cycle…');
   const summary = await runGroupUpdateCycle();
   console.log(

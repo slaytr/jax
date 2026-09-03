@@ -5,12 +5,22 @@
  * schema_migrations table so this is safe to run on every deploy — nothing
  * happens if there's nothing new.
  *
+ * runMigrations() is also called from server.mjs's own boot sequence, before
+ * it starts listening — a deploy's new code and its own new migration(s)
+ * land together that way, with no window where the new code is already
+ * serving requests against a schema that hasn't caught up yet (an earlier
+ * version of this relied on a separate CI step reaching the right Railway
+ * instance after the fact, which is exactly what left column
+ * ps.latest_activity missing in production for a while). Doesn't close the
+ * pool itself — server.mjs keeps using the same one afterward; only the CLI
+ * entry point below (`node api/migrate.mjs`, for a manual run) does that.
+ *
  * Usage: node api/migrate.mjs
  */
 
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { pool, withTransaction, closePool } from './db.mjs';
 
@@ -38,7 +48,7 @@ async function applyMigration(filename) {
   });
 }
 
-async function main() {
+export async function runMigrations() {
   await ensureMigrationsTable();
   const applied = await appliedFilenames();
 
@@ -59,9 +69,21 @@ async function main() {
   console.log(`Applied ${pending.length} migration(s).`);
 }
 
-main()
-  .catch((error) => {
+async function main() {
+  try {
+    await runMigrations();
+  } catch (error) {
     console.error(`\nMigration failed: ${error.message}`);
     process.exitCode = 1;
-  })
-  .finally(closePool);
+  } finally {
+    await closePool();
+  }
+}
+
+// Only auto-run when invoked directly (`node api/migrate.mjs`) — same
+// dependency-injection guard server.mjs uses, so importing runMigrations
+// (server.mjs's own boot sequence) never triggers this a second time or
+// closes the shared pool out from under it.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

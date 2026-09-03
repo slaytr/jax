@@ -20,6 +20,7 @@ import readRoutes from './routes/read.mjs';
 import authRoutes from './routes/auth.mjs';
 import goalsRoutes from './routes/goals.mjs';
 import refreshRoutes from './routes/refresh.mjs';
+import { runMigrations } from './migrate.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'web', 'dist');
@@ -82,6 +83,15 @@ export async function buildServer() {
 }
 
 async function main() {
+  // Ahead of buildServer()/listen(): a fresh deploy's own new migration(s)
+  // must be applied before this starts answering requests against them —
+  // see migrate.mjs's own doc comment for the production incident this
+  // replaced (a CI step that ran too late, against the wrong instance,
+  // some of the time). Left unguarded on purpose: a migration failure here
+  // should crash the boot, not start serving against a schema the code
+  // doesn't actually match.
+  await runMigrations();
+
   const fastify = await buildServer();
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
