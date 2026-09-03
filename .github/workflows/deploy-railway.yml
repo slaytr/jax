@@ -1,8 +1,10 @@
 name: Deploy to Railway
 
 # Deploys the two Postgres-backed Railway services (web, cron — see
-# railway.toml's own header comment and the Postgres migration plan) on
-# every push to this branch, plus on demand via workflow_dispatch.
+# railway.toml's own header comment and the Postgres migration plan), then
+# applies any pending database migrations (see the migrate job's own doc
+# comment below) — on every push to this branch, plus on demand via
+# workflow_dispatch.
 #
 # Scoped to feat/postgres-api specifically, not main: the old GitHub
 # Pages + Railway cron pipeline still lives on main untouched (see the
@@ -48,3 +50,27 @@ jobs:
         run: npm install -g @railway/cli
       - name: Deploy cron service
         run: railway up --service cron --ci
+
+  # Applies any api/migrations/*.sql files api/migrate.mjs hasn't recorded
+  # in schema_migrations yet (it's a no-op otherwise — see that script's own
+  # doc comment). Runs after deploy-web, not alongside it: DATABASE_URL here
+  # is postgres.railway.internal, Railway's own private-network hostname —
+  # unreachable from this runner directly (a plain `railway run` only
+  # forwards env vars locally, it doesn't proxy network access), so this
+  # goes through `railway ssh` instead, which executes the command on
+  # Railway's own infrastructure, inside that network, same as if you'd
+  # opened a shell on the web service yourself. That's also why this needs
+  # deploy-web specifically to have finished first: it has to land on an
+  # instance that actually has this deploy's own migration files on disk,
+  # not whatever was running before it.
+  migrate:
+    needs: deploy-web
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Apply pending database migrations
+        run: railway ssh --service web -- node api/migrate.mjs
