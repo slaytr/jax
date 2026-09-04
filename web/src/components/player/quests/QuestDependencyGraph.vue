@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { dependencyGraphFor, visibleDependencyGraph } from '@shared/quest-graph.js';
 import { skillLevelsByName } from '@shared/quest-status.js';
 import { SKILLS, iconFor, WIKI_ICON } from '@shared/config.js';
 import { questWikiUrl } from '@shared/quest-goal.js';
 import { STATUS_MARKER } from '@/lib/quests';
+import { usePrefs } from '@/composables/usePrefs';
+import { useQuestGuides } from '@/composables/useQuestGuides';
+import QuestQuickGuide from '@/components/player/quests/QuestQuickGuide.vue';
 import {
   canCreateQuestGoal,
   edgePath,
@@ -43,6 +46,19 @@ import {
  * ensureFullscreenPortal/clearFullscreenPortal) — Vue already solves the
  * "escape #panel's own transformed containing block" problem a portal was
  * built for.
+ *
+ * Map/guide is a second view alongside the same selection — same "list vs
+ * graph" shape as the Goals tab's own toggle (GoalsList.vue), including
+ * persisting the choice the same way (usePrefs). Only a single quest has a
+ * guide to show (QuestQuickGuide.vue), so `guideQuest` below prefers
+ * whichever node is currently highlighted in the map (clicking a node's
+ * own name — the same highlightNode emit that dims the rest of the graph)
+ * over the plain selection: that's what lets clicking around a whole
+ * questline's map pick out one member's guide, not just whatever single
+ * quest the map happened to be anchored on. useQuestGuides.ts's own
+ * quest-guides.json is only ever requested once a viewer actually switches
+ * to this view — not just from opening the Quests tab, same lazy-load
+ * reasoning as useQuests.ts's own quest list fetch.
  */
 const props = defineProps<{
   quests: any[] | null;
@@ -63,6 +79,33 @@ const emit = defineEmits<{
 }>();
 
 const SKILL_BY_NAME = new Map(SKILLS.map((skill: any) => [skill.name, skill]));
+
+const { prefs, savePref } = usePrefs();
+const view = ref<'map' | 'guide'>(prefs.questGraphView === 'guide' ? 'guide' : 'map');
+watch(view, (value) => savePref({ questGraphView: value }));
+
+const { guides, status: guidesStatus, ensureLoaded: ensureGuidesLoaded } = useQuestGuides();
+watch(
+  view,
+  (value) => {
+    if (value === 'guide') ensureGuidesLoaded();
+  },
+  { immediate: true },
+);
+/** Which quest the guide view is actually showing — a highlighted node
+ * (clicking a node's own name in the map, same highlightNode emit that
+ * dims everything else) wins over the plain selection, so clicking around
+ * the map updates the guide view right along with it, not just the one
+ * quest/questline the map itself is anchored on. Falls back to the anchor
+ * selection itself when it's a single quest (not a whole questline) and
+ * nothing's highlighted; a questline anchor with nothing highlighted has
+ * no one quest to show, same as before this existed. */
+const guideQuest = computed(() => {
+  const highlighted = props.highlightedName ? (props.quests?.find((quest) => quest.name === props.highlightedName) ?? null) : null;
+  if (highlighted) return highlighted;
+  return props.selection?.kind === 'quest' ? props.selection.quest : null;
+});
+const selectedQuestGuide = computed(() => (guideQuest.value && guides.value ? (guides.value[guideQuest.value.name] ?? null) : null));
 
 const targetNames = computed(() => (props.quests && props.selection ? targetNamesFor(props.quests, props.selection) : []));
 const totalGraph = computed(() => (props.quests && props.selection ? dependencyGraphFor(props.quests, targetNames.value) : null));
@@ -150,7 +193,30 @@ const LEGEND_ITEMS: Array<[string, string]> = [
   <Teleport to="body" :disabled="!isFullscreen">
     <section class="lb quest-flowchart" :class="{ 'is-fullscreen': isFullscreen }">
       <div class="lb-head">
-        <div class="lb-title"><h2>Dependency map</h2></div>
+        <div class="lb-title"><h2>{{ view === 'guide' ? 'Quick guide' : 'Dependency map' }}</h2></div>
+        <div class="gains-view-tabs" role="tablist" aria-label="Quest panel display">
+          <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'map' }" role="tab" :aria-selected="view === 'map'" title="Show the dependency map" @click="view = 'map'">
+            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <line x1="3.5" y1="9" x2="9" y2="3.5" class="toggle-line" />
+              <line x1="3.5" y1="9" x2="9" y2="14.5" class="toggle-line" />
+              <line x1="9" y1="3.5" x2="15" y2="9" class="toggle-line" />
+              <line x1="9" y1="14.5" x2="15" y2="9" class="toggle-line" />
+              <circle cx="3.5" cy="9" r="1.6" />
+              <circle cx="9" cy="3.5" r="1.6" />
+              <circle cx="9" cy="14.5" r="1.6" />
+              <circle cx="15" cy="9" r="1.6" />
+            </svg>
+            <span class="visually-hidden">Show the dependency map</span>
+          </button>
+          <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'guide' }" role="tab" :aria-selected="view === 'guide'" title="Show the quick guide" @click="view = 'guide'">
+            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <rect x="1.5" y="2" width="15" height="3.2" rx="1" />
+              <rect x="1.5" y="7.4" width="15" height="3.2" rx="1" />
+              <rect x="1.5" y="12.8" width="15" height="3.2" rx="1" />
+            </svg>
+            <span class="visually-hidden">Show the quick guide</span>
+          </button>
+        </div>
         <button
           type="button"
           class="quest-graph-fullscreen-btn"
@@ -162,7 +228,19 @@ const LEGEND_ITEMS: Array<[string, string]> = [
         </button>
       </div>
 
-      <p v-if="!selection || !quests" class="chart-empty">Click a quest on the left to see its dependency chain.</p>
+      <p v-if="!selection || !quests" class="chart-empty">
+        {{ view === 'guide' ? 'Click a quest on the left to see its quick guide.' : 'Click a quest on the left to see its dependency chain.' }}
+      </p>
+
+      <div v-else-if="view === 'guide'" class="quest-graph-body">
+        <p v-if="!guideQuest" class="chart-empty">Select a single quest — or a node within a questline's map — to see its quick guide.</p>
+        <p v-else-if="guidesStatus === 'loading'" class="chart-empty">Loading quick guide…</p>
+        <p v-else-if="guidesStatus === 'error'" class="chart-empty">Couldn't load quick guide data.</p>
+        <div v-else class="quest-guide-scroll">
+          <QuestQuickGuide :quest="guideQuest" :guide="selectedQuestGuide" :player-slug="player.slug" />
+        </div>
+      </div>
+
       <p v-else-if="!totalGraph || !visibleGraph" class="chart-empty">Couldn't find {{ notFoundLabel }} in the quest data.</p>
 
       <div v-else class="quest-graph-body">

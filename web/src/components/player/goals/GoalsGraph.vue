@@ -186,6 +186,7 @@ const edges = computed<Edge[]>(() => {
     focusable: true,
     class: 'is-custom',
     markerEnd: MarkerType.ArrowClosed,
+    data: { onRemove: () => customConnections.remove(connection.id) },
   }));
   return [...dependencyEdges, ...drawnEdges];
 });

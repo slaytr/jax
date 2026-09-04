@@ -3223,6 +3223,176 @@ body::after {
   background: var(--surface-0);
 }
 
+/* The quick-guide view's own scroll cap — same 520px/border/radius recipe
+   as .quest-graph-scroll above (and the same fullscreen lift below), just
+   its own class since QuestQuickGuide.vue's content is a column of text
+   rather than an absolutely-positioned canvas. */
+.quest-guide-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+.quest-flowchart.is-fullscreen .quest-guide-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.quest-guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+}
+
+.quest-guide-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.quest-guide-items {
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.quest-guide-items-label {
+  margin: 0 0 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.quest-guide-items ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
+/* One block per quest-guides.json section (QuestQuickGuide.vue) — the
+   wiki guide's own named sub-sections ("Getting started", "One small
+   favour", …), each its own heading plus an optional needed/recommended
+   tag, section-level notes, and its own step tree. */
+.quest-guide-section + .quest-guide-section {
+  margin-top: 1rem;
+}
+
+.quest-guide-heading {
+  margin: 0 0 0.35rem;
+  color: var(--ember-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.quest-guide-section-tag {
+  margin: 0 0 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+}
+
+.quest-guide-section-tag span {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.quest-guide-section-notes,
+.quest-guide-step-notes {
+  margin: 0.2rem 0 0.4rem;
+  padding-left: 1.1rem;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  font-style: italic;
+  list-style: '— ';
+}
+
+/* The step tree itself — quest-guides.json nests a step's own `substeps`
+   arbitrarily deep, so QuestGuideStepList.vue renders itself recursively;
+   this rule applies at every depth alike (a nested <ul> just sits inside
+   its own parent <li>, no per-level class of its own needed) with the
+   bullet reading as a plain dash — a filled '•' would visually compete
+   with a section's own heading colour at this font weight. */
+.quest-guide-step-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: none;
+}
+
+.quest-guide-step {
+  margin: 0.3rem 0;
+  position: relative;
+}
+
+/* The step's own bullet, now a real checkbox (useQuestGuideCompletion.ts)
+   — <label> rather than a bare <input>+<span> pair so clicking the step
+   text itself also toggles it, not just the box. */
+.quest-guide-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.quest-guide-step-checkbox {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--gain);
+  cursor: pointer;
+}
+
+.quest-guide-step-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* Struck through and muted once checked off — same "done" language as a
+   completed goal card's own target line (.goal-card.is-complete
+   .goal-card-target) or an Area Task row (.task-row.is-complete), just a
+   strikethrough here since there's no background of its own to recolour on
+   a single inline line. */
+.quest-guide-step-text.is-done {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--hairline-strong);
+}
+
+.quest-guide-step .quest-guide-step-list {
+  margin-top: 0.15rem;
+}
+
+/* A section's own screenshots (QuestQuickGuide.vue) — straight off the
+   wiki's own CDN, so width/height vary image to image; capped rather than
+   shown at native size so a wide one doesn't blow out the guide's own
+   column, each still keeping its own aspect ratio via the real
+   width/height attributes already on the <img> itself. */
+.quest-guide-screenshots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0 1.1rem;
+}
+
+.quest-guide-screenshots img {
+  display: block;
+  max-width: 220px;
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
 /* Sized exactly to its content (quest-dependency-graph.js sets width/height
    inline from the same layout math the nodes and edges are positioned
    against) — position:relative just gives the absolutely-positioned nodes
@@ -4594,8 +4764,9 @@ body::after {
 /* A user-drawn connection (useGoalGraphConnections.ts, started by dragging
    a node's own connector chip below) — dashed and dimmer than a dependency
    edge at rest so the two read as different *kinds* of line, brightening
-   on select since it's the only kind a viewer can actually pick and delete
-   (Backspace/Delete — GoalsGraph.vue's own onEdgesChange, no bespoke UI). */
+   on select — the same click that surfaces GoalGraphEdge.vue's own unlink
+   button below, Backspace/Delete still works too (GoalsGraph.vue's own
+   onEdgesChange). */
 .vue-flow__edge.is-custom .vue-flow__edge-path {
   stroke: var(--ink-2);
   stroke-dasharray: 4 3;
@@ -4612,6 +4783,37 @@ body::after {
 
 .vue-flow__edge.is-custom.selected .vue-flow__arrowhead {
   fill: var(--ember);
+}
+
+/* GoalGraphEdge.vue's own unlink button — rendered through Vue Flow's
+   EdgeLabelRenderer, an HTML overlay positioned in screen space rather
+   than the SVG the edge itself draws in, hence the plain position:
+   absolute/left:0/top:0 base an inline transform then offsets from (the
+   overlay's own container already covers the whole canvas at (0, 0)). Only
+   ever mounted once a custom edge is selected (GoalGraphEdge.vue's own
+   v-if), so no positioning glitch is visible before then. */
+.goal-graph-edge-unlink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--ember);
+  border-radius: 999px;
+  background: var(--surface-0);
+  color: var(--ember);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.goal-graph-edge-unlink:hover {
+  background: var(--ember);
+  color: var(--surface-0);
 }
 
 /* The in-progress line while actually dragging a new connection out of a

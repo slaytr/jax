@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BaseEdge, getBezierPath, Position, type EdgeProps } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, Position, type EdgeProps } from '@vue-flow/core';
 
 import { NODE_DIAMETER } from '@/lib/goalGraphLayout';
 
@@ -22,8 +22,18 @@ import { NODE_DIAMETER } from '@/lib/goalGraphLayout';
  * GoalGraphNode.vue regardless — Vue Flow still needs *a* concrete
  * anchor per node to resolve which two nodes an edge connects, this just
  * ignores where that anchor happens to sit for the actual drawn path.
+ *
+ * `data.onRemove` — GoalsGraph.vue's own customConnections.remove for this
+ * one edge, set only on a viewer-drawn connection (a dependency edge gets
+ * no `data` at all, same as it's already `deletable: false`). Surfaced as
+ * an unlink button at the curve's own midpoint once a viewer's selected
+ * the edge (clicking anywhere along it, same click Vue Flow already
+ * recognises for the Backspace/Delete path) rather than shown unprompted
+ * on every custom connection all the time — a graph with several drawn
+ * links would otherwise be peppered with buttons nobody's asked to see
+ * yet.
  */
-const props = defineProps<EdgeProps>();
+const props = defineProps<EdgeProps<{ onRemove?: () => void }>>();
 
 const RADIUS = NODE_DIAMETER / 2;
 
@@ -47,7 +57,7 @@ const path = computed(() => {
   const dy = target.y - source.y;
   const angle = Math.atan2(dy, dx);
 
-  const [d] = getBezierPath({
+  const [d, labelX, labelY] = getBezierPath({
     sourceX: source.x + Math.cos(angle) * RADIUS,
     sourceY: source.y + Math.sin(angle) * RADIUS,
     sourcePosition: nearestSide(dx, dy),
@@ -55,10 +65,21 @@ const path = computed(() => {
     targetY: target.y - Math.sin(angle) * RADIUS,
     targetPosition: nearestSide(-dx, -dy),
   });
-  return d;
+  return { d, labelX, labelY };
 });
 </script>
 
 <template>
-  <BaseEdge :id="id" :path="path" :marker-end="markerEnd" :style="style" />
+  <BaseEdge :id="id" :path="path.d" :marker-end="markerEnd" :style="style" />
+  <EdgeLabelRenderer v-if="data?.onRemove && selected">
+    <button
+      type="button"
+      class="goal-graph-edge-unlink nodrag nopan"
+      :style="{ transform: `translate(-50%, -50%) translate(${path.labelX}px, ${path.labelY}px)` }"
+      title="Remove this connection"
+      @click="data.onRemove()"
+    >
+      ×
+    </button>
+  </EdgeLabelRenderer>
 </template>

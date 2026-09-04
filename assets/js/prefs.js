@@ -5,8 +5,10 @@
  * last showing (tracked separately per view — see app.js's
  * gainsGridPeriod/gainsLinePeriod), plus (Vue app only) whether a player's
  * Goals tab was last showing its list or graph view (goalsView — see
- * GoalsList.vue). Everything else (sort order, the invert toggle) resets on
- * reload; these are the ones worth a reader not having to redo.
+ * GoalsList.vue) and whether the Quests tab's second column was last showing
+ * its dependency map or quick guide (questGraphView — see
+ * QuestDependencyGraph.vue). Everything else (sort order, the invert toggle)
+ * resets on reload; these are the ones worth a reader not having to redo.
  *
  * localStorage only: per-browser, never sent anywhere. Reads/writes are
  * best-effort — private browsing or a full/blocked store should never break
