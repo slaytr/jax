@@ -4785,6 +4785,19 @@ body::after {
   fill: var(--ember);
 }
 
+/* A quest-requires-quest link (GoalsGraph.vue's own visibleGoalItems) — a
+   different *kind* of gate than a skill-requirement dependencyEdge (level N
+   in some skill vs. finish this other quest first), so its own colour
+   rather than reusing --hairline-strong; solid rather than is-custom's own
+   dashed, since a viewer never draws or deletes one of these by hand. */
+.vue-flow__edge.is-quest-prereq .vue-flow__edge-path {
+  stroke: var(--brass);
+}
+
+.vue-flow__edge.is-quest-prereq .vue-flow__arrowhead {
+  fill: var(--brass);
+}
+
 /* GoalGraphEdge.vue's own unlink button — rendered through Vue Flow's
    EdgeLabelRenderer, an HTML overlay positioned in screen space rather
    than the SVG the edge itself draws in, hence the plain position:

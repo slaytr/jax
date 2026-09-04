@@ -14,16 +14,27 @@ import { progressFillStyle } from '@/lib/goals';
  * the focus panel's `<div>`), same shape as the legacy view's own
  * skillProgressRowContent, which returned a bare array of children for the
  * same reason.
+ *
+ * `showLabel` drops the icon+name — see its own doc comment on the prop.
  */
-const props = defineProps<{
-  goal: any;
-  skill: { name: string };
-  startValue: number;
-  currentValue: number;
-  targetValue: number;
-  fraction: number;
-  canEdit: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    goal: any;
+    skill: { name: string };
+    startValue: number;
+    currentValue: number;
+    targetValue: number;
+    fraction: number;
+    canEdit: boolean;
+    // Off only for the focus panel's own standalone-skill-goal row
+    // (GoalFocusPanel.vue) — its header already names the one skill this
+    // row is for, so repeating the icon+name right underneath is pure
+    // duplication there. Every other caller (a quest's own list of *distinct*
+    // skill requirements) still wants this on, hence the default.
+    showLabel?: boolean;
+  }>(),
+  { showLabel: true },
+);
 
 const emit = defineEmits<{ delete: [] }>();
 
@@ -32,8 +43,10 @@ const percent = computed(() => Math.round((complete.value ? 1 : props.fraction) 
 </script>
 
 <template>
-  <img class="goal-subgoal-icon" :src="iconFor(skill)" alt="" width="16" height="16" decoding="async" />
-  <span class="goal-subgoal-name">{{ skill.name }}</span>
+  <template v-if="showLabel">
+    <img class="goal-subgoal-icon" :src="iconFor(skill)" alt="" width="16" height="16" decoding="async" />
+    <span class="goal-subgoal-name">{{ skill.name }}</span>
+  </template>
   <span class="goal-subgoal-start">{{ formatNumber(startValue) }}</span>
   <div class="goal-subgoal-track" role="presentation">
     <span class="goal-subgoal-fill" :style="complete ? { width: '100%' } : progressFillStyle(fraction)" />

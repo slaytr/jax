@@ -15,7 +15,7 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 
 import { itemsFor, type GoalSection } from '@/lib/goals';
-import { layoutGoalGraph } from '@/lib/goalGraphLayout';
+import { layoutGoalGraph, visibleGoalItems } from '@/lib/goalGraphLayout';
 import { useGoalGraphPositions } from '@/composables/useGoalGraphPositions';
 import { useGoalGraphConnections } from '@/composables/useGoalGraphConnections';
 import { useGoalGraphNotes } from '@/composables/useGoalGraphNotes';
@@ -62,6 +62,7 @@ const props = defineProps<{
   bySkillId: Map<number, any>;
   player: any;
   focusedId: string | null;
+  quests: any[] | null;
 }>();
 
 const emit = defineEmits<{ focus: [id: string] }>();
@@ -72,7 +73,17 @@ const notesStore = useGoalGraphNotes(props.player.slug);
 const calculatorNodesStore = useGoalGraphCalculatorNodes(props.player.slug);
 
 const items = computed(() => props.sections.flatMap(itemsFor));
-const layout = computed(() => layoutGoalGraph(items.value));
+
+/** Which of `items` this view actually draws, plus the quest-requires-quest
+ * edges between them — see visibleGoalItems's own doc comment for the full
+ * rule (completed quest goals dropped outright; an open one shown only when
+ * it shares a direct real-game requirement link with another open, tracked
+ * quest goal). `activeSkillGoal`/`agilityGoal`/`fishingGoal` below still
+ * read off the unfiltered `items` — a quest goal's own nested skill
+ * requirement is still a real, live goal even while this view has reason to
+ * hide the quest bubble itself. */
+const visible = computed(() => visibleGoalItems(items.value, props.quests));
+const layout = computed(() => layoutGoalGraph(visible.value.items));
 
 /** The player's own active goal for a given skill, if they've set one — a
  * calculator's own default target (AgilityCalculator.vue/
@@ -93,6 +104,16 @@ const goalNodes = computed<Node[]>(() =>
     type: 'goal',
     position: positions.get(node.id) ?? { x: node.x, y: node.y },
     connectable: true,
+    // `selected` (Vue Flow's own node-selection state, not this app's
+    // focusedId — GoalGraphNode.vue never reads `selected` at all) has to
+    // stay off, not just unused: dragging a *different*, unselectable node
+    // (a note or calculator node) still sweeps up every node Vue Flow
+    // considers selected, since its own getDragItems collects by `node.id
+    // === draggedId OR node.selected` — a goal node left selected from an
+    // earlier click would silently ride along with the next note or
+    // calculator drag. Notes/calculatorGraphNodes below already have this
+    // for their own reasons; goal nodes need it for this one.
+    selectable: false,
     data: {
       goal: node.goal,
       isRoot: node.isRoot,
@@ -188,7 +209,22 @@ const edges = computed<Edge[]>(() => {
     markerEnd: MarkerType.ArrowClosed,
     data: { onRemove: () => customConnections.remove(connection.id) },
   }));
-  return [...dependencyEdges, ...drawnEdges];
+  // Quest-requires-quest links (visibleGoalItems above) — read-only, same as
+  // a skill-requirement dependencyEdge, just its own class so
+  // GoalGraphEdge.vue's CSS can tell "this quest gates that one" apart from
+  // "this skill level gates this quest".
+  const questPrereqEdges: Edge[] = visible.value.questPrereqEdges.map((edge) => ({
+    id: `${edge.from}=>${edge.to}`,
+    source: edge.from,
+    target: edge.to,
+    type: 'goalFloating',
+    selectable: false,
+    deletable: false,
+    focusable: false,
+    class: 'is-quest-prereq',
+    markerEnd: MarkerType.ArrowClosed,
+  }));
+  return [...dependencyEdges, ...questPrereqEdges, ...drawnEdges];
 });
 
 const { onNodeDragStop, onNodeClick, onNodeMouseEnter, onNodeMouseLeave, onConnect, onEdgesChange, fitView, screenToFlowCoordinate } =

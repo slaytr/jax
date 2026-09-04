@@ -75,12 +75,19 @@ const detailParts = computed<string[]>(() => {
 
   const currentLevel = props.player.skillById?.[props.goal.skillId]?.level ?? props.goal.startLevel;
   const days = Math.max((Date.now() - Date.parse(props.goal.startedAt)) / 86400000, 1 / 24);
-  const xpGained = skillProgress.value!.currentXp - props.goal.startXp;
+  const currentXp = skillProgress.value!.currentXp;
+  const targetXp = skillProgress.value!.targetXp;
+  const xpGained = currentXp - props.goal.startXp;
   const levelsGained = currentLevel - props.goal.startLevel;
   const ratePerDay = xpGained / days;
-  const etaDays = ratePerDay > 0 ? (skillProgress.value!.targetXp - skillProgress.value!.currentXp) / ratePerDay : null;
+  const xpRemaining = Math.max(0, targetXp - currentXp);
+  const etaDays = ratePerDay > 0 ? xpRemaining / ratePerDay : null;
   return [
     `Started ${formatRelativeTime(props.goal.startedAt)}`,
+    `Start ${formatNumber(props.goal.startXp)} xp`,
+    `Current ${formatNumber(currentXp)} xp`,
+    `${formatNumber(xpRemaining)} xp to go`,
+    `Target ${formatNumber(targetXp)} xp`,
     `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'} so far`,
     `+${formatNumber(xpGained)} xp so far`,
     `${formatCompact(ratePerDay)} xp/day avg`,
@@ -161,6 +168,7 @@ function childProgress(child: any) {
           :target-value="goal.targetValue"
           :fraction="skillProgress!.fraction"
           :can-edit="canEdit"
+          :show-label="false"
           @delete="emit('delete', goal.id)"
         />
       </div>

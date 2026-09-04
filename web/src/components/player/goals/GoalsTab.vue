@@ -137,6 +137,7 @@ function handleConfirmQuestGoal(drafts: any[]) {
     :collapsed-groups="collapsedGroupsSet"
     :focus-goal-id="statsState.focusGoalId"
     :can-edit="canEdit"
+    :quests="quests"
     @update:label-filter="(v) => (statsState.goalLabelFilter = v)"
     @toggle-group="toggleGroup"
     @focus="focusGoal"

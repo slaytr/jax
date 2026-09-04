@@ -23,6 +23,10 @@ const props = defineProps<{
   collapsedGroups: Set<string>;
   focusGoalId: string | null;
   canEdit: boolean;
+  // The full quest-data list, for GoalsGraph.vue's own quest-requires-quest
+  // edges — same lazily-loaded prop GoalsTab.vue already threads to
+  // QuestGoalDialog.vue, null until the Goals tab has actually requested it.
+  quests: any[] | null;
 }>();
 
 const emit = defineEmits<{
@@ -175,6 +179,6 @@ watch(view, (value) => savePref({ goalsView: value }));
       </div>
     </template>
 
-    <GoalsGraph v-else :sections="sections" :by-skill-id="bySkillId" :player="player" :focused-id="focusGoalId" @focus="toggleFocus" />
+    <GoalsGraph v-else :sections="sections" :by-skill-id="bySkillId" :player="player" :focused-id="focusGoalId" :quests="quests" @focus="toggleFocus" />
   </section>
 </template>
