@@ -26,6 +26,7 @@ import GoalGraphNote from '@/components/player/goals/GoalGraphNote.vue';
 import GoalGraphCalculatorNode from '@/components/player/goals/GoalGraphCalculatorNode.vue';
 import CalculatorPanel from '@/components/player/CalculatorPanel.vue';
 import { AGILITY_SKILL_ID } from '@/lib/agilityCalculator';
+import { FISHING_SKILL_ID } from '@/lib/fishingCalculator';
 
 /**
  * The Goals tab's graph view (GoalsList.vue's own List/Graph toggle) — every
@@ -73,18 +74,18 @@ const calculatorNodesStore = useGoalGraphCalculatorNodes(props.player.slug);
 const items = computed(() => props.sections.flatMap(itemsFor));
 const layout = computed(() => layoutGoalGraph(items.value));
 
-/** The player's own active Agility goal, if they've set one — the XP
- * calculator's own default target (AgilityCalculator.vue), so it doesn't
- * ask a viewer to re-enter a number they've already committed to
- * elsewhere. A quest's own nested skill requirement counts too, same as a
- * standalone one; only completed goals are skipped, since a finished one
- * isn't a meaningful "where am I headed" default any more. */
-const agilityGoal = computed(
-  () =>
-    items.value
-      .flatMap((item) => [item.quest, ...item.children])
-      .find((goal) => goal.kind === 'skill' && goal.skillId === AGILITY_SKILL_ID && !goal.completedAt) ?? null,
-);
+/** The player's own active goal for a given skill, if they've set one — a
+ * calculator's own default target (AgilityCalculator.vue/
+ * FishingCalculator.vue), so it doesn't ask a viewer to re-enter a number
+ * they've already committed to elsewhere. A quest's own nested skill
+ * requirement counts too, same as a standalone one; only completed goals
+ * are skipped, since a finished one isn't a meaningful "where am I headed"
+ * default any more. */
+function activeSkillGoal(skillId: number) {
+  return items.value.flatMap((item) => [item.quest, ...item.children]).find((goal) => goal.kind === 'skill' && goal.skillId === skillId && !goal.completedAt) ?? null;
+}
+const agilityGoal = computed(() => activeSkillGoal(AGILITY_SKILL_ID));
+const fishingGoal = computed(() => activeSkillGoal(FISHING_SKILL_ID));
 
 const goalNodes = computed<Node[]>(() =>
   layout.value.nodes.map((node) => ({
@@ -210,13 +211,13 @@ const calculatorOpen = ref(false);
 
 /** Which goal GoalGraphNode.vue's own hover shortcut was clicked on, if
  * that's how the panel got opened — CalculatorPanel.vue's own
- * `initialSkillId` prop (jump straight to Agility) and `agilityGoal` prop
- * (which target to prefill) both key off this instead of the generic
- * `agilityGoal` lookup above when it's set, so the panel opens scoped to
- * the *specific* goal a viewer clicked on, not just whichever Agility goal
- * happens to be active. Cleared whenever the main toggle button opens the
- * panel instead, so a later, ordinary open doesn't keep inheriting a stale
- * one. */
+ * `initialSkillId` prop (jump straight to that goal's own skill) and
+ * whichever of `agilityGoal`/`fishingGoal` matches its `skillId` both key
+ * off this instead of the generic activeSkillGoal lookup above when it's
+ * set, so the panel opens scoped to the *specific* goal a viewer clicked
+ * on, not just whichever goal for that skill happens to be active.
+ * Cleared whenever the main toggle button opens the panel instead, so a
+ * later, ordinary open doesn't keep inheriting a stale one. */
 const quickCalculatorGoal = ref<any | null>(null);
 
 function toggleCalculator() {
@@ -225,13 +226,14 @@ function toggleCalculator() {
 }
 
 /** GoalGraphNode.vue's own hover shortcut (top-left, `isCalculatorSupported`
- * gated to Agility skill goals only) — opens the calculator panel straight
- * to AgilityCalculator.vue, prefilled with *this* goal's own target,
- * rather than instantly creating a node the way an earlier version of this
- * did: a viewer gets to see and adjust the route (or just confirm the
- * optimal one) before anything's actually saved to the canvas. */
+ * gated to skills with a real calculator only) — opens the calculator
+ * panel straight to that skill's own calculator component, prefilled with
+ * *this* goal's own target, rather than instantly creating a node the way
+ * an earlier version of this did: a viewer gets to see and adjust the
+ * route (or just confirm the optimal one) before anything's actually
+ * saved to the canvas. */
 function openCalculatorFor(goal: any) {
-  if (goal.kind !== 'skill' || goal.skillId !== AGILITY_SKILL_ID) return;
+  if (goal.kind !== 'skill' || (goal.skillId !== AGILITY_SKILL_ID && goal.skillId !== FISHING_SKILL_ID)) return;
   quickCalculatorGoal.value = goal;
   calculatorOpen.value = true;
 }
@@ -388,8 +390,9 @@ onUnmounted(clearHoverHideTimer);
       v-if="calculatorOpen"
       class="goal-graph-calculator-panel"
       :player="player"
-      :agility-goal="quickCalculatorGoal ?? agilityGoal"
-      :initial-skill-id="quickCalculatorGoal ? AGILITY_SKILL_ID : null"
+      :agility-goal="quickCalculatorGoal?.skillId === AGILITY_SKILL_ID ? quickCalculatorGoal : agilityGoal"
+      :fishing-goal="quickCalculatorGoal?.skillId === FISHING_SKILL_ID ? quickCalculatorGoal : fishingGoal"
+      :initial-skill-id="quickCalculatorGoal ? quickCalculatorGoal.skillId : null"
       @save="onSaveCalculatorRoute"
     />
     <button type="button" class="goal-graph-note-toggle" title="Add a note" @click="addNote">

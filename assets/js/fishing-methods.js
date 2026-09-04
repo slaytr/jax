@@ -49,6 +49,28 @@
  * four use the DSF page's own quoted figure instead of the formula's, each
  * noted as such.
  *
+ * Ghostly sole is a fifth such exception, found by cross-referencing
+ * against https://runescape.wiki/w/Pay-to-play_Fishing_training: that page
+ * quotes "90,000-100,000 base experience per hour" at 99, well above what
+ * the formula computes from the chance-calculator module's own low:48/
+ * high:90 for this fish (68,554.7) — no special catch mechanic explains the
+ * gap the way DSF's do, so this looks like the module's own chance data
+ * being stale rather than a mechanic this file isn't modelling. Uses the
+ * training page's quoted low end (90,000) instead, noted on the entry.
+ * The rest of the training page's own figures were checked too: fly
+ * fishing's quoted 17,000-57,000 range across levels 20-70 and Menaphos's
+ * 84,000-180,000 both roughly match this file's own trout/salmon curve and
+ * shared-spot sum; the higher Crystallise-fly-fishing/Menaphos/Prifddinas
+ * figures are explicitly "with boosts" (a spell, a prayer, gear) layered on
+ * top of a base rate, out of scope the same way DSF's boost figures are.
+ * The three Prifddinas crystal urchin tiers were checked against the
+ * training page's own quoted "~130,000 base" for the location too — each
+ * tier's own figure reproduces cleanly from the module's own low:10/high:55
+ * for all three, same as everything else here, and no page could confirm
+ * exactly how catching multiple tiers per action (hinted at on small
+ * crystal urchin's own page) would combine into that 130,000 — left as
+ * three separate options rather than guess at an unconfirmed combined rate.
+ *
  * Deliberately excluded: the zero/one-xp junk byproducts of big-net
  * fishing (leather boots, seaweed, leather gloves, oyster, casket) — real
  * catches, but incidental, not a training target anyone picks a spot for.
@@ -445,15 +467,20 @@ export const FISHING_METHODS = [
   {
     name: 'Ghostly sole',
     slug: 'ghostly-sole',
-    wikiUrl: 'https://runescape.wiki/w/Ghostly_sole',
+    wikiUrl: 'https://runescape.wiki/w/Raw_ghostly_sole',
     levelRequirement: 66,
     xpPerCatch: 130,
     tool: 'Fishing rod',
     members: true,
     location: 'City of Um (Ghostly sole spot)',
     requirements: ['Necromancy!'],
-    xpPerHourAt99: 68554.7,
-    notes: null,
+    xpPerHourAt99: 90000,
+    notes:
+      "xpPerHourAt99 is the dedicated Pay-to-play Fishing training page's own quoted \"90,000-100,000 base experience per hour\" " +
+      "(low end taken to stay conservative), not the base chance formula (which computes 68,554.7 from the chance-calculator " +
+      "module's own low:48/high:90 for this fish) — that module's chance data for this fish appears stale relative to the " +
+      "current in-game rate; same category of exception as the four Deep Sea Fishing fish above. wikiUrl corrected too: " +
+      "Ghostly_sole is the cooked item, Raw_ghostly_sole is the fish this entry is actually about.",
   },
   {
     name: 'Green blubber jellyfish',

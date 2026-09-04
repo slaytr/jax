@@ -1901,9 +1901,15 @@ body::after {
   color: var(--medal-gold);
 }
 
+/* The ★ glyph sits high in its own line box at this size (most fonts draw
+   it without any descender to balance against), so a plain flex
+   align-items: center still reads as "too high" next to the count's own
+   digits — nudged down to split the difference. */
 .player-leads-star {
   font-size: 1.75em;
   line-height: 1;
+  position: relative;
+  top: -0.1em;
 }
 
 /* The lone summary row (quest points now live in Account Standings instead):
@@ -4569,6 +4575,7 @@ body::after {
 .vue-flow__edge-path {
   stroke: var(--hairline-strong);
   stroke-width: 1.3;
+  opacity: 0.5;
 }
 
 .vue-flow__edge.is-complete .vue-flow__edge-path {
@@ -4577,6 +4584,7 @@ body::after {
 
 .vue-flow__arrowhead {
   fill: var(--hairline-strong);
+  opacity: 0.5;
 }
 
 .vue-flow__edge.is-complete .vue-flow__arrowhead {

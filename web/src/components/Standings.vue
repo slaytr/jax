@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import { questStandings, standings } from '@shared/compute.js';
 import { formatCompact, formatNumber, formatRank } from '@shared/format.js';
-import { MAX_QUEST_POINTS, QUEST_POINTS_ICON, TOTAL_LEVEL_ICON } from '@shared/config.js';
+import { MAX_QUEST_POINTS, MAX_TOTAL_LEVEL, QUEST_POINTS_ICON, TOTAL_LEVEL_ICON } from '@shared/config.js';
 import type { AllGains, GainsPeriod, GainsView } from '@/lib/gains';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
 import MetricLineCharts from '@/components/charts/MetricLineCharts.vue';
@@ -147,7 +147,10 @@ function questTooltip(row: any) {
               </span>
             </span>
             <span class="lb-bar" role="presentation">
-              <span class="lb-bar-fill" :style="{ width: `${Math.min(100, row.share * 100).toFixed(1)}%` }" />
+              <span
+                class="lb-bar-fill"
+                :style="{ width: `${Math.min(100, ((row.player.total?.level ?? 0) / MAX_TOTAL_LEVEL) * 100).toFixed(1)}%` }"
+              />
             </span>
           </button>
         </div>

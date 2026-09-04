@@ -8,6 +8,7 @@ import { formatCompact, formatNumber } from '@shared/format.js';
 import { skillGoalProgress } from '@/lib/goals';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
 import { AGILITY_SKILL_ID } from '@/lib/agilityCalculator';
+import { FISHING_SKILL_ID } from '@/lib/fishingCalculator';
 
 /**
  * One Vue Flow node in the Goals graph (GoalsGraph.vue) — the same circular
@@ -58,9 +59,10 @@ const isQuest = computed(() => goal.value.kind === 'quest');
 const skill = computed(() => props.data.bySkillId.get(goal.value.skillId));
 
 /** Only a skill goal, and only for a skill whose calculator actually
- * exists yet (Agility so far — CalculatorPanel.vue's own doc comment) —
- * the hover shortcut below is pointless chrome on every other node. */
-const isCalculatorSupported = computed(() => !isQuest.value && goal.value.skillId === AGILITY_SKILL_ID);
+ * exists yet (Agility/Fishing so far — CalculatorPanel.vue's own doc
+ * comment) — the hover shortcut below is pointless chrome on every other
+ * node. */
+const isCalculatorSupported = computed(() => !isQuest.value && (goal.value.skillId === AGILITY_SKILL_ID || goal.value.skillId === FISHING_SKILL_ID));
 
 const completedQuestSet = computed(() => new Set(props.data.player.completedQuests ?? []));
 const startedQuestSet = computed(() => new Set(props.data.player.startedQuests ?? []));

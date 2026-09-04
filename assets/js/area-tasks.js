@@ -439,7 +439,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (partial)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
           {
@@ -553,7 +553,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -1364,7 +1364,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'The Branches of Darkmeyer (partial)',
+                text: 'The Branches of Darkmeyer',
                 quest: true,
               },
             ],
@@ -1908,7 +1908,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (Partial)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
           {
@@ -1975,7 +1975,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -2309,7 +2309,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: '72 Crafting to craft dragonstone necklace or 74 to craft dragonstone bracelet or 72 Thieving to steal a necklace from Chest (Ardougne Castle).',
+            text: '72 Crafting',
             quest: false,
           },
         ],
@@ -2351,7 +2351,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '59 Thieving (to steal a tablet from the Chaos Druid Tower Dungeon.)',
+                text: '59 Thieving',
                 quest: false,
               },
               {
@@ -2363,7 +2363,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '72 Thieving (to steal one from the Ardougne Castle chests )',
+                text: '72 Thieving',
                 quest: false,
               },
             ],
@@ -2677,11 +2677,11 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '90 Fishing (if catching the rocktail yourself; lower if fishing from the swarm)',
+            text: '90 Fishing',
             quest: false,
           },
           {
-            text: '73 Mining (if catching the rocktail yourself; not needed if fishing from the swarm)',
+            text: '73 Mining',
             quest: false,
           },
         ],
@@ -2762,7 +2762,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Enter the Abyss (miniquest)',
+                text: 'Enter the Abyss',
                 quest: true,
               },
             ],
@@ -2910,7 +2910,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '7 Smithing (boostable) or 8 Crafting (boostable)',
+            text: '7 Smithing (boostable)',
             quest: false,
           },
           {
@@ -3458,27 +3458,27 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '74 Smithing (To complete A Clockwork Syringe)',
+            text: '74 Smithing',
             quest: false,
           },
           {
-            text: '74 Thieving (To complete A Clockwork Syringe)',
+            text: '74 Thieving',
             quest: false,
           },
           {
-            text: '76 Defence (To complete A Clockwork Syringe)',
+            text: '76 Defence',
             quest: false,
           },
           {
-            text: '65 Summoning (To complete A Clockwork Syringe)',
+            text: '65 Summoning',
             quest: false,
           },
           {
-            text: '61 Slayer (To complete A Clockwork Syringe) (boostable)',
+            text: '61 Slayer (boostable)',
             quest: false,
           },
           {
-            text: 'A Clockwork Syringe (partial completion)',
+            text: 'A Clockwork Syringe',
             quest: true,
           },
           {
@@ -3594,7 +3594,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'A Clockwork Syringe (partial)',
+                text: 'A Clockwork Syringe',
                 quest: true,
               },
             ],
@@ -4011,7 +4011,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'Icthlarin\'s Little Helper (started)',
+            text: 'Icthlarin\'s Little Helper',
             quest: true,
           },
         ],
@@ -4147,7 +4147,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Icthlarin\'s Little Helper (partial)',
+                text: 'Icthlarin\'s Little Helper',
                 quest: true,
               },
             ],
@@ -4258,7 +4258,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (Started)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
           {
@@ -4347,11 +4347,11 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '59 Fletching (to fletch mithril grapple)',
+                text: '59 Fletching',
                 quest: false,
               },
               {
-                text: '30 Smithing (to smith mithril grapple)',
+                text: '30 Smithing',
                 quest: false,
               },
             ],
@@ -4381,7 +4381,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -4768,11 +4768,11 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Gower Quest (partial)',
+                text: 'Gower Quest',
                 quest: true,
               },
               {
-                text: 'Back to the Freezer (partial)',
+                text: 'Back to the Freezer',
                 quest: true,
               },
               {
@@ -5082,7 +5082,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Lair of Tarn Razorlor (miniquest)',
+                text: 'Lair of Tarn Razorlor',
                 quest: true,
               },
               {
@@ -5141,7 +5141,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Desert Treasure (partial)',
+                text: 'Desert Treasure',
                 quest: true,
               },
             ],
@@ -5571,7 +5571,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'Garden of Tranquillity (started)',
+            text: 'Garden of Tranquillity',
             quest: true,
           },
           {
@@ -5579,15 +5579,15 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: '20 Smithing (to make the bullseye lantern)',
+            text: '20 Smithing',
             quest: false,
           },
           {
-            text: '49 Crafting (to make the lantern lens)',
+            text: '49 Crafting',
             quest: false,
           },
           {
-            text: '47 Farming (to obtain a watermelon for the scarecrow))',
+            text: '47 Farming',
             quest: false,
           },
           {
@@ -5740,11 +5740,11 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '20 Smithing (to make the bullseye lantern (frame) )',
+                text: '20 Smithing',
                 quest: false,
               },
               {
-                text: '49 Crafting (to make the lantern lens )',
+                text: '49 Crafting',
                 quest: false,
               },
             ],
@@ -5778,7 +5778,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '47 Farming (to obtain a watermelon for the scarecrow)',
+                text: '47 Farming',
                 quest: false,
               },
             ],
@@ -5905,7 +5905,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (started)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
           {
@@ -5917,7 +5917,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'Mogre (lore activity)',
+            text: 'Mogre',
             quest: true,
           },
         ],
@@ -6032,7 +6032,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -6566,7 +6566,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (fairy ring access)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
         ],
@@ -6611,7 +6611,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'The Fremennik Isles (partial)',
+                text: 'The Fremennik Isles',
                 quest: true,
               },
             ],
@@ -6626,7 +6626,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'The Fremennik Trials (partial)',
+                text: 'The Fremennik Trials',
                 quest: true,
               },
             ],
@@ -6687,7 +6687,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'The Fremennik Isles (partial)',
+                text: 'The Fremennik Isles',
                 quest: true,
               },
             ],
@@ -6721,7 +6721,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -6801,7 +6801,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '52 Crafting (61 is needed to complete Lunar Diplomacy)',
+            text: '52 Crafting',
             quest: false,
           },
           {
@@ -6825,7 +6825,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'Bar Crawl (miniquest)',
+            text: 'Bar Crawl',
             quest: true,
           },
           {
@@ -6907,7 +6907,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Bar Crawl (miniquest)',
+                text: 'Bar Crawl',
                 quest: true,
               },
             ],
@@ -7080,7 +7080,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'Bar Crawl (miniquest)',
+            text: 'Bar Crawl',
             quest: true,
           },
           {
@@ -7160,7 +7160,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Bar Crawl (miniquest)',
+                text: 'Bar Crawl',
                 quest: true,
               },
             ],
@@ -7179,7 +7179,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '40 Runecrafting (if using catalytic anima stones )',
+                text: '40 Runecrafting',
                 quest: false,
               },
               {
@@ -7988,7 +7988,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: '50 Cooking (to make the oomlie wrap)',
+            text: '50 Cooking',
             quest: false,
           },
           {
@@ -8774,7 +8774,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'The Restless Ghost (partial)',
+            text: 'The Restless Ghost',
             quest: true,
           },
         ],
@@ -8949,7 +8949,7 @@ export const AREA_TASK_REGIONS = [
             members: false,
             requirements: [
               {
-                text: 'The Restless Ghost (partial)',
+                text: 'The Restless Ghost',
                 quest: true,
               },
             ],
@@ -9177,7 +9177,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: '40 Fishing (to obtain raw lobster )',
+                text: '40 Fishing',
                 quest: false,
               },
             ],
@@ -9196,7 +9196,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Dragon Slayer (partial)',
+                text: 'Dragon Slayer',
                 quest: true,
               },
             ],
@@ -9301,7 +9301,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '57 Runecrafting (or 19 Runecrafting if using Elemental anima stones)',
+            text: '57 Runecrafting',
             quest: false,
           },
           {
@@ -9436,7 +9436,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '19 Runecrafting (with elemental anima stones )',
+                text: '19 Runecrafting',
                 quest: false,
               },
             ],
@@ -9590,15 +9590,15 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'Murder Mystery (partial)',
+            text: 'Murder Mystery',
             quest: true,
           },
           {
-            text: 'Royal Trouble (started, if buying the cider)',
+            text: 'Royal Trouble',
             quest: true,
           },
           {
-            text: '14 Cooking (if brewing the cider)',
+            text: '14 Cooking',
             quest: false,
           },
         ],
@@ -9674,7 +9674,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'Murder Mystery (partial)',
+                text: 'Murder Mystery',
                 quest: true,
               },
             ],
@@ -9689,11 +9689,11 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: '14 Cooking ((to brew the cider) OR)',
+                text: '14 Cooking',
                 quest: false,
               },
               {
-                text: 'Royal Trouble (partial, (to buy the cider)',
+                text: 'Royal Trouble',
                 quest: true,
               },
             ],
@@ -9727,7 +9727,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Murder Mystery (partial)',
+                text: 'Murder Mystery',
                 quest: true,
               },
             ],
@@ -9833,7 +9833,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'Elemental Workshop I (started)',
+            text: 'Elemental Workshop I',
             quest: true,
           },
           {
@@ -9922,7 +9922,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'Elemental Workshop I (partial)',
+                text: 'Elemental Workshop I',
                 quest: true,
               },
             ],
@@ -10020,7 +10020,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '42 Crafting (to craft a fishbowl)',
+                text: '42 Crafting',
                 quest: false,
               },
             ],
@@ -10110,7 +10110,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'A Fairy Tale II - Cure a Queen (Fairy Ring Access)',
+            text: 'A Fairy Tale II - Cure a Queen',
             quest: true,
           },
           {
@@ -10118,7 +10118,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: '68 Magic (to enchant a dragonstone bracelet)',
+            text: '68 Magic',
             quest: false,
           },
           {
@@ -10167,7 +10167,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: '68 Magic (to enchant a dragonstone bracelet )',
+                text: '68 Magic',
                 quest: false,
               },
               {
@@ -10175,11 +10175,11 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: '89 Summoning (for a geyser titan to charge the combat bracelet)',
+                text: '89 Summoning',
                 quest: false,
               },
               {
-                text: '74 Crafting (to craft a dragonstone bracelet )',
+                text: '74 Crafting',
                 quest: false,
               },
             ],
@@ -10251,7 +10251,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -10722,7 +10722,7 @@ export const AREA_TASK_REGIONS = [
             quest: true,
           },
           {
-            text: 'Within the Light (not required, but recommended for Temple of Light teleport)',
+            text: 'Within the Light',
             quest: true,
           },
         ],
@@ -10895,7 +10895,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -10933,7 +10933,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Mourning\'s End Part II (partial)',
+                text: 'Mourning\'s End Part II',
                 quest: true,
               },
             ],
@@ -11090,7 +11090,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Mourning\'s End Part I (partial)',
+                text: 'Mourning\'s End Part I',
                 quest: true,
               },
             ],
@@ -11128,7 +11128,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Regicide (partial)',
+                text: 'Regicide',
                 quest: true,
               },
             ],
@@ -11162,7 +11162,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Regicide (partial)',
+                text: 'Regicide',
                 quest: true,
               },
             ],
@@ -11489,7 +11489,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: '74 Hunter (to obtain the Juju farming potion used in making its perfect variant)',
+                text: '74 Hunter',
                 quest: false,
               },
             ],
@@ -12255,7 +12255,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Blood Runs Deep (Gold)',
+                text: 'Blood Runs Deep',
                 quest: true,
               },
             ],
@@ -12981,7 +12981,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '45 Crafting (or 45 Smithing )',
+                text: '45 Crafting',
                 quest: false,
               },
               {
@@ -13040,7 +13040,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: 'Curse of the Empty Lord (miniquest)',
+            text: 'Curse of the Empty Lord',
             quest: true,
           },
           {
@@ -13091,7 +13091,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'Curse of the Empty Lord (miniquest)',
+                text: 'Curse of the Empty Lord',
                 quest: true,
               },
               {
@@ -13114,7 +13114,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'Extinction (to obtain tempered fungal shaft )',
+                text: 'Extinction',
                 quest: true,
               },
             ],
@@ -13981,7 +13981,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '49 Magic (boostable) to make a Dig Site pendant or 50 Magic to obtain Ali\'s pendant',
+            text: '49 Magic (boostable)',
             quest: false,
           },
         ],
@@ -14053,7 +14053,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'What Lies Below (partial)',
+                text: 'What Lies Below',
                 quest: true,
               },
             ],
@@ -14068,7 +14068,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'Rat Catchers (partial)',
+                text: 'Rat Catchers',
                 quest: true,
               },
             ],
@@ -14122,7 +14122,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Garden of Tranquillity (partial)',
+                text: 'Garden of Tranquillity',
                 quest: true,
               },
             ],
@@ -14152,7 +14152,7 @@ export const AREA_TASK_REGIONS = [
             members: false,
             requirements: [
               {
-                text: 'A Soul\'s Bane (partial)',
+                text: 'A Soul\'s Bane',
                 quest: true,
               },
             ],
@@ -14183,7 +14183,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'The Temple at Senntisten (partial)',
+                text: 'The Temple at Senntisten',
                 quest: true,
               },
             ],
@@ -14322,7 +14322,7 @@ export const AREA_TASK_REGIONS = [
             members: true,
             requirements: [
               {
-                text: 'A Fairy Tale II - Cure a Queen (partial)',
+                text: 'A Fairy Tale II - Cure a Queen',
                 quest: true,
               },
             ],
@@ -14360,7 +14360,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '67 Construction (boostable) (other players\' lecterns may be used, in which case only level 40 Construction is required)',
+            text: '67 Construction (boostable)',
             quest: false,
           },
           {
@@ -14663,7 +14663,7 @@ export const AREA_TASK_REGIONS = [
             quest: false,
           },
           {
-            text: '78 Runecrafting (boostable) (lower if using a ring of imbuing)',
+            text: '78 Runecrafting (boostable)',
             quest: false,
           },
           {
@@ -14820,7 +14820,7 @@ export const AREA_TASK_REGIONS = [
                 quest: true,
               },
               {
-                text: 'Troll Stronghold (partial)',
+                text: 'Troll Stronghold',
                 quest: true,
               },
             ],
@@ -15471,7 +15471,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: 'The Death of Chivalry (partial, to equip black armour)',
+                text: 'The Death of Chivalry',
                 quest: true,
               },
               {
@@ -15479,7 +15479,7 @@ export const AREA_TASK_REGIONS = [
                 quest: false,
               },
               {
-                text: '25 Ranged (to equip a black weapon)',
+                text: '25 Ranged',
                 quest: false,
               },
               {
