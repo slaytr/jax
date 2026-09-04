@@ -30,7 +30,7 @@ watch(active, async (value, previous) => {
 </script>
 
 <template>
-  <div class="tabs" :class="{ 'tabs-2up': tabs.length === 2 }" role="tablist" :aria-label="props.label">
+  <div class="tabs" :class="{ 'tabs-2up': tabs.length === 2, 'tabs-4up': tabs.length === 4 }" role="tablist" :aria-label="props.label">
     <span class="tabs-indicator" aria-hidden="true" :style="{ transform: `translateX(${indicatorIndex * 100}%)` }" />
     <button
       v-for="[value, label] in tabs"

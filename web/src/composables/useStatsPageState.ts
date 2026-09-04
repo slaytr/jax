@@ -6,6 +6,7 @@ import { loadStatsState, saveStatsState } from '@shared/stats-state.js';
 export const PAGE_TABS: Array<[string, string]> = [
   ['stats', 'Stats'],
   ['quests', 'Quests'],
+  ['tasks', 'Tasks'],
   ['goals', 'Goals'],
 ];
 
@@ -19,9 +20,16 @@ export interface StatsPageState {
   questStatus: string;
   questSkillReq: string;
   questlinesCollapsed: boolean;
+  questlinesHideCompleted: boolean;
   goalLabelFilter: string;
   collapsedGoalGroups: string[];
   focusGoalId: string | null;
+  taskSearch: string;
+  // Which region/tier the Tasks tab is showing — like questSlug/seriesName
+  // below, round-tripped through `?region=`/`?tier=` (not localStorage
+  // alone) so a link to one specific tier's task list actually reopens it.
+  taskRegionSlug: string | null;
+  taskTier: string | null;
   // Which quest/questline the Quests tab's dependency map is anchored on,
   // and which node in it is highlighted — QuestsTab.vue's own doing (reads
   // these once to seed its selection, writes back on every change, clears
@@ -69,9 +77,13 @@ export function useStatsPageState() {
     questStatus: typeof persisted.questStatus === 'string' ? persisted.questStatus : 'all',
     questSkillReq: typeof persisted.questSkillReq === 'string' ? persisted.questSkillReq : 'all',
     questlinesCollapsed: persisted.questlinesCollapsed === true,
+    questlinesHideCompleted: persisted.questlinesHideCompleted === true,
     goalLabelFilter: typeof persisted.goalLabelFilter === 'string' ? persisted.goalLabelFilter : '',
     collapsedGoalGroups: Array.isArray(persisted.collapsedGoalGroups) ? persisted.collapsedGoalGroups : [],
     focusGoalId: typeof persisted.focusGoalId === 'string' ? persisted.focusGoalId : null,
+    taskSearch: typeof persisted.taskSearch === 'string' ? persisted.taskSearch : '',
+    taskRegionSlug: queryString(route.query.region),
+    taskTier: queryString(route.query.tier),
     questSlug: queryString(route.query.quest),
     seriesName: queryString(route.query.series),
     highlightedNodeSlug: queryString(route.query.node),
@@ -80,7 +92,7 @@ export function useStatsPageState() {
   watch(
     state,
     (value) => {
-      const { questSlug, seriesName, highlightedNodeSlug, ...persistable } = value;
+      const { questSlug, seriesName, highlightedNodeSlug, taskRegionSlug, taskTier, ...persistable } = value;
       saveStatsState(persistable);
 
       // quest/series/node only ever apply while actually on the Quests tab
@@ -91,10 +103,15 @@ export function useStatsPageState() {
       delete query.quest;
       delete query.series;
       delete query.node;
+      delete query.region;
+      delete query.tier;
       if (value.tab === 'quests') {
         if (value.questSlug) query.quest = value.questSlug;
         else if (value.seriesName) query.series = value.seriesName;
         if ((value.questSlug || value.seriesName) && value.highlightedNodeSlug) query.node = value.highlightedNodeSlug;
+      } else if (value.tab === 'tasks') {
+        if (value.taskRegionSlug) query.region = value.taskRegionSlug;
+        if (value.taskRegionSlug && value.taskTier) query.tier = value.taskTier;
       }
 
       const currentKeys = Object.keys(route.query);

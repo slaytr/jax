@@ -179,7 +179,9 @@ function handleConfirmQuestGoal(drafts: any[]) {
     :player="player"
     :selected-series-name="selectedSeriesName"
     :collapsed="statsState.questlinesCollapsed"
+    :hide-completed="statsState.questlinesHideCompleted"
     @toggle-collapsed="statsState.questlinesCollapsed = !statsState.questlinesCollapsed"
+    @toggle-hide-completed="statsState.questlinesHideCompleted = !statsState.questlinesHideCompleted"
     @select-series="onSelectSeries"
   />
 

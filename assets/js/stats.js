@@ -247,6 +247,7 @@ async function boot() {
     let questStatusFilter = oneOf(STATUS_OPTIONS, savedState.questStatus, STATUS_OPTIONS[0][0]);
     let questSkillFilter = oneOf(SKILL_OPTIONS, savedState.questSkillReq, SKILL_OPTIONS[0][0]);
     let questlinesCollapsed = savedState.questlinesCollapsed === true;
+    let questlinesHideCompleted = savedState.questlinesHideCompleted === true;
     // Which quest the dependency map beside the list is anchored on — set
     // by clicking a list row (see render()), or seeded once from a
     // ?quest=<slug> link (applyQuestLinkParams, once quest-data itself has
@@ -433,6 +434,7 @@ async function boot() {
         questStatus: questStatusFilter,
         questSkillReq: questSkillFilter,
         questlinesCollapsed,
+        questlinesHideCompleted,
         goalLabelFilter,
         collapsedGoalGroups: [...collapsedGoalGroups],
         focusGoalId,
@@ -638,6 +640,11 @@ async function boot() {
                 persistStatsState();
                 render();
               };
+              const onToggleQuestlinesHideCompleted = () => {
+                questlinesHideCompleted = !questlinesHideCompleted;
+                persistStatsState();
+                render();
+              };
               // Every quest name that already anchors a goal-group — hides
               // a not-started node's own "track as a goal" button once
               // there's already one, so the dialog can't be used twice on
@@ -663,6 +670,8 @@ async function boot() {
                   selectedSeriesName,
                   questlinesCollapsed,
                   onToggleQuestlinesCollapsed,
+                  questlinesHideCompleted,
+                  onToggleQuestlinesHideCompleted,
                   onSelectSeries,
                 ),
                 el('div', { class: 'player-row' }, [

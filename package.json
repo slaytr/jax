@@ -30,6 +30,9 @@
   "dependencies": {
     "@fastify/cookie": "^11",
     "@fastify/static": "^10.1.3",
+    "@vue-flow/background": "^1.3.2",
+    "@vue-flow/controls": "^1.1.3",
+    "@vue-flow/core": "^1.48.2",
     "fastify": "^5",
     "pg": "^8",
     "vue": "^3.5.42",

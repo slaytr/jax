@@ -3,9 +3,10 @@
  * the Gains grid, whether each section is showing its grid or line-chart
  * view, and which Day/Week/Month window Gains' grid and line views were each
  * last showing (tracked separately per view — see app.js's
- * gainsGridPeriod/gainsLinePeriod). Everything else (sort order, the invert
- * toggle) resets on reload; these are the ones worth a reader not having to
- * redo.
+ * gainsGridPeriod/gainsLinePeriod), plus (Vue app only) whether a player's
+ * Goals tab was last showing its list or graph view (goalsView — see
+ * GoalsList.vue). Everything else (sort order, the invert toggle) resets on
+ * reload; these are the ones worth a reader not having to redo.
  *
  * localStorage only: per-browser, never sent anywhere. Reads/writes are
  * best-effort — private browsing or a full/blocked store should never break

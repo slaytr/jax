@@ -10,6 +10,7 @@ import PlayerGains from '@/components/player/gains/PlayerGains.vue';
 import GoalsTab from '@/components/player/goals/GoalsTab.vue';
 import QuestsTab from '@/components/player/quests/QuestsTab.vue';
 import QuestList from '@/components/player/quests/QuestList.vue';
+import TasksTab from '@/components/player/tasks/TasksTab.vue';
 import { useGroupData } from '@/composables/useGroupData';
 import { useQuests } from '@/composables/useQuests';
 import { useStatsPageState, PAGE_TABS } from '@/composables/useStatsPageState';
@@ -118,6 +119,10 @@ watch(
 
     <div v-else-if="statsState.tab === 'quests'">
       <QuestsTab :player="player" :stats-state="statsState" />
+    </div>
+
+    <div v-else-if="statsState.tab === 'tasks'">
+      <TasksTab :player="player" :stats-state="statsState" />
     </div>
 
     <div v-else class="player-row">

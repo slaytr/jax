@@ -55,8 +55,14 @@ const SERIES_FINAL_QUEST_OVERRIDES = {
  * reset on reload like the Goals tab's collapsed groups, since a viewer
  * who never uses this row would otherwise have to re-collapse it on every
  * visit.
+ *
+ * `hideCompleted`/`onToggleHideCompleted` (same persisted-preference
+ * treatment, stats.js's own questlinesHideCompleted) trims chips whose
+ * completed count already equals total — the count badge in the heading
+ * keeps counting every questline regardless, since that's "how many
+ * exist," not "how many are offered right now."
  */
-export function renderQuestSeriesLinks(quests, player, selectedSeriesName, collapsed, onToggleCollapsed, onSelectSeries) {
+export function renderQuestSeriesLinks(quests, player, selectedSeriesName, collapsed, onToggleCollapsed, hideCompleted, onToggleHideCompleted, onSelectSeries) {
   if (!quests) return null;
 
   const bySeries = new Map();
@@ -83,6 +89,8 @@ export function renderQuestSeriesLinks(quests, player, selectedSeriesName, colla
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const visibleSeries = hideCompleted ? series.filter(({ total, completed }) => completed !== total) : series;
+
   return el('section', { class: `lb quest-series-card${collapsed ? ' is-collapsed' : ''}` }, [
     el('div', { class: 'lb-head' }, [
       el(
@@ -99,21 +107,27 @@ export function renderQuestSeriesLinks(quests, player, selectedSeriesName, colla
           el('span', { class: 'quest-series-count', text: String(series.length) }),
         ],
       ),
+      el('label', { class: 'quest-series-hide-completed' }, [
+        el('input', { type: 'checkbox', checked: hideCompleted ? true : undefined, onchange: onToggleHideCompleted }),
+        el('span', { text: 'Hide completed' }),
+      ]),
     ]),
     collapsed
       ? null
-      : el(
-          'div',
-          { class: 'quest-series-links' },
-          series.map(({ name, total, completed, final }) =>
-            el('button', {
-              type: 'button',
-              class: `quest-series-link${name === selectedSeriesName ? ' is-selected' : ''}${completed === total ? ' is-done' : ''}`,
-              title: `Show every quest in the ${name} series (ends with ${final.name})`,
-              onclick: () => onSelectSeries(name),
-              text: `${name} ${completed}/${total}`,
-            }),
-          ),
-        ),
+      : visibleSeries.length > 0
+        ? el(
+            'div',
+            { class: 'quest-series-links' },
+            visibleSeries.map(({ name, total, completed, final }) =>
+              el('button', {
+                type: 'button',
+                class: `quest-series-link${name === selectedSeriesName ? ' is-selected' : ''}${completed === total ? ' is-done' : ''}`,
+                title: `Show every quest in the ${name} series (ends with ${final.name})`,
+                onclick: () => onSelectSeries(name),
+                text: `${name} ${completed}/${total}`,
+              }),
+            ),
+          )
+        : el('p', { class: 'quest-series-empty', text: 'Every questline is completed.' }),
   ]);
 }

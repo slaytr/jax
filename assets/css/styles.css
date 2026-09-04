@@ -2203,6 +2203,12 @@ body::after {
   width: 50%;
 }
 
+/* The player page's own Stats/Quests/Tasks/Goals switcher — a 4-tab
+   variant of the same shared .tabs control. */
+.tabs-4up .tabs-indicator {
+  width: 25%;
+}
+
 .page-tabs {
   margin-bottom: 1rem;
 }
@@ -2262,6 +2268,33 @@ body::after {
   font-family: var(--font-mono);
   font-size: 0.66rem;
   font-weight: 400;
+  color: var(--ink-muted);
+}
+
+/* Sits opposite the collapse toggle (.lb-head's own space-between) — same
+   checkbox-row shape as .quest-goal-dialog-tree-toggle, just muted like the
+   count badge beside it at rest, brightening toward ink so it doesn't read
+   as a heading of its own. */
+.quest-series-hide-completed {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.quest-series-hide-completed:hover {
+  color: var(--ink-2);
+}
+
+.quest-series-hide-completed input[type='checkbox'] {
+  accent-color: var(--ember);
+}
+
+.quest-series-empty {
+  font-size: 0.78rem;
   color: var(--ink-muted);
 }
 
@@ -2450,6 +2483,479 @@ body::after {
   color: var(--ink-muted);
   font-size: 0.7rem;
   text-align: right;
+}
+
+/* The Tasks tab (TasksTab.vue) — Area Tasks achievements browsed region by
+   region. The region list on the left reuses .quest-list-card/.quest-list/
+   .quest-list-item/.quest-list-name wholesale (same "pick one thing from a
+   long list" shape as the Quests tab's own sidebar); this tier-letter row
+   is the one addition that list didn't already need. Unlike the Quests
+   tab's own list (hundreds of quests, so a fixed scrollable height), the
+   region list is a fixed, short set (13 regions) that never grows — sized
+   to its own content instead of the quest list's own 400px, so there's no
+   empty space below the last region or a scrollbar that never has
+   anything to scroll to. */
+.task-region-list {
+  height: auto;
+  overflow-y: visible;
+}
+
+.task-region-tiers {
+  display: flex;
+  flex: none;
+  gap: 0.15rem;
+}
+
+/* One button per tier the region actually has (tierLetter, TasksTab.vue —
+   B/E/M/H/X) — a direct shortcut to that region+tier (selectRegionTier),
+   not just a static indicator, hence the button reset and pointer cursor.
+   Lit up the same green as that tier's own tab (.task-tier-tab.is-complete)
+   once every one of its tasks is checked off, so a fully-done tier is
+   visible from the region list alone without following the shortcut. */
+.task-region-tier-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.task-region-tier-letter:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.task-region-tier-letter:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.task-region-tier-letter.is-active {
+  background: rgba(217, 89, 38, 0.18);
+  color: var(--ember-ink);
+}
+
+.task-region-tier-letter.is-complete {
+  background: color-mix(in srgb, var(--gain) 22%, transparent);
+  color: var(--positive-ink);
+}
+
+.task-region-tier-letter.is-complete:hover {
+  background: color-mix(in srgb, var(--gain) 32%, transparent);
+}
+
+.task-region-tier-letter.is-complete.is-active {
+  background: color-mix(in srgb, var(--gain) 38%, transparent);
+}
+
+.task-region-summary {
+  margin: 0 0 0.9rem;
+  color: var(--ink-2);
+  font-size: 0.76rem;
+}
+
+.task-tier-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.task-tier-tab {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.task-tier-tab:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.task-tier-tab.is-active {
+  border-color: var(--ember);
+  background: rgba(217, 89, 38, 0.13);
+  color: var(--ember-ink);
+}
+
+/* Every task in this tier is checked off (useAreaTaskCompletion.ts) — lit
+   up for any tier in the region's own row, not just the selected one, so
+   switching tiers isn't necessary just to see what's already done. Wins
+   over .is-active's own orange (higher specificity below) when a tier is
+   both selected and complete, rather than the two fighting over the same
+   border/background. */
+.task-tier-tab.is-complete {
+  border-color: var(--gain);
+  background: color-mix(in srgb, var(--gain) 16%, var(--surface-0));
+  color: var(--positive-ink);
+}
+
+.task-tier-tab.is-complete.is-active {
+  background: color-mix(in srgb, var(--gain) 28%, var(--surface-0));
+}
+
+.task-tier-tab-count {
+  color: var(--ink-muted);
+}
+
+.task-tier-tab.is-active .task-tier-tab-count {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.task-tier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+.task-tier-requirements-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink-2);
+  font-size: 0.74rem;
+}
+
+/* One row per kind (Skills/Quests/Other, TasksTab.vue's own
+   tierRequirementGroups) rather than a single mixed row — a skill's
+   icon+level chip and a quest's much wider icon+name one read as two
+   different kinds of thing, so keeping each kind on its own line avoids a
+   ragged mix of chip widths down one row. */
+.task-req-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+}
+
+.task-req-group-label {
+  flex: none;
+  width: 3.2rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.task-req-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* The tier box's own summary badge (summarizeRequirementStatuses,
+   lib/areaTasks.ts) — pushed to the requirements head's own right edge. */
+.task-req-status {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.task-req-status.is-met {
+  background: color-mix(in srgb, var(--gain) 20%, transparent);
+  color: var(--positive-ink);
+}
+
+.task-req-status.is-most {
+  background: color-mix(in srgb, var(--warn) 25%, transparent);
+  color: var(--warn);
+}
+
+.task-req-status.is-some {
+  background: color-mix(in srgb, var(--ember) 25%, transparent);
+  color: var(--ember-ink);
+}
+
+.task-req-status.is-unmet {
+  background: color-mix(in srgb, var(--crimson) 25%, transparent);
+  color: var(--negative-ink);
+}
+
+/* Recommended items (TasksTab.vue) — a native <details>, collapsed by
+   default: reference material worth having, not worth the vertical space
+   on every single visit to a tier a viewer's often just browsing. */
+.task-tier-items {
+  color: var(--ink-2);
+  font-size: 0.74rem;
+}
+
+.task-tier-items summary {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.task-tier-items summary:hover {
+  color: var(--ink);
+}
+
+.task-tier-items ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.task-tier-items li {
+  line-height: 1.5;
+}
+
+/* The reward box (TasksTab.vue) — deliberately its own bordered card, not
+   folded into .task-tier-info above: what a tier hands back is a separate
+   concern from what it demands. */
+.task-reward-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+/* Every task in the selected tier is checked off (isTierComplete,
+   TasksTab.vue) — same green "lit up" treatment as that tier's own tab
+   (.task-tier-tab.is-complete) and a completed task row, so the one card
+   describing what the tier hands back reads as earned. */
+.task-reward-box.is-complete {
+  border-color: var(--gain);
+  background: color-mix(in srgb, var(--gain) 12%, var(--surface-0));
+}
+
+.task-reward-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+}
+
+/* Named per-tier (Easy/Medium/Hard/Elite, or Beginner) rather than
+   reusing the same accent for every tier — the reward box can end up
+   scrolled well away from the tier tabs above a tall task table, so it
+   carries its own reminder of which tier it's describing. */
+.task-tier-badge {
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--ember);
+  border-radius: 3px;
+  color: var(--ember-ink);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.task-reward-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.task-reward-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.task-reward-effect-group {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.task-reward-effect-label {
+  margin: 0 0 0.2rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.task-reward-effect-group ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* The Tasks tab's task table (TasksTab.vue) — one row per achievement,
+   compact enough to fit a whole tier (up to ~25 rows) without its own
+   scroll region. A row's own click toggles its manual completion mark
+   (useAreaTaskCompletion.ts) — there's no separate checkbox column, the
+   whole row is the control, hence `cursor: pointer` here rather than on
+   any one cell. */
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.task-table th {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--hairline-strong);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.task-col-name {
+  width: 22%;
+}
+
+.task-col-reqs {
+  width: 22%;
+}
+
+.task-row {
+  cursor: pointer;
+  transition: background-color 0.12s var(--ease);
+}
+
+.task-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.task-row.is-complete {
+  background: color-mix(in srgb, var(--gain) 18%, var(--surface-0));
+}
+
+.task-row.is-complete:hover {
+  background: color-mix(in srgb, var(--gain) 28%, var(--surface-0));
+}
+
+/* `vertical-align: top` here is what makes a row's own height-driving cell
+   (usually Requirements, when it wraps to a second line) leave the other
+   cells' text sitting flush with the row's own top edge rather than
+   centred in the extra space — every <td> in the row still stretches to
+   that same full row height and shares the one border-bottom regardless
+   (plain table layout, not flex/grid, guarantees that); nothing here needs
+   its own height rule to "catch up". Flex only lives on an *inner*
+   wrapper (.task-cell-reqs-inner below), never a <td> itself — a `<td>`
+   with `display: flex` is exactly the thing that can stop it stretching
+   correctly to the row's own height in some engines, which is what
+   actually broke this the first time round. */
+.task-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  line-height: 1.35;
+}
+
+.task-cell-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.task-name-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.task-name-link:hover {
+  text-decoration: underline;
+}
+
+.task-cell-task {
+  color: var(--ink-2);
+}
+
+.task-cell-reqs-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.task-req-none {
+  color: var(--ink-muted);
+}
+
+.task-req-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.task-req-chip img {
+  flex: none;
+}
+
+.task-req-chip-text {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Separates the two skill icon+levels inside one either/or requirement
+   chip (parseRequirement's own `alternatives`, TasksTab.vue) — one chip,
+   not two, since either side alone satisfies the same requirement. */
+.task-req-chip-divider {
+  margin: 0 0.05rem;
+  color: var(--ink-muted);
+}
+
+/* Shared by the tier-requirements box's own chips and a task row's own
+   Requirements column (TasksTab.vue's withStatus) — both read the same
+   met/unmet against this player, so both light up the same way. */
+.task-req-chip.is-met {
+  border-color: color-mix(in srgb, var(--gain) 50%, var(--hairline));
+  background: color-mix(in srgb, var(--gain) 14%, var(--surface-0));
+  color: var(--positive-ink);
+}
+
+.task-req-chip.is-unmet {
+  border-color: color-mix(in srgb, var(--crimson) 55%, var(--hairline));
+  background: color-mix(in srgb, var(--crimson) 16%, var(--surface-0));
+  color: var(--negative-ink);
+}
+
+.task-list-empty {
+  margin: 0;
 }
 
 /* The Quests tab's Planner (quest-planner.js/views/quest-planner.js) — a
@@ -4032,6 +4538,1311 @@ body::after {
 
 .goal-btn-danger:hover {
   background: rgba(138, 28, 43, 0.18);
+}
+
+/* ---------------------------------------------------------- goals graph
+   The Goals tab's own List/Graph toggle (GoalsList.vue's own two buttons —
+   reuses .gains-view-tabs/.gains-view-toggle as-is, nothing goals-specific
+   to add there) and the graph itself: circular nodes (GoalGraphNode.vue)
+   on a real Vue Flow canvas (GoalsGraph.vue) — pan, zoom, and drag any
+   node anywhere, its own edges following for free, all Vue Flow's own
+   doing rather than the layout math here trying to re-derive it. Only the
+   *first* position (before a viewer's ever dragged a node) is still
+   goalGraphLayout.ts's job — see that file and useGoalGraphPositions.ts's
+   own doc comments. */
+
+.goal-graph-flow {
+  position: relative;
+  height: 460px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+/* Vue Flow's own edge path/marker elements — one shared look for every
+   dependency edge (read-only for now; see GoalsGraph.vue's own doc
+   comment), recoloured to the site's own tokens in place of the library's
+   default black-on-white. edge.class (GoalsGraph.vue's own `edges`
+   computed) lands on .vue-flow__edge itself, so `.is-complete` here scopes
+   correctly to just that one edge's own path/marker, not every edge on
+   the canvas. */
+.vue-flow__edge-path {
+  stroke: var(--hairline-strong);
+  stroke-width: 1.3;
+}
+
+.vue-flow__edge.is-complete .vue-flow__edge-path {
+  stroke: var(--gain);
+}
+
+.vue-flow__arrowhead {
+  fill: var(--hairline-strong);
+}
+
+.vue-flow__edge.is-complete .vue-flow__arrowhead {
+  fill: var(--gain);
+}
+
+/* A user-drawn connection (useGoalGraphConnections.ts, started by dragging
+   a node's own connector chip below) — dashed and dimmer than a dependency
+   edge at rest so the two read as different *kinds* of line, brightening
+   on select since it's the only kind a viewer can actually pick and delete
+   (Backspace/Delete — GoalsGraph.vue's own onEdgesChange, no bespoke UI). */
+.vue-flow__edge.is-custom .vue-flow__edge-path {
+  stroke: var(--ink-2);
+  stroke-dasharray: 4 3;
+}
+
+.vue-flow__edge.is-custom.selected .vue-flow__edge-path {
+  stroke: var(--ember);
+  stroke-width: 2px;
+}
+
+.vue-flow__edge.is-custom .vue-flow__arrowhead {
+  fill: var(--ink-2);
+}
+
+.vue-flow__edge.is-custom.selected .vue-flow__arrowhead {
+  fill: var(--ember);
+}
+
+/* The in-progress line while actually dragging a new connection out of a
+   connector chip — before it's landed on a target and become a real edge. */
+.vue-flow__connection-path {
+  stroke: var(--ember);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+}
+
+/* Both of a node's own Handles sit centred on its ring rather than
+   Vue Flow's own default left/right-edge placement — GoalGraphNode.vue's
+   own doc comment on why position barely matters here beyond that. Every
+   positional property is !important: these compete with Vue Flow's own
+   .vue-flow__handle-left/-right rules (dist/style.css, loaded after this
+   file) at equal class-selector specificity, which source order alone
+   would hand to the library's rule instead of ours. */
+.goal-graph-node-target-anchor {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none !important;
+}
+
+/* The hover-only, actually-draggable stand-in for a plain connection dot —
+   a small chip at the ring's own top-right corner, shown while
+   GoalsGraph.vue considers this node "hovered" (which itself lingers ~5s
+   past the mouse actually leaving — see that component's own doc comment).
+   Faded+scaled via opacity/transform rather than v-if so it can transition
+   in and out instead of popping; pointer-events stays off at rest too, so
+   it can't be dragged from while invisible even though Vue Flow's own
+   .connectable class would otherwise leave it live the whole time. */
+.goal-graph-node-connector {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  left: auto !important;
+  bottom: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink-2);
+  opacity: 0;
+  transform: scale(0.85) !important;
+  cursor: grab;
+  transition:
+    opacity 0.14s var(--ease),
+    transform 0.14s var(--ease);
+  pointer-events: none !important;
+}
+
+.goal-graph-node-connector.is-visible {
+  opacity: 1;
+  transform: scale(1) !important;
+  pointer-events: all !important;
+}
+
+.goal-graph-node-connector:active {
+  cursor: grabbing;
+}
+
+.goal-graph-node-connector-icon {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The Agility calculator's own hover shortcut (GoalGraphNode.vue,
+   GoalsGraph.vue's own quickCalculatorFor) — top-left mirror of
+   .goal-graph-node-connector's top-right, same isHovered-driven fade, just
+   a plain clickable icon rather than a Handle, so none of that one's
+   fighting-Vue-Flow's-own-defaults !importants are needed here. */
+.goal-graph-node-calculator-shortcut {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink-2);
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 0.14s var(--ease),
+    transform 0.14s var(--ease);
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.goal-graph-node-calculator-shortcut.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: all;
+}
+
+.goal-graph-node-calculator-shortcut:hover {
+  border-color: var(--ember);
+  color: var(--ink);
+}
+
+/* Same icon (identical SVG paths) as .goal-graph-calculator-toggle's own —
+   matched to its stroke-only style too, not filled, so it reads as the
+   same icon rather than a same-shaped-but-different one. */
+.goal-graph-node-calculator-shortcut-icon {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Vue Flow's own zoom/fit-view control cluster — re-themed off its default
+   light chrome to match everything else here; interactive-lock's own
+   button is hidden (Controls :show-interactive="false", GoalsGraph.vue) —
+   nothing here is draggable-vs-locked yet, so it'd be a control with
+   nothing to toggle. */
+.vue-flow__controls {
+  box-shadow: none;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.vue-flow__controls-button {
+  background: var(--surface-1);
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  fill: var(--ink-2);
+}
+
+.vue-flow__controls-button:hover {
+  background: var(--surface-2);
+}
+
+/* Recenters the graph on click (GoalsGraph.vue's own `recenter`, a plain
+   `fitView()` call) — the same action Vue Flow's own Controls cluster
+   already offers bottom-left, just surfaced somewhere a viewer who's
+   dragged nodes out of view would actually think to look. */
+.goal-graph-recenter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.goal-graph-recenter:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.goal-graph-recenter svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Opens the XP calculator's own skill picker (CalculatorPanel.vue),
+   anchored beside it — top-left, so it never competes with the recenter
+   button (top-right) or Vue Flow's own Controls cluster (bottom-left).
+   Same 28px icon-button shape as .goal-graph-recenter, just its own glyph
+   and an .is-active state (nothing on .goal-graph-recenter needs one — it
+   fires once and is done, this one toggles a panel open/closed). */
+.goal-graph-calculator-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.goal-graph-calculator-toggle:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.goal-graph-calculator-toggle.is-active {
+  border-color: var(--ember);
+  color: var(--ember-ink);
+}
+
+.goal-graph-calculator-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The panel itself sits just right of the toggle, same top offset — a
+   floating card over the canvas rather than pushing it, since this is a
+   quick picker, not a permanent fixture of the layout. */
+.goal-graph-calculator-panel {
+  position: absolute;
+  top: 10px;
+  left: 46px;
+  z-index: 5;
+}
+
+.calculator-panel {
+  width: 200px;
+  padding: 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* Wider once a skill's own calculator (AgilityCalculator.vue) replaces the
+   picker grid — the grid's 200px fits three icon columns fine, but a
+   target-level field, a full course name, and its own xp/hr figure need
+   real room, doubly so now every level along the route gets its own
+   select full of them (AgilityCalculator.vue's own route builder). */
+.calculator-panel.is-detail {
+  width: 340px;
+}
+
+.calculator-panel-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.calculator-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Agility is the only enabled cell (CalculatorPanel.vue's own doc comment
+   on why) — every other one is a real, focusable but genuinely `disabled`
+   button, dimmed and inert rather than merely styled to look that way. */
+.calculator-panel-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  border: 0;
+  background: var(--surface-1);
+  cursor: pointer;
+}
+
+.calculator-panel-cell:not(.is-disabled):hover {
+  background: var(--surface-2);
+}
+
+.calculator-panel-cell.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.calculator-panel-cell img {
+  width: 18px;
+  height: 18px;
+}
+
+.calculator-panel-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.calculator-panel-detail-head .calculator-panel-title {
+  margin: 0;
+}
+
+.calculator-panel-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.calculator-panel-back:hover {
+  color: var(--ink);
+}
+
+.calculator-panel-back svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.calculator-panel-current {
+  margin: 0 0 0.4rem;
+  color: var(--ink-2);
+  font-size: 0.74rem;
+}
+
+.calculator-panel-hint {
+  margin: 0 0 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.calculator-target-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.calculator-target-choice input[type='radio'] {
+  accent-color: var(--ember);
+}
+
+.calculator-target-choice span {
+  font-size: 0.74rem;
+  color: var(--ink-2);
+}
+
+.calculator-target-choice input[type='number'] {
+  width: 100px;
+  margin-left: auto;
+  padding: 0.28rem 0.35rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.calculator-target-choice input[type='number']:disabled {
+  opacity: 0.4;
+}
+
+.calculator-target-choice input[type='number']:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.calculator-plan-eta {
+  color: var(--gain);
+}
+
+/* The route builder (AgilityCalculator.vue) — one .calculator-route-step
+   per level a viewer can actually make a choice at: the starting course
+   (keyed to the player's own current level) plus one per level anything
+   unlocks at between here and the target, each a real <select> rather
+   than a fixed recommendation. */
+.calculator-route {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.calculator-route-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.calculator-route-title {
+  margin: 0;
+}
+
+.calculator-route-reset {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.64rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.calculator-route-reset:hover {
+  color: var(--ink-2);
+}
+
+.calculator-route-total {
+  margin: 0.3rem 0 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+/* Only rendered when the chosen route (AgilityCalculator.vue's own
+   `route`, driven by its select's) actually differs from the fully
+   automatic one — a quiet "here's what it'd cost instead" next to
+   .calculator-route-total, not a second headline figure. */
+.calculator-route-optimal {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+}
+
+.calculator-route-step {
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.calculator-route-step:first-of-type {
+  border-top: 0;
+}
+
+.calculator-route-step-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.calculator-route-step-level {
+  flex: none;
+  width: 1.6rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.calculator-route-select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.28rem 0.35rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calculator-route-select:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.calculator-route-wiki {
+  flex: none;
+  display: flex;
+  opacity: 0.7;
+}
+
+.calculator-route-wiki:hover {
+  opacity: 1;
+}
+
+.calculator-route-step-stats {
+  margin: 0.2rem 0 0 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--ink-muted);
+}
+
+/* Saves the current route as a GoalGraphCalculatorNode on the canvas
+   (AgilityCalculator.vue's own saveRoute, forwarded up through
+   CalculatorPanel.vue to GoalsGraph.vue) — sits right under the last
+   route step rather than beside "Use recommended" up top, since it acts
+   on the *whole* configured route, not just one field of it. */
+.calculator-route-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.4rem;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-2);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.calculator-route-save:hover {
+  border-style: solid;
+  border-color: var(--ember);
+  color: var(--ink);
+}
+
+.calculator-route-save svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Drops a new sticky note (GoalsGraph.vue's own addNote/useGoalGraphNotes.ts)
+   — bottom-left, same 28px icon-button shape as the calculator toggle
+   (top-left) but its own corner. Sits just above Vue Flow's own Controls
+   cluster (zoom in/out, bottom-left by default — 54px tall, 16px inset)
+   rather than beside it, so it doesn't compete with that for width if the
+   cluster ever gains another button. */
+.goal-graph-note-toggle {
+  position: absolute;
+  bottom: 78px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.goal-graph-note-toggle:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.goal-graph-note-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* One sticky note (GoalGraphNote.vue) — a Vue Flow node like a goal, just
+   a plain tinted box instead of a ring, sized by its own note.size rather
+   than fitting its content the way every other node here does. Dragging
+   the note (repositioning it) is Vue Flow's own built-in node drag, fired
+   from anywhere in this box that ISN'T one of the nodrag-classed
+   interactive bits below. */
+.goal-graph-note {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--note-colour) 55%, var(--hairline-strong));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--note-colour) 14%, var(--surface-1));
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+}
+
+/* Not `overflow: hidden` on the note itself any more — the settings/
+   font-size dropdowns (anchored inside the header) are tall enough to
+   extend past the note's own bottom edge at its default size, and hiding
+   overflow would clip them. The textarea's own corners get their rounding
+   directly (see its own rule below) instead, so the note still reads as a
+   clean rounded box when nothing's open. */
+
+.goal-graph-note:active {
+  cursor: grabbing;
+}
+
+.goal-graph-note-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--note-colour) 40%, var(--hairline));
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: color-mix(in srgb, var(--note-colour) 22%, var(--surface-1));
+}
+
+/* The cog trigger + its dropdown replace what used to be eight
+   always-visible swatches in the header — cramped enough at this note's
+   220px default width once everything else joined them. `position:
+   relative` here (not on the whole header) keeps the dropdown anchored to
+   just this button regardless of how the rest of the header lays out. The
+   font-size menu (below) shares this same shape. */
+.goal-graph-note-settings-menu,
+.goal-graph-note-fontsize-menu {
+  position: relative;
+  flex: none;
+}
+
+.goal-graph-note-settings-trigger svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+
+.goal-graph-note-settings-trigger[aria-expanded='true'],
+.goal-graph-note-fontsize-trigger[aria-expanded='true'] {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--ink);
+}
+
+.goal-graph-note-settings-dropdown,
+.goal-graph-note-fontsize-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: max-content;
+  padding: 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.5);
+}
+
+.goal-graph-note-settings-section + .goal-graph-note-settings-section {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.goal-graph-note-settings-label {
+  margin: 0 0 0.35rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-graph-note-fontsize-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.goal-graph-note-fontsize-field span {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.goal-graph-note-fontsize-input {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.goal-graph-note-fontsize-input:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
+.goal-graph-note-colours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 92px;
+}
+
+.goal-graph-note-swatch {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.goal-graph-note-swatch.is-selected {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Sits inside the dropdown, below the swatches — a real labelled button now
+   that it isn't squeezed into the header as an icon-only one alongside
+   layer/bullet/delete. */
+.goal-graph-note-pin {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.goal-graph-note-pin:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.goal-graph-note-pin svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.goal-graph-note-settings-trigger,
+.goal-graph-note-fontsize-trigger,
+.goal-graph-note-bullet-btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.goal-graph-note-settings-trigger:hover,
+.goal-graph-note-fontsize-trigger:hover,
+.goal-graph-note-bullet-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--ink);
+}
+
+/* Pinned to the note's own top-right corner (its closest positioned
+   ancestor is `.goal-graph-note` itself, not the header — the header sets
+   no `position` of its own) rather than sitting inline with the rest of
+   the header row, so it stays put in the one place a "close this" control
+   is always expected regardless of how much else the header grows to
+   hold. Slightly overlaps the corner on purpose, like a badge, so it reads
+   as separate from the settings/font-size/bullet buttons rather than one
+   more item among them. */
+.goal-graph-note-delete {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 6;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--surface-1);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.goal-graph-note-delete:hover {
+  border-color: var(--ink-muted);
+  color: var(--ink);
+}
+
+/* Sits inside the "Order" section of the settings dropdown — a real
+   labelled button now that it isn't squeezed into the header as an
+   icon-only one. Whichever square is "in front" reads as filled, the one
+   behind it as an outline — a note currently sent .is-back swaps which
+   square is which, so the icon itself hints at the note's own current
+   stacking rather than just toggling colour on click. */
+.goal-graph-note-order-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.goal-graph-note-order-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.goal-graph-note-order-btn svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.goal-graph-note-order-btn svg rect:first-child {
+  fill: currentColor;
+}
+
+.goal-graph-note-order-btn svg rect:last-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+
+.goal-graph-note-order-btn.is-back {
+  color: var(--ember-ink);
+}
+
+.goal-graph-note-order-btn.is-back svg rect:first-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+
+.goal-graph-note-order-btn.is-back svg rect:last-child {
+  fill: currentColor;
+  stroke: none;
+}
+
+.goal-graph-note-textarea {
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  resize: none;
+  cursor: text;
+}
+
+.goal-graph-note-textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+.goal-graph-note-textarea:focus {
+  outline: none;
+}
+
+.goal-graph-note-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  cursor: nwse-resize;
+}
+
+.goal-graph-note-resize svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+/* A saved calculator route (GoalGraphCalculatorNode.vue) — dropped by
+   AgilityCalculator.vue's own "Add to graph" button. Read-only, so no
+   textarea/resize/settings-menu machinery like a sticky note carries;
+   height is just whatever its own route steps need. Dragging is Vue
+   Flow's own built-in node drag, same as every other node here. */
+.goal-graph-calculator-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+}
+
+/* Purely structural — see this component's own doc comment on why it
+   exists at all despite never being drawn. */
+.goal-graph-calculator-node-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.goal-graph-calculator-node:active {
+  cursor: grabbing;
+}
+
+.goal-graph-calculator-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--surface-2);
+}
+
+.goal-graph-calculator-node-title {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.goal-graph-calculator-node-delete {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.goal-graph-calculator-node-delete:hover {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--ink);
+}
+
+/* Current vs target level/xp — the first of this node's three emphasised
+   values (this component's own doc comment). Two matching columns either
+   side of an arrow, each its own big level number over a smaller xp
+   figure, rather than the one small "Level 58 (224,483 xp) → Level 63"
+   line this replaced. */
+.goal-graph-calculator-node-levels {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.55rem 0.6rem 0;
+}
+
+.goal-graph-calculator-node-level {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.goal-graph-calculator-node-level-tag {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.goal-graph-calculator-node-level-value {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.goal-graph-calculator-node-level-sub {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.goal-graph-calculator-node-level-arrow {
+  flex: none;
+  padding-top: 1rem;
+  color: var(--ink-muted);
+}
+
+/* Current/target's own progress, as a fill rather than digits — same
+   track/fill shape as a skill goal's own bar (.goal-subgoal-track/-fill)
+   elsewhere, just this node's own classes rather than reusing those
+   directly (a different flex context, this one has the ETA riding beside
+   it rather than a percent/figures column after it). */
+.goal-graph-calculator-node-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.4rem 0.6rem 0.5rem;
+}
+
+.goal-graph-calculator-node-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.goal-graph-calculator-node-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+/* The old full-width "~2.3h to goal" line, shrunk down to ride beside the
+   bar instead — still its own figure, just no longer the loudest thing on
+   the node now the current/target numbers above it are. */
+.goal-graph-calculator-node-eta {
+  flex: none;
+  color: var(--gain);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+.goal-graph-calculator-node-step {
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.goal-graph-calculator-node-step-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.goal-graph-calculator-node-step-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+/* This node's second emphasised value, per course — a big number rather
+   than folded into the same small line xp/hr sits on below it. */
+.goal-graph-calculator-node-laps {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.goal-graph-calculator-node-laps-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ember);
+}
+
+.goal-graph-calculator-node-laps-tag {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-muted);
+}
+
+.goal-graph-calculator-node-step-stats {
+  flex: none;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+}
+
+/* One node: Vue Flow's own wrapper (.vue-flow__node) already positions
+   this — GoalGraphNode.vue's own root is a plain in-flow button inside
+   it, reset to read as plain text/no chrome at rest. .goal-graph-node-ring
+   below is what actually reads as a control. display: flex/column stacks
+   the ring above its own name label, both centred. */
+.goal-graph-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The "progress bar in a border" — a conic-gradient sweeping --ring-colour
+   in for --pct of the circle (0–1) and .goal-graph-node-icon-wrap's own
+   background for the remainder, so the ring itself IS the progress
+   indicator rather than a separate bar element. A quest node's own --pct
+   is always 1 (ringStyle, GoalsGraph.vue) — its ring is a plain full
+   circle, just coloured by live status instead of a fraction, since a
+   quest goal has no partial-progress number of its own to show. */
+.goal-graph-node-ring {
+  position: relative;
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(var(--ring-colour, var(--gain)) calc(var(--pct, 0) * 360deg), var(--hairline-strong) 0deg);
+  transition: background 0.16s var(--ease);
+}
+
+.goal-graph-node-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.goal-graph-node.is-quest .goal-graph-node-icon-wrap {
+  background: var(--surface-2);
+}
+
+.goal-graph-node-icon-wrap img {
+  width: 24px;
+  height: 24px;
+}
+
+.goal-graph-node:hover .goal-graph-node-icon-wrap,
+.goal-graph-node:focus-visible .goal-graph-node-icon-wrap {
+  background: var(--surface-2);
+}
+
+.goal-graph-node:focus-visible {
+  outline: none;
+}
+
+.goal-graph-node:focus-visible .goal-graph-node-ring {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.goal-graph-node.is-focused .goal-graph-node-ring {
+  box-shadow:
+    0 0 0 2px var(--surface-0),
+    0 0 0 4px var(--ember);
+}
+
+.goal-graph-node-label {
+  max-width: 68px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-2);
+}
+
+.goal-graph-node.is-complete .goal-graph-node-label {
+  color: var(--ink-muted);
 }
 
 /* The active chart at 2× the width of the two stacked beside it — since

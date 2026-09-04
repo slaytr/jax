@@ -12,6 +12,12 @@ import { statusOf } from '@shared/quest-status.js';
  *
  * A chip reads "<series> <completed>/<total>" — this player's own progress
  * through the series, not the final quest's own position.
+ *
+ * "Hide completed" (statsState's own questlinesHideCompleted, same
+ * persisted-preference treatment as questlinesCollapsed) trims chips whose
+ * completed count already equals total — the count badge above the row
+ * keeps counting every questline regardless, since that's "how many exist,"
+ * not "how many are offered right now."
  */
 
 // A handful of series where the wiki's own seriesPosition picks a quest
@@ -26,9 +32,10 @@ const props = defineProps<{
   player: any;
   selectedSeriesName: string | null;
   collapsed: boolean;
+  hideCompleted: boolean;
 }>();
 
-const emit = defineEmits<{ toggleCollapsed: []; selectSeries: [name: string] }>();
+const emit = defineEmits<{ toggleCollapsed: []; toggleHideCompleted: []; selectSeries: [name: string] }>();
 
 const series = computed(() => {
   if (!props.quests) return [];
@@ -56,6 +63,11 @@ const series = computed(() => {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 });
+
+// The count badge always reads off `series` itself (every questline this
+// player has), not this — "Hide completed" trims what's offered to click,
+// it isn't a different measure of how many questlines exist.
+const visibleSeries = computed(() => (props.hideCompleted ? series.value.filter((s) => s.completed !== s.total) : series.value));
 </script>
 
 <template>
@@ -66,10 +78,14 @@ const series = computed(() => {
         <h2>Questlines</h2>
         <span class="quest-series-count">{{ series.length }}</span>
       </button>
+      <label class="quest-series-hide-completed">
+        <input type="checkbox" :checked="hideCompleted" @change="emit('toggleHideCompleted')" />
+        <span>Hide completed</span>
+      </label>
     </div>
-    <div v-if="!collapsed" class="quest-series-links">
+    <div v-if="!collapsed && visibleSeries.length > 0" class="quest-series-links">
       <button
-        v-for="s in series"
+        v-for="s in visibleSeries"
         :key="s.name"
         type="button"
         :class="`quest-series-link${s.name === selectedSeriesName ? ' is-selected' : ''}${s.completed === s.total ? ' is-done' : ''}`"
@@ -79,5 +95,6 @@ const series = computed(() => {
         {{ s.name }} {{ s.completed }}/{{ s.total }}
       </button>
     </div>
+    <p v-else-if="!collapsed" class="quest-series-empty">Every questline is completed.</p>
   </section>
 </template>

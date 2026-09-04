@@ -102,6 +102,27 @@ export function goalSections(goals: any[]): GoalSection[] {
   return sections;
 }
 
+export interface GoalItem {
+  quest: any;
+  children: any[];
+}
+
+/** One row's worth of a section — its own quest-kind goal (if any) paired
+ * with every skill goal sharing its group as nested "children" (a quest's
+ * own skill requirements), or, for a section with no quest goal at all,
+ * every one of its skill goals as its own top-level item with no children.
+ * Shared by GoalsList.vue (one <GoalCard> per item) and GoalsGraph.vue (one
+ * dependency cluster per item — a childless item is just an isolated node
+ * there). `quest` is named for the common case but is a plain skill goal in
+ * the childless branch — see the callers' own handling either way. */
+export function itemsFor(section: GoalSection): GoalItem[] {
+  const quest = section.goals.find((goal) => goal.kind === 'quest');
+  if (quest) {
+    return [{ quest, children: section.goals.filter((goal) => goal !== quest) }];
+  }
+  return orderByStatus(section.goals).map((goal) => ({ quest: goal, children: [] }));
+}
+
 export const sectionIsComplete = (section: GoalSection) => section.goals.length > 0 && section.goals.every((goal) => goal.completedAt);
 
 const latestCompletion = (section: GoalSection) => Math.max(...section.goals.map((goal) => Date.parse(goal.completedAt)));

@@ -63,6 +63,10 @@ const EXTRA_ICONS = [
   // The wiki's own logo — the quick-guide link's icon on quest goal cards and
   // quest graph nodes alike (config.js's WIKI_ICON).
   { name: 'Wiki', slug: 'wiki', wikiFile: 'Wiki' },
+  // Combat level isn't a trainable skill (no entry in SKILLS), but an Area
+  // Tasks requirement is sometimes phrased as one ("63 combat level") —
+  // TasksTab.vue's own COMBAT_ICON.
+  { name: 'Combat', slug: 'combat', wikiFile: 'Combat_icon_large' },
 ];
 
 async function main() {

@@ -80,6 +80,12 @@ export const TOTAL_LEVEL_ICON = new URL('../icons/stats.png', import.meta.url).h
  * before it's followed. */
 export const WIKI_ICON = new URL('../icons/wiki.png', import.meta.url).href;
 
+/** Combat level isn't a trainable skill (no entry in SKILLS above, so
+ * iconFor has nothing to look up) — this is the wiki's own icon for it,
+ * used by TasksTab.vue for an Area Tasks requirement phrased as a combat
+ * level rather than any one skill's own. */
+export const COMBAT_ICON = new URL('../icons/combat.png', import.meta.url).href;
+
 /**
  * When the update job is scheduled to run, in UTC — on the hour, every hour.
  *
