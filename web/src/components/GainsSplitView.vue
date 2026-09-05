@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { formatCompact, formatNumber } from '@shared/format.js';
 import { QUEST_POINTS_ICON } from '@shared/config.js';
@@ -36,6 +36,19 @@ const activeMetric = ref<Metric>('xp');
 function onGridSelect(_slug: string, metric: Metric) {
   activeMetric.value = metric;
 }
+
+// Mirrors GainsSection's own animateLines: the chart should draw in
+// left-to-right the same way the line view's do whenever it's showing a
+// genuinely new line — this component itself mounting fresh (switching
+// into split view), the period changing, or a grid click swapping which
+// metric's chart is up — but not on every re-render (the underlying gains
+// data refreshing while the same metric/period stays on screen shouldn't
+// replay it). True from the start since mounting here already is "newly
+// appearing".
+const animateChart = ref(true);
+watch([() => props.period, activeMetric], () => {
+  animateChart.value = true;
+});
 
 const METRIC_FORMAT: Record<Metric, (value: number) => string> = {
   levels: formatNumber,
@@ -78,7 +91,7 @@ const activeRows = computed(() => props.gains.series[activeMetric.value][props.p
         :format-value="METRIC_FORMAT[activeMetric]"
         :value-label="METRIC_VALUE_LABEL[activeMetric]"
         :signed="true"
-        :animate="false"
+        :animate="animateChart"
       />
       <p v-else class="chart-empty">No data yet.</p>
     </section>

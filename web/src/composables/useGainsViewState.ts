@@ -6,6 +6,11 @@ import { usePrefs } from '@/composables/usePrefs';
 const isPeriod = (value: unknown): value is GainsPeriod => value === 'day' || value === 'week' || value === 'month';
 const isGainsView = (value: unknown): value is GainsView => value === 'grid' || value === 'line' || value === 'split';
 
+// Same 720px breakpoint PlayerGains.vue's own isMobileViewport reads, and
+// the same "read fresh, don't react to resize" reasoning — this only ever
+// decides what a brand-new visitor's default view is, on that first read.
+const isMobileViewport = () => globalThis.matchMedia?.('(max-width: 720px)').matches ?? false;
+
 /**
  * Persisted view/period state for the Gains section and Account Standings —
  * ported from the old app.js's own gainsView/gainsGridPeriod/gainsLinePeriod/
@@ -20,7 +25,13 @@ const isGainsView = (value: unknown): value is GainsView => value === 'grid' || 
 export function useGainsViewState() {
   const { prefs, savePref } = usePrefs();
 
-  const gainsView = ref<GainsView>(isGainsView(prefs.gainsView) ? prefs.gainsView : 'split');
+  // The hybrid view's grid+chart pairing needs the width split view offers
+  // — on a phone that's not on offer at all (ViewToggle hides the option
+  // there too), so a fresh mobile visitor's default falls back to 'grid'
+  // instead of a 'split' they'd have no way to see nicely, let alone leave.
+  const gainsView = ref<GainsView>(
+    isGainsView(prefs.gainsView) ? prefs.gainsView : isMobileViewport() ? 'grid' : 'split',
+  );
   const gainsGridPeriod = ref<GainsPeriod>(isPeriod(prefs.gainsGridPeriod) ? prefs.gainsGridPeriod : 'day');
   const gainsLinePeriod = ref<GainsPeriod>(isPeriod(prefs.gainsLinePeriod) ? prefs.gainsLinePeriod : 'week');
   const gainsSplitPeriod = ref<GainsPeriod>(isPeriod(prefs.gainsSplitPeriod) ? prefs.gainsSplitPeriod : 'week');

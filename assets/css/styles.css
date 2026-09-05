@@ -305,6 +305,9 @@ body::after {
    control (refresh-button.js) sits right beside it in .header-row and
    should read as a matching pair, not a competing style. */
 .refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0.4rem 0.85rem;
   border: 1px solid var(--brass);
   border-radius: var(--radius);
@@ -325,6 +328,31 @@ body::after {
 .refresh-button:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* Own click ("Refreshing…") and someone-else's-run cooldown both render
+   through the same .refresh-spinner + .refresh-button-label pair — this
+   transition is what makes the swap between those two labels (and the
+   spinner fading in/out around them) read as one continuous state rather
+   than a hard cut. */
+.refresh-button-label {
+  transition: opacity 0.15s var(--ease);
+}
+
+.refresh-spinner {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1.5px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: refresh-spin 0.7s linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .refresh-error {

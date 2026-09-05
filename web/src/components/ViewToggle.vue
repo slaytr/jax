@@ -14,10 +14,17 @@ import type { GainsView } from '@/lib/gains';
 const props = defineProps<{ label: string; showSplit?: boolean }>();
 const view = defineModel<GainsView>({ required: true });
 
+// Same 720px breakpoint PlayerGains.vue's own isMobileViewport reads — the
+// split view's grid-beside-a-chart layout has nowhere to go at that width
+// (it's what .gains-split's own column-stacking media query is already
+// conceding), so it's not offered as an option there at all rather than
+// offered and then squished.
+const isMobileViewport = () => globalThis.matchMedia?.('(max-width: 720px)').matches ?? false;
+
 const VIEWS = computed<Array<[GainsView, string]>>(() => [
   ['grid', 'the grid'],
   ['line', 'line charts'],
-  ...(props.showSplit ? ([['split', 'the grid and one chart together']] as Array<[GainsView, string]>) : []),
+  ...(props.showSplit && !isMobileViewport() ? ([['split', 'the grid and one chart together']] as Array<[GainsView, string]>) : []),
 ]);
 </script>
 

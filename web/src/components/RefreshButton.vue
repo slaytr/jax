@@ -58,6 +58,13 @@ const label = computed(() => {
   return 'REFRESH NOW';
 });
 const disabled = computed(() => status.value === 'running' || cooldownSeconds.value > 0);
+// The spinner covers both "waiting" reasons (this tab's own run in flight,
+// or a cooldown counting down — whether it's ticking down from this tab's
+// own click or from someone else's run finishing) so a click transitions
+// smoothly from "Refreshing…" into the exact same spinner+countdown look
+// a passive visitor already sees once someone else's refresh completes,
+// rather than the spinner vanishing the moment the run itself finishes.
+const showSpinner = computed(() => disabled.value);
 
 let unsubscribe: (() => void) | undefined;
 onMounted(() => {
@@ -105,7 +112,8 @@ async function handleClick() {
 
 <template>
   <button class="refresh-button" type="button" :disabled="disabled" :title="errorMessage ?? undefined" @click="handleClick">
-    {{ label }}
+    <span v-if="showSpinner" class="refresh-spinner" aria-hidden="true" />
+    <span class="refresh-button-label">{{ label }}</span>
   </button>
   <span v-if="status === 'error' && errorMessage" class="refresh-error">{{ errorMessage }}</span>
 </template>
