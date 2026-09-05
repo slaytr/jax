@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { initialExpansionFor } from '@shared/quest-graph.js';
 import { statusOf } from '@shared/quest-status.js';
@@ -29,9 +29,21 @@ import QuestGoalDialog from '@/components/player/quests/QuestGoalDialog.vue';
  * readLinkParams/applyQuestLinkParams/syncUrlToState (stats.js) used. This
  * component just reads/writes those three fields (see the two watchers
  * below); it doesn't touch the URL itself — see useStatsPageState.ts's own
- * doc comment for why that's centralized there instead of here. Fullscreen
- * is the one thing that genuinely resets: it's a viewport mode, not a place
- * in the map, so a fresh load has no business reopening it.
+ * doc comment for why that's centralized there instead of here.
+ *
+ * Deliberately never cleared on unmount: PlayerView.vue tears this whole
+ * component down on switching to Stats/Tasks/Goals (v-else-if), but
+ * statsState itself is owned one level up and outlives that, so the three
+ * fields just sit there unread until a later switch back to Quests mounts
+ * a fresh instance of this component and its own read-side watcher below
+ * picks them right back up — the same selection reopens rather than
+ * starting over. useStatsPageState.ts's own watcher already drops
+ * `?quest=`/`?series=`/`?node=` from the URL the moment `tab` itself
+ * changes away (gated on `value.tab`, not on these fields being null), so
+ * the address bar stays honest about the *visible* tab regardless of what
+ * this component is quietly holding onto for its own next mount.
+ * Fullscreen is the one thing that genuinely resets: it's a viewport mode,
+ * not a place in the map, so a fresh load has no business reopening it.
  *
  * TEMP: no ownership gate on "track as a goal" — Discord auth is disabled
  * for now (see useGoals.ts's own doc comment).
@@ -152,19 +164,6 @@ watch([selectedQuestSlug, selectedSeriesName, highlightedQuestName], () => {
   props.statsState.seriesName = selectedSeriesName.value;
   const node = highlightedQuestName.value ? (quests.value?.find((quest) => quest.name === highlightedQuestName.value) ?? null) : null;
   props.statsState.highlightedNodeSlug = node ? node.slug : null;
-});
-
-// PlayerView.vue tears this whole component down on switching to
-// Stats/Goals (v-else-if) — without this, statsState's quest/series/node
-// would linger set, stuck describing a map that isn't even on screen
-// anymore (useStatsPageState.ts's own watcher already stops writing them
-// into the URL the moment the tab itself changes, but the in-memory fields
-// still need clearing so a later switch back to Quests doesn't reopen a
-// selection nothing here re-chose).
-onBeforeUnmount(() => {
-  props.statsState.questSlug = null;
-  props.statsState.seriesName = null;
-  props.statsState.highlightedNodeSlug = null;
 });
 
 function handleConfirmQuestGoal(drafts: any[]) {
