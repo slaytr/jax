@@ -7,8 +7,11 @@
  * Goals tab was last showing its list or graph view (goalsView — see
  * GoalsList.vue) and whether the Quests tab's second column was last showing
  * its dependency map or quick guide (questGraphView — see
- * QuestDependencyGraph.vue). Everything else (sort order, the invert toggle)
- * resets on reload; these are the ones worth a reader not having to redo.
+ * QuestDependencyGraph.vue), plus which quest's own quick guide was last
+ * shown there (lastQuestGuideSlug), independent of the URL-param round-trip
+ * QuestsTab.vue's own plain quest/questline selection already gets. Everything
+ * else (sort order, the invert toggle) resets on reload; these are the ones
+ * worth a reader not having to redo.
  *
  * localStorage only: per-browser, never sent anywhere. Reads/writes are
  * best-effort — private browsing or a full/blocked store should never break

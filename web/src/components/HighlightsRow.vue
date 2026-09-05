@@ -24,6 +24,18 @@ function levelUpFrom(activity: { details?: string | null }) {
   return { skill, level: Number(match[2]) };
 }
 
+/** RuneMetrics' own quest-completion text reads "Quest complete: Lost
+ * City." — pulls just the quest name back out so the feed can show the
+ * quest points icon + a green tick instead of the raw "Quest complete:"
+ * prefix. Matched against `text`, not `details` (unlike levelUpFrom
+ * above) — a completed quest's own `details` is null in practice. */
+const QUEST_COMPLETE_PATTERN = /^quest complete:\s*(.+?)\.?$/i;
+
+function questCompleteFrom(activity: { text?: string | null }) {
+  const match = activity.text ? QUEST_COMPLETE_PATTERN.exec(activity.text.trim()) : null;
+  return match ? match[1] : null;
+}
+
 /** One row per player with a recorded activity, most recent first —
  * captured by the update cycle (cron and REFRESH NOW alike; see
  * scripts/activity.mjs) onto each player's own `latestActivity`, so this
@@ -33,7 +45,12 @@ function levelUpFrom(activity: { details?: string | null }) {
 const activityFeed = computed(() =>
   props.players
     .filter((player) => player.latestActivity?.date)
-    .map((player) => ({ player, activity: player.latestActivity, levelUp: levelUpFrom(player.latestActivity) }))
+    .map((player) => ({
+      player,
+      activity: player.latestActivity,
+      levelUp: levelUpFrom(player.latestActivity),
+      questComplete: questCompleteFrom(player.latestActivity),
+    }))
     .sort((a, b) => Date.parse(b.activity.date) - Date.parse(a.activity.date)),
 );
 
@@ -183,6 +200,11 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
             <img :src="iconFor(entry.levelUp.skill)" class="activity-feed-skill-icon" width="14" height="14" alt="" decoding="async" />
             {{ entry.levelUp.level }}
             <span class="skill-gain">+1</span>
+          </span>
+          <span v-else-if="entry.questComplete" class="activity-feed-questcomplete">
+            <img :src="QUEST_POINTS_ICON" class="activity-feed-skill-icon" width="14" height="14" alt="" decoding="async" />
+            <span class="activity-feed-questcomplete-name">{{ entry.questComplete }}</span>
+            <span class="goal-group-check" aria-hidden="true">✓</span>
           </span>
           <span v-else class="activity-feed-text">{{ entry.activity.text }}</span>
           <span class="activity-feed-time">{{ formatRelativeTime(entry.activity.date) }}</span>

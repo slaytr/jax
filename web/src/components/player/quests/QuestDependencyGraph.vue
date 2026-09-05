@@ -58,7 +58,11 @@ import {
  * quest the map happened to be anchored on. useQuestGuides.ts's own
  * quest-guides.json is only ever requested once a viewer actually switches
  * to this view — not just from opening the Quests tab, same lazy-load
- * reasoning as useQuests.ts's own quest list fetch.
+ * reasoning as useQuests.ts's own quest list fetch. Which quest's guide
+ * was last shown persists too (lastGuideQuestSlug/prefs.lastQuestGuideSlug),
+ * independent of QuestsTab.vue's own URL-param round-trip for the plain
+ * selection — a fresh load with no `?quest=`/`?node=` of its own still
+ * reopens on it.
  */
 const props = defineProps<{
   quests: any[] | null;
@@ -92,20 +96,38 @@ watch(
   },
   { immediate: true },
 );
+/** Seeded from prefs (usePrefs, same "remember it even across a fresh
+ * visit with no URL params at all" reasoning as Standings.vue's own
+ * standingsSelectedPlayer) — not itself reactive to a later savePref call,
+ * so `guideQuest` below never reads `prefs.lastQuestGuideSlug` directly;
+ * this ref plus the watcher underneath it are what keep it live. */
+const lastGuideQuestSlug = ref<string | null>(prefs.lastQuestGuideSlug ? String(prefs.lastQuestGuideSlug) : null);
+
 /** Which quest the guide view is actually showing — a highlighted node
  * (clicking a node's own name in the map, same highlightNode emit that
  * dims everything else) wins over the plain selection, so clicking around
  * the map updates the guide view right along with it, not just the one
  * quest/questline the map itself is anchored on. Falls back to the anchor
  * selection itself when it's a single quest (not a whole questline) and
- * nothing's highlighted; a questline anchor with nothing highlighted has
- * no one quest to show, same as before this existed. */
+ * nothing's highlighted, then to whichever quest's guide was last shown
+ * (lastGuideQuestSlug) when neither of those resolves to one either — a
+ * fresh page load with no `?quest=`/`?node=` of its own (a plain refresh
+ * that happened to land with nothing selected, or opening the tab fresh in
+ * a new visit) still reopens on the last guide a viewer was actually
+ * looking at, rather than the empty prompt. */
 const guideQuest = computed(() => {
   const highlighted = props.highlightedName ? (props.quests?.find((quest) => quest.name === props.highlightedName) ?? null) : null;
   if (highlighted) return highlighted;
-  return props.selection?.kind === 'quest' ? props.selection.quest : null;
+  if (props.selection?.kind === 'quest') return props.selection.quest;
+  return lastGuideQuestSlug.value ? (props.quests?.find((quest) => quest.slug === lastGuideQuestSlug.value) ?? null) : null;
 });
 const selectedQuestGuide = computed(() => (guideQuest.value && guides.value ? (guides.value[guideQuest.value.name] ?? null) : null));
+
+watch(guideQuest, (quest) => {
+  if (!quest || lastGuideQuestSlug.value === quest.slug) return;
+  lastGuideQuestSlug.value = quest.slug;
+  savePref({ lastQuestGuideSlug: quest.slug });
+});
 
 const targetNames = computed(() => (props.quests && props.selection ? targetNamesFor(props.quests, props.selection) : []));
 const totalGraph = computed(() => (props.quests && props.selection ? dependencyGraphFor(props.quests, targetNames.value) : null));
@@ -228,11 +250,13 @@ const LEGEND_ITEMS: Array<[string, string]> = [
         </button>
       </div>
 
-      <p v-if="!selection || !quests" class="chart-empty">
-        {{ view === 'guide' ? 'Click a quest on the left to see its quick guide.' : 'Click a quest on the left to see its dependency chain.' }}
-      </p>
-
-      <div v-else-if="view === 'guide'" class="quest-graph-body">
+      <!-- Guide view is checked ahead of the map's own `!selection` guard
+           below rather than sharing it — guideQuest can resolve (a
+           highlighted node, or lastGuideQuestSlug's own remembered quest)
+           even when nothing's selected in the list/questlines row at all,
+           so gating this behind `selection` would hide a guide that's
+           genuinely there to show. -->
+      <div v-if="view === 'guide'" class="quest-graph-body">
         <p v-if="!guideQuest" class="chart-empty">Select a single quest — or a node within a questline's map — to see its quick guide.</p>
         <p v-else-if="guidesStatus === 'loading'" class="chart-empty">Loading quick guide…</p>
         <p v-else-if="guidesStatus === 'error'" class="chart-empty">Couldn't load quick guide data.</p>
@@ -240,6 +264,8 @@ const LEGEND_ITEMS: Array<[string, string]> = [
           <QuestQuickGuide :quest="guideQuest" :guide="selectedQuestGuide" :player-slug="player.slug" />
         </div>
       </div>
+
+      <p v-else-if="!selection || !quests" class="chart-empty">Click a quest on the left to see its dependency chain.</p>
 
       <p v-else-if="!totalGraph || !visibleGraph" class="chart-empty">Couldn't find {{ notFoundLabel }} in the quest data.</p>
 

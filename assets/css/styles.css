@@ -87,6 +87,11 @@
      built for a near-black ground the same way --ember-ink was. */
   --positive-ink: #8fd0a4;
   --negative-ink: #efa08a;
+  /* Same role again, for --warn — a pale gold rather than raw --warn
+     itself, which reads as a much bolder, higher-contrast label than its
+     positive/negative/ember siblings once put on their shared translucent
+     -tinted background (.task-req-status.is-most, TasksTab.vue). */
+  --warn-ink: #f0c675;
   --wordmark-gradient: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
   --forge-glow: radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
     radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
@@ -128,6 +133,7 @@
   --ember-ink: var(--ink);
   --positive-ink: var(--gain);
   --negative-ink: var(--crimson);
+  --warn-ink: var(--warn);
 
   --wordmark-gradient: linear-gradient(168deg, #6b4a1a 10%, #8a6a2e 55%, #b08a3e 95%);
   /* A soft vignette standing in for the dark theme's forge-glow bloom — an
@@ -978,6 +984,26 @@ body::after {
 
 .activity-feed-skill-icon {
   flex: none;
+}
+
+/* A completed quest's own row — icon + name + a green tick in place of the
+ * raw "Quest complete: " prefix RuneMetrics' own text carries (see
+ * HighlightsRow.vue's own questCompleteFrom). Left-aligned and truncating
+ * on the name itself, unlike .activity-feed-levelup's centered layout —
+ * a quest name runs far longer than a level number ever does. */
+.activity-feed-questcomplete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.82rem;
+}
+
+.activity-feed-questcomplete-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .activity-feed-time {
@@ -2210,7 +2236,16 @@ body::after {
 }
 
 /* The player page's own Stats/Quests/Tasks/Goals switcher — a 4-tab
-   variant of the same shared .tabs control. */
+   variant of the same shared .tabs control. The base .tabs's own
+   min-width (11rem) was sized for the 3-tab Day/Week/Month control; here
+   it just barely covers four labels' own content width with almost no
+   padding to spare around "Quests" (the longest of the four), reading as
+   squished rather than merely snug — this floor gives every tab, that one
+   most of all, real breathing room instead. */
+.tabs-4up {
+  min-width: 17rem;
+}
+
 .tabs-4up .tabs-indicator {
   width: 25%;
 }
@@ -2691,7 +2726,7 @@ body::after {
 
 .task-req-status.is-most {
   background: color-mix(in srgb, var(--warn) 25%, transparent);
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 
 .task-req-status.is-some {
@@ -3279,6 +3314,45 @@ body::after {
   font-size: 0.8rem;
 }
 
+/* Read-only, unlike .quest-guide-items right above — nothing here to check
+ * off, just what finishing the quest actually earns (questGuide.ts's own
+ * `rewards`). Same box treatment as items-needed so the two read as a
+ * matched pair either side of a quest's own step-by-step walkthrough. */
+.quest-guide-rewards {
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.quest-guide-rewards-group + .quest-guide-rewards-group {
+  margin-top: 0.5rem;
+}
+
+.quest-guide-rewards-group-label {
+  margin: 0 0 0.2rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.quest-guide-rewards ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
+/* A reward line's own skill icon (questReward.ts's own parseRewardItem,
+   swapped in for the skill's name text) — sized and nudged to sit on the
+   surrounding line's own baseline rather than floating a few px high the
+   way an inline image otherwise does. */
+.quest-guide-reward-skill-icon {
+  vertical-align: -2px;
+  margin: 0 0.05em;
+}
+
 /* One block per quest-guides.json section (QuestQuickGuide.vue) — the
    wiki guide's own named sub-sections ("Getting started", "One small
    favour", …), each its own heading plus an optional needed/recommended
@@ -3367,6 +3441,34 @@ body::after {
   color: var(--ink-muted);
   text-decoration: line-through;
   text-decoration-color: var(--hairline-strong);
+}
+
+/* Which chat option(s) to click (questGuide.ts's own splitNotation) — its
+   own pill rather than trailing plain text, ember-tinted the same way a
+   selected/active control reads elsewhere on the site, so "here's the
+   dialogue pick" stands out from the instruction it's attached to instead
+   of blending into it. Excluded from the strikethrough above once a step's
+   checked off — a struck-through pill (as opposed to struck-through prose)
+   reads as broken rather than "done", so it just dims instead. */
+.quest-guide-step-notation {
+  display: inline-flex;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--ember) 45%, var(--hairline));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ember) 14%, var(--surface-0));
+  color: var(--ember-ink);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.quest-guide-step-text.is-done .quest-guide-step-notation {
+  text-decoration: none;
+  opacity: 0.55;
 }
 
 .quest-guide-step .quest-guide-step-list {
@@ -6056,11 +6158,11 @@ body::after {
 
 .goal-graph-node-label {
   max-width: 68px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  text-align: center;
   font-family: var(--font-mono);
   font-size: 0.58rem;
+  line-height: 1.25;
   color: var(--ink-2);
 }
 
