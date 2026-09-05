@@ -1,4 +1,8 @@
 [
+  { "date": "2026-09-05T23:29:35.802Z", "text": "Added a takeover animation when a Weekly Highlights badge changes hands." },
+  { "date": "2026-09-05T23:29:18.397Z", "text": "Fixed the graph in the Gains hybrid view not animating like the graph view.\nAdded a spinner to the refresh button." },
+  { "date": "2026-09-05T23:17:12.648Z", "text": "Added odometer animations to grids and the header." },
+  { "date": "2026-09-05T21:09:45.424Z", "text": "Added a \"Not completed\" quest list filter option (covers both in-progress and not-started quests)." },
   { "date": "2026-09-05T06:06:10.565Z", "text": "Clicking a quest node's title in the dependency map now opens its quick guide directly." },
   { "date": "2026-09-05T06:05:40.000Z", "text": "Added the ability to pin questlines to the front of the Quests tab." },
   { "date": "2026-09-05T06:05:10.000Z", "text": "Task list difficulty tiers now highlight blue when every requirement for that tier is met." },
