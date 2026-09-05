@@ -181,6 +181,18 @@ function isTierComplete(tier: { tasks: { slug: string }[] }) {
   return tier.tasks.length > 0 && tier.tasks.every((task) => isCompleted(task.slug));
 }
 
+/** Whether every determinable requirement of a tier (not just the
+ * currently-selected one — same reasoning as isTierComplete above, the
+ * region list's own tier letters need this for every tier in the region)
+ * is met — summarizeRequirementStatuses' own 'met' level, the same read
+ * the tier-requirements box's badge above the table already gives the
+ * *selected* tier. Used only to light up the region list's tier letters
+ * blue for a tier a player could start right now but hasn't finished. */
+function isTierRequirementsMet(tier: { requirements: AreaTaskRequirement[] }) {
+  const statuses = tier.requirements.map((requirement) => requirementStatus(parseRequirement(requirement), skillLevels.value, completedQuests.value));
+  return summarizeRequirementStatuses(statuses).level === 'met';
+}
+
 /** One-letter tier abbreviations for the region list's own B/E/M/H/X
  * shortcut row (below each region name, one button per tier that region
  * actually has) — X for Elite since E is already Easy's. Falls back to a
@@ -217,9 +229,10 @@ const filteredTasks = computed(() => {
               class="task-region-tier-letter"
               :class="{
                 'is-complete': isTierComplete(tier),
+                'is-eligible': !isTierComplete(tier) && isTierRequirementsMet(tier),
                 'is-active': region.slug === selectedRegion.slug && tier.slug === selectedTier.slug,
               }"
-              :title="`Jump to ${tier.tier} ${region.region}${isTierComplete(tier) ? ' — every task checked off' : ''}`"
+              :title="`Jump to ${tier.tier} ${region.region}${isTierComplete(tier) ? ' — every task checked off' : isTierRequirementsMet(tier) ? ' — all requirements met' : ''}`"
               @click="selectRegionTier(region, tier)"
             >
               {{ tierLetter(tier.tier) }}
@@ -227,6 +240,10 @@ const filteredTasks = computed(() => {
           </span>
         </li>
       </ul>
+      <div class="task-region-legend">
+        <span class="task-region-legend-item"><span class="task-region-legend-swatch is-complete" aria-hidden="true" /> Complete</span>
+        <span class="task-region-legend-item"><span class="task-region-legend-swatch is-eligible" aria-hidden="true" /> Requirements met</span>
+      </div>
     </section>
 
     <section class="lb">

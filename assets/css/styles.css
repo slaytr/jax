@@ -92,6 +92,11 @@
      positive/negative/ember siblings once put on their shared translucent
      -tinted background (.task-req-status.is-most, TasksTab.vue). */
   --warn-ink: #f0c675;
+  /* Same role again, for --temper — a paler sky blue rather than raw
+     --temper itself, same glow-on-near-black reasoning (.task-region-tier
+     -letter.is-eligible, TasksTab.vue: a tier whose requirements are all
+     met but isn't fully checked off yet). */
+  --temper-ink: #a9d2ef;
   --wordmark-gradient: linear-gradient(168deg, #fbf3e2 10%, #cbb182 55%, #9a7c4a 95%);
   --forge-glow: radial-gradient(120ch 60ch at 18% -12%, rgba(217, 89, 38, 0.16), transparent 62%),
     radial-gradient(90ch 50ch at 88% -6%, rgba(201, 133, 0, 0.1), transparent 60%),
@@ -134,6 +139,7 @@
   --positive-ink: var(--gain);
   --negative-ink: var(--crimson);
   --warn-ink: var(--warn);
+  --temper-ink: var(--temper);
 
   --wordmark-gradient: linear-gradient(168deg, #6b4a1a 10%, #8a6a2e 55%, #b08a3e 95%);
   /* A soft vignette standing in for the dark theme's forge-glow bloom — an
@@ -2706,6 +2712,64 @@ body::after {
 
 .task-region-tier-letter.is-complete.is-active {
   background: color-mix(in srgb, var(--gain) 38%, transparent);
+}
+
+/* A tier whose requirements are all met (tierRequirementsSummary's own
+   'met' level, TasksTab.vue's own isTierRequirementsMet) but isn't fully
+   checked off yet — same tinted-badge recipe as .is-complete just in
+   --temper's blue rather than --gain's green, and only applied when
+   .is-complete isn't (a fully-done tier stays green, it doesn't also need
+   to say "you could still start this"). */
+.task-region-tier-letter.is-eligible {
+  background: color-mix(in srgb, var(--temper) 22%, transparent);
+  color: var(--temper-ink);
+}
+
+.task-region-tier-letter.is-eligible:hover {
+  background: color-mix(in srgb, var(--temper) 32%, transparent);
+}
+
+.task-region-tier-letter.is-eligible.is-active {
+  background: color-mix(in srgb, var(--temper) 38%, transparent);
+}
+
+/* What the region list's own tier letters' two tint colours mean — sits
+   under the region list itself since that's the only place they appear.
+   Same small-swatch-plus-label recipe as .quest-graph-legend
+   (QuestDependencyGraph.vue), just its own class names rather than shared
+   ones — a different feature area, not the same list. */
+.task-region-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+}
+
+.task-region-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.task-region-legend-swatch {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+}
+
+.task-region-legend-swatch.is-complete {
+  background: color-mix(in srgb, var(--gain) 22%, transparent);
+  border: 1px solid var(--gain);
+}
+
+.task-region-legend-swatch.is-eligible {
+  background: color-mix(in srgb, var(--temper) 22%, transparent);
+  border: 1px solid var(--temper);
 }
 
 .task-region-summary {
