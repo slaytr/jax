@@ -2,8 +2,10 @@
 import { computed, ref, watch } from 'vue';
 
 import { SKILLS } from '@shared/config.js';
-import { distinctLabelNames, goalSections, itemsFor, orderSectionsByStatus, sectionIsComplete } from '@/lib/goals';
+import { distinctLabelNames, goalSections, itemsFor, orderSectionsByStatus, sectionIsComplete, type GoalSection } from '@/lib/goals';
+import { applyCustomOrder } from '@/lib/goalOrder';
 import { usePrefs } from '@/composables/usePrefs';
+import { useGoalOrder } from '@/composables/useGoalOrder';
 import GoalCard from '@/components/player/goals/GoalCard.vue';
 import GoalFocusPanel from '@/components/player/goals/GoalFocusPanel.vue';
 import GoalsGraph from '@/components/player/goals/GoalsGraph.vue';
@@ -53,10 +55,83 @@ const emptyMessage = computed(() => {
   return props.readOnlyHint ? 'No goals set yet.' : 'No goals yet — click a skill to set one.';
 });
 
-const sections = computed(() => orderSectionsByStatus(goalSections(filteredGoals.value)));
+/** A section's own identity for reordering (useGoalOrder.ts) — the same
+ * value already used as this loop's own v-for :key below, so nothing new
+ * needs inventing just to drag one. */
+const sectionKey = (section: GoalSection) => section.title ?? ' ';
+
+const goalOrder = useGoalOrder(props.player.slug);
+
+/** orderSectionsByStatus's own active-then-completed split stays fixed —
+ * a viewer only ever reorders *within* one side of it, never mixes a
+ * completed group in among the active ones just by dragging. */
+const sections = computed(() => {
+  const base = orderSectionsByStatus(goalSections(filteredGoals.value));
+  const reordered = (list: GoalSection[]) => applyCustomOrder(list, goalOrder.order.sections, sectionKey);
+  return [...reordered(base.filter((section) => !sectionIsComplete(section))), ...reordered(base.filter(sectionIsComplete))];
+});
+
+/** itemsFor's own list, with the viewer's own manual order (if any)
+ * applied on top — meaningful only where a section actually has more than
+ * one item (the ungrouped "Skills" bucket, in practice), a no-op harmless
+ * to run for every other section too. */
+function orderedItemsFor(section: GoalSection) {
+  return applyCustomOrder(itemsFor(section), goalOrder.order.items, (item) => item.quest.id);
+}
 
 function toggleFocus(id: string) {
   emit('focus', props.focusGoalId === id ? null : id);
+}
+
+/** Drag-and-drop reordering for the list view — plain HTML5 DnD, no
+ * library: `draggable` on a section's own `.goal-group` and on each
+ * GoalCard (Vue's attr fallthrough lands it on that component's own root
+ * `<li>`, no changes needed inside GoalCard.vue itself). Nesting works out
+ * on its own — starting a drag from within a GoalCard fires dragstart on
+ * that `<li>`, not the section div it sits inside, since the browser
+ * always attributes a drag to the *nearest* draggable ancestor from the
+ * actual mousedown point. `.stop` on the item-level handlers is still
+ * needed for dragover/drop, which *do* bubble, so a drop on a card doesn't
+ * also re-trigger the section-level drop handler underneath it.
+ *
+ * Both `draggingSectionKey`/`draggingItemId` are read at drop time only —
+ * dataTransfer's own payload is set too (`setData`) since Firefox refuses
+ * to start a drag at all without it, but never read back here, since a
+ * plain module-level ref survives the whole gesture on this same page
+ * without needing to round-trip through it.
+ */
+const draggingSectionKey = ref<string | null>(null);
+const draggingItemId = ref<string | null>(null);
+
+function onSectionDragStart(event: DragEvent, key: string) {
+  draggingSectionKey.value = key;
+  event.dataTransfer?.setData('text/plain', key);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+}
+
+function onSectionDrop(event: DragEvent, targetKey: string) {
+  event.preventDefault();
+  if (draggingSectionKey.value === null || draggingSectionKey.value === targetKey) return;
+  goalOrder.moveSection(sections.value.map(sectionKey), draggingSectionKey.value, targetKey);
+  draggingSectionKey.value = null;
+}
+
+function onItemDragStart(event: DragEvent, id: string) {
+  event.stopPropagation();
+  draggingItemId.value = id;
+  event.dataTransfer?.setData('text/plain', id);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+}
+
+function onItemDrop(event: DragEvent, section: GoalSection, targetId: string) {
+  event.preventDefault();
+  event.stopPropagation();
+  const draggedId = draggingItemId.value;
+  if (draggedId === null || draggedId === targetId) return;
+  const currentIds = orderedItemsFor(section).map((item) => item.quest.id);
+  if (!currentIds.includes(draggedId)) return; // dropped onto a card from a different section — not a valid move
+  goalOrder.moveItem(currentIds, draggedId, targetId);
+  draggingItemId.value = null;
 }
 
 // List (the original card-per-group layout) or Graph (every goal as a node,
@@ -144,16 +219,26 @@ watch(view, (value) => savePref({ goalsView: value }));
     <template v-else-if="view === 'list'">
       <div
         v-for="section in sections"
-        :key="section.title ?? ' '"
+        :key="sectionKey(section)"
         class="goal-group"
         :class="{ 'is-collapsed': section.title !== null && collapsedGroups.has(section.title), 'is-complete': sectionIsComplete(section) }"
+        :draggable="canEdit"
+        title="Drag to reorder"
+        @dragstart="onSectionDragStart($event, sectionKey(section))"
+        @dragover.prevent
+        @drop="onSectionDrop($event, sectionKey(section))"
       >
         <button
           v-if="section.title"
           type="button"
           class="goal-group-title"
           :aria-expanded="collapsedGroups.has(section.title) ? 'false' : 'true'"
+          :draggable="canEdit"
+          title="Drag to reorder"
           @click="emit('toggleGroup', section.title!)"
+          @dragstart="onSectionDragStart($event, sectionKey(section))"
+          @dragover.prevent.stop
+          @drop.stop="onSectionDrop($event, sectionKey(section))"
         >
           <span class="goal-group-chevron" aria-hidden="true" />
           <span v-if="sectionIsComplete(section)" class="goal-group-check" aria-hidden="true">✓</span>
@@ -163,7 +248,7 @@ watch(view, (value) => savePref({ goalsView: value }));
 
         <ul v-if="section.title === null || !collapsedGroups.has(section.title)" class="goals-list">
           <GoalCard
-            v-for="item in itemsFor(section)"
+            v-for="item in orderedItemsFor(section)"
             :key="item.quest.id"
             :goal="item.quest"
             :child-goals="item.children"
@@ -172,6 +257,11 @@ watch(view, (value) => savePref({ goalsView: value }));
             :labels-by-name="labelsByName"
             :can-edit="canEdit"
             :focused-id="focusGoalId"
+            :draggable="canEdit"
+            title="Drag to reorder"
+            @dragstart="onItemDragStart($event, item.quest.id)"
+            @dragover.prevent.stop
+            @drop="onItemDrop($event, section, item.quest.id)"
             @focus="toggleFocus"
             @delete="(id) => emit('delete', id)"
           />

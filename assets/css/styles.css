@@ -3987,6 +3987,18 @@ body::after {
   margin-top: 1.1rem;
 }
 
+/* Draggable as a whole (GoalsList.vue's own onSectionDragStart) — grab
+ * cursor on the section's own background specifically, so it doesn't
+ * fight .goal-group-title's or .goal-card's own explicit pointer cursor
+ * for their own, different, click-driven interactions (collapse, focus). */
+.goal-group {
+  cursor: grab;
+}
+
+.goal-group:active {
+  cursor: grabbing;
+}
+
 /* A real <button> (site convention) — clicking it collapses the group down
    to just this heading (renderGoalsList's own `collapsed` state, stats.js).
    Reset to read as plain text at rest, same restraint as .skill-cell/
@@ -4073,7 +4085,15 @@ body::after {
 }
 
 /* Clickable — see toggleFocus (player-goals.js): any card sets itself as
-   the toolbar's one focus goal (renderFocusGoal, .goal-focus below). */
+   the toolbar's one focus goal (renderFocusGoal, .goal-focus below). Also
+   draggable, to reorder it within its own list (GoalsList.vue's own
+   onItemDragStart) — :active swaps to a grabbing cursor for that, a plain
+   unmodified click still reads as the pointer cursor a click target
+   normally gets. */
+.goal-card:active {
+  cursor: grabbing;
+}
+
 .goal-card {
   display: flex;
   flex-direction: column;
