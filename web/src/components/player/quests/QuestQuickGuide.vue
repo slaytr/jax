@@ -107,8 +107,8 @@ function itemId(index: number): string {
 
       <div v-for="(section, i) in guide.sections" :key="i" class="quest-guide-section">
         <h4 class="quest-guide-heading">{{ section.heading }}</h4>
-        <p v-if="section.needed" class="quest-guide-section-tag"><span>Needed:</span> {{ section.needed }}</p>
-        <p v-if="section.recommended" class="quest-guide-section-tag"><span>Recommended:</span> {{ section.recommended }}</p>
+        <p v-if="section.needed" class="quest-guide-section-tag is-needed"><span>Needed</span> {{ section.needed }}</p>
+        <p v-if="section.recommended" class="quest-guide-section-tag is-recommended"><span>Recommended</span> {{ section.recommended }}</p>
         <ul v-if="section.notes.length > 0" class="quest-guide-section-notes">
           <li v-for="(note, j) in section.notes" :key="j">{{ note }}</li>
         </ul>

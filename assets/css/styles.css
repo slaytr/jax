@@ -3368,15 +3368,58 @@ body::after {
   font-weight: 600;
 }
 
+/* Own callout box rather than a plain muted line — a "Needed"/"Recommended"
+   tag is what to bring before starting the section below, easy to miss as
+   inline prose but a required stop if skipped, so it reads as a small
+   requirements card instead: a tinted border/background plus its own
+   uppercase label chip, warn-coloured for a hard requirement vs a softer
+   gain tint for a merely-recommended one — the same warn/gain-family
+   colour-mix pattern .task-req-status already uses for the same
+   met/not-met distinction elsewhere on the page. */
 .quest-guide-section-tag {
-  margin: 0 0 0.3rem;
-  color: var(--ink-muted);
-  font-size: 0.74rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0 0 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
 .quest-guide-section-tag span {
-  color: var(--ink);
-  font-weight: 600;
+  flex: none;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.quest-guide-section-tag.is-needed {
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--hairline));
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface-0));
+}
+
+.quest-guide-section-tag.is-needed span {
+  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  color: var(--warn-ink);
+}
+
+.quest-guide-section-tag.is-recommended {
+  border-color: color-mix(in srgb, var(--gain) 35%, var(--hairline));
+  background: color-mix(in srgb, var(--gain) 10%, var(--surface-0));
+}
+
+.quest-guide-section-tag.is-recommended span {
+  background: var(--gain-bg);
+  color: var(--positive-ink);
 }
 
 .quest-guide-section-notes,
