@@ -7,6 +7,7 @@ import { formatCompact, formatNumber, formatRelativeTime, formatWeekday } from '
 import { QUEST_POINTS_ICON, SKILLS, TOTAL_LEVEL_ICON, iconFor } from '@shared/config.js';
 import type { AllGains } from '@/lib/gains';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
+import changelogEntries from '@shared/changelog.json';
 
 const props = defineProps<{ gains: AllGains; snapshots: any[]; players: any[] }>();
 
@@ -123,6 +124,27 @@ function dailyBreakdownExtra(breakdown: Array<{ dayStart: number; gained: number
   ]);
 }
 
+/** changelog.json's own `date` — a real ISO instant (the moment the
+ * /changelog command ran, see .claude/commands/changelog.md), formatted in
+ * NZT rather than the visitor's own local time or UTC: this changelog is
+ * one person's own log of their own work, so its timestamps should always
+ * read the same regardless of who/where it's viewed from — not
+ * formatRelativeTime, a changelog entry is dated, not aged. Intl's own
+ * Pacific/Auckland zone handles the NZST/NZDT daylight-saving switch
+ * itself, no manual offset. */
+const NZ_DATETIME = new Intl.DateTimeFormat('en-NZ', {
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: 'Pacific/Auckland',
+});
+
+function changelogDate(isoInstant: string): string {
+  const parsed = Date.parse(isoInstant);
+  return Number.isFinite(parsed) ? NZ_DATETIME.format(new Date(parsed)) : isoInstant;
+}
+
 function buildTooltip(entry: (typeof highlights.value)[number]) {
   return () => {
     if (!entry.winner) return null;
@@ -212,6 +234,31 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
       </ul>
       <div v-else class="activity-feed-empty">
         <p>No recent activity yet.</p>
+      </div>
+    </section>
+
+    <!-- Hand-written, not derived from anything else on the page — see
+         .claude/commands/changelog.md, which appends to changelog.json on
+         request; this just renders whatever's there, newest entry first. -->
+    <section class="lb changelog">
+      <div class="lb-head">
+        <h2>
+          <svg class="lb-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <rect x="1" y="3" width="16" height="2" />
+            <rect x="1" y="8" width="16" height="2" />
+            <rect x="1" y="13" width="10" height="2" />
+          </svg>
+          <span>Changelog</span>
+        </h2>
+      </div>
+      <ul v-if="changelogEntries.length" class="changelog-list">
+        <li v-for="(entry, i) in changelogEntries" :key="i">
+          <span class="changelog-date">{{ changelogDate(entry.date) }}</span>
+          <span class="changelog-text">{{ entry.text }}</span>
+        </li>
+      </ul>
+      <div v-else class="activity-feed-empty">
+        <p>Nothing here yet.</p>
       </div>
     </section>
   </div>

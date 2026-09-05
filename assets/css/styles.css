@@ -875,12 +875,13 @@ body::after {
 /* -------------------------------------------------- weekly highlights */
 
 /* The row Weekly highlights used to have entirely to itself, now split
-   with the activity feed beside it — both panels stretch to the taller of
-   the two, so a short "no activity yet" placeholder doesn't leave the
-   highlights panel looking like it's the one that's shrunk. */
+   three ways with the activity feed and changelog beside it — all three
+   panels stretch to the tallest of the three, so a short "no activity
+   yet"/"nothing here yet" placeholder doesn't leave its own panel looking
+   like it's the one that's shrunk. */
 .highlights-split {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
   align-items: stretch;
 }
@@ -988,12 +989,14 @@ body::after {
 
 /* A completed quest's own row — icon + name + a green tick in place of the
  * raw "Quest complete: " prefix RuneMetrics' own text carries (see
- * HighlightsRow.vue's own questCompleteFrom). Left-aligned and truncating
- * on the name itself, unlike .activity-feed-levelup's centered layout —
- * a quest name runs far longer than a level number ever does. */
+ * HighlightsRow.vue's own questCompleteFrom). Centered same as
+ * .activity-feed-levelup; the name itself still truncates via
+ * .activity-feed-questcomplete-name's own ellipsis if a long one ever
+ * doesn't fit. */
 .activity-feed-questcomplete {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   min-width: 0;
   font-size: 0.82rem;
@@ -1032,6 +1035,55 @@ body::after {
   border: 1px dashed var(--hairline-strong);
   border-radius: var(--radius);
   background: var(--surface-1);
+}
+
+.changelog .lb-icon rect {
+  fill: var(--ink-2);
+}
+
+/* One entry per /changelog command run (changelog.json, newest first) —
+   a real sentence rather than activity-feed-list's single truncated line,
+   so entries wrap instead of ellipsizing; capped and scrollable of its own
+   accord rather than stretching .highlights-split's whole row taller every
+   time an entry is added. */
+.changelog-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.changelog-list li + li {
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.changelog-date {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+
+.changelog-text {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--ink);
+  /* A day with more than one entry (the /changelog command appends a `\n`
+     rather than a new date heading) reads as separate lines under that one
+     date, not one run-on sentence. */
+  white-space: pre-line;
 }
 
 @media (max-width: 720px) {
