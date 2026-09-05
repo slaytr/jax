@@ -1051,7 +1051,14 @@ body::after {
    a real sentence rather than activity-feed-list's single truncated line,
    so entries wrap instead of ellipsizing; capped and scrollable of its own
    accord rather than stretching .highlights-split's whole row taller every
-   time an entry is added. */
+   time an entry is added. The cap (9.75rem) is sized to exactly what
+   .activity-feed-list's own 5 rows need (a 5-member group's worth,
+   measured directly — its own height isn't itself capped, so there's
+   nothing to reference with a calc()): once a group has more members than
+   that, or the changelog outgrows it, the row's height still comes from
+   whichever of the three cards needs the most room (.highlights-split's
+   own align-items: stretch), but the changelog itself never keeps growing
+   past a 5-row activity feed's worth just because more entries pile up. */
 .changelog-list {
   display: flex;
   flex: 1;
@@ -1059,7 +1066,7 @@ body::after {
   gap: 0.55rem;
   margin: 0;
   padding: 0.5rem 0.6rem;
-  max-height: 14rem;
+  max-height: 9.75rem;
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--hairline);
