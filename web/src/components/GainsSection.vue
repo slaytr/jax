@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 
 import type { AllGains, GainsPeriod, GainsView } from '@/lib/gains';
 import GainsGrid from '@/components/GainsGrid.vue';
+import GainsSplitView from '@/components/GainsSplitView.vue';
 import MetricLineCharts from '@/components/charts/MetricLineCharts.vue';
 import PeriodToggle from '@/components/PeriodToggle.vue';
 import ViewToggle from '@/components/ViewToggle.vue';
@@ -52,7 +53,7 @@ watch(
           </svg>
           <span>Gains</span>
         </h2>
-        <ViewToggle v-model="view" label="Gains view" />
+        <ViewToggle v-model="view" label="Gains view" :show-split="true" />
       </div>
       <PeriodToggle v-model="period" />
     </div>
@@ -67,6 +68,14 @@ watch(
       :hot-quests-slug="gains.hot.quests[period]"
       :selected-player="selectedPlayer"
       @select="selectPlayer"
+    />
+    <GainsSplitView
+      v-else-if="view === 'split'"
+      :gains="gains"
+      :period="period"
+      :hot-levels-slug="gains.hot.levels[period]"
+      :hot-xp-slug="gains.hot.xp[period]"
+      :hot-quests-slug="gains.hot.quests[period]"
     />
     <MetricLineCharts
       v-else

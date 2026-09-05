@@ -1507,6 +1507,64 @@ body::after {
   font-size: 0.78rem;
 }
 
+/* Third Gains view (GainsSplitView.vue): the grid beside one chart rather
+   than a full-width toggle between them. 2:1 — the grid's own 5 columns
+   need more of the row than a single chart does. `align-items: stretch`
+   matches the chart card's own height to the (usually taller) grid's, and
+   since the chart itself keeps its fixed 3:1 aspect ratio rather than
+   stretching to fill that height (a distorted line chart reads worse than
+   a well-centered one), the auto-margins below centre whatever's last
+   inside the card — the chart itself, or the "No data yet" fallback — in
+   the leftover space under the label instead of leaving it pinned to the
+   top with a dead gap below. Stacks below 900px, same as .chart-section
+   giving up on three-across well before phone width: a 5-column grid and a
+   line chart's own axis labels both need more room than a third of that
+   width leaves once it's this narrow. */
+.gains-split {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.gains-split-grid {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+.gains-split-chart {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gains-split-chart > :last-child {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+@media (max-width: 900px) {
+  .gains-split {
+    flex-direction: column;
+  }
+
+  .gains-split-chart > :last-child {
+    margin: 0;
+  }
+}
+
+/* Which band the split view's chart is currently showing (clicking any
+   entry in a band picks it — GainsSplitView.vue's own onGridSelect) — same
+   ember "active" tint .gains-view-toggle.is-active already uses elsewhere
+   on this page, so the affordance reads consistently. */
+.lb-band.is-active-metric .lb-band-head {
+  background: color-mix(in srgb, var(--ember) 13%, var(--surface-2));
+}
+
+.lb-band.is-active-metric .lb-band-label {
+  color: var(--ember-ink);
+}
+
 /* Line-chart alternative: one coloured line per player, plotted across every
    snapshot in the period rather than boiled down to a single before/after
    figure. The viewBox is 3:1 (300×100, see gains-line.js) and this

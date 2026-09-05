@@ -19,9 +19,14 @@ const props = defineProps<{
   hotXpSlug?: string | null;
   hotQuestsSlug?: string | null;
   selectedPlayer: string | null;
+  // Which band's own metric the split view's chart is currently showing
+  // (GainsSplitView.vue) — tints that one band so it's clear which row is
+  // driving the chart. Left undefined by the plain grid view, where no
+  // band is ever "active" in this sense.
+  activeMetric?: 'levels' | 'xp' | 'quests' | null;
 }>();
 
-const emit = defineEmits<{ select: [slug: string] }>();
+const emit = defineEmits<{ select: [slug: string, metric: 'levels' | 'xp' | 'quests'] }>();
 
 const ORDINAL_SUFFIX = new Intl.PluralRules('en', { type: 'ordinal' });
 const ORDINAL_SUFFIXES: Record<string, string> = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
@@ -77,7 +82,7 @@ function questGainTooltip(row: any) {
 
 <template>
   <div class="lb-stack">
-    <div class="lb-band">
+    <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'levels' }">
       <div class="lb-band-head"><p class="lb-band-label">Levels</p></div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in levelRows" :key="row.player.slug">
@@ -88,7 +93,7 @@ function questGainTooltip(row: any) {
             :class="{ 'is-selected': row.player.slug === selectedPlayer }"
             :style="{ '--accent': row.player.colour }"
             v-tooltip="skillGainTooltip(row, 'Levels gained')"
-            @click="emit('select', row.player.slug)"
+            @click="emit('select', row.player.slug, 'levels')"
           >
             <span v-if="row.player.slug === hotLevelsSlug" class="lb-ribbon">Hot</span>
             <span class="visually-hidden">{{ ordinal(place) }} place —</span>
@@ -110,7 +115,7 @@ function questGainTooltip(row: any) {
       </div>
     </div>
 
-    <div class="lb-band">
+    <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'xp' }">
       <div class="lb-band-head"><p class="lb-band-label">XP</p></div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in xpRows" :key="row.player.slug">
@@ -121,7 +126,7 @@ function questGainTooltip(row: any) {
             :class="{ 'is-selected': row.player.slug === selectedPlayer }"
             :style="{ '--accent': row.player.colour }"
             v-tooltip="skillGainTooltip(row, 'XP gained')"
-            @click="emit('select', row.player.slug)"
+            @click="emit('select', row.player.slug, 'xp')"
           >
             <span v-if="row.player.slug === hotXpSlug" class="lb-ribbon">Hot</span>
             <span class="visually-hidden">{{ ordinal(place) }} place —</span>
@@ -143,7 +148,7 @@ function questGainTooltip(row: any) {
       </div>
     </div>
 
-    <div class="lb-band">
+    <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'quests' }">
       <div class="lb-band-head"><p class="lb-band-label">Quest points</p></div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in questRows" :key="row.player.slug">
@@ -154,7 +159,7 @@ function questGainTooltip(row: any) {
             :class="{ 'is-selected': row.player.slug === selectedPlayer }"
             :style="{ '--accent': row.player.colour }"
             v-tooltip="questGainTooltip(row)"
-            @click="emit('select', row.player.slug)"
+            @click="emit('select', row.player.slug, 'quests')"
           >
             <span v-if="row.player.slug === hotQuestsSlug" class="lb-ribbon">Hot</span>
             <span class="visually-hidden">{{ ordinal(place) }} place —</span>

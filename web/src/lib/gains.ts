@@ -1,7 +1,7 @@
 import { CALENDAR_DAY, computeGains, computeGainsSeries, computeLevelGains, computeQuestGains } from '@shared/compute.js';
 
 export type GainsPeriod = 'day' | 'week' | 'month';
-export type GainsView = 'grid' | 'line';
+export type GainsView = 'grid' | 'line' | 'split';
 
 const WEEK_SECONDS = 7 * 86400;
 const MONTH_SECONDS = 30 * 86400;
