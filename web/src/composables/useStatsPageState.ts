@@ -21,6 +21,9 @@ export interface StatsPageState {
   questSkillReq: string;
   questlinesCollapsed: boolean;
   questlinesHideCompleted: boolean;
+  // Series names pinned to the front of the questline chip row (QuestSeriesLinks.vue's
+  // own pin mode), most-recently-pinned first.
+  questlinesPinned: string[];
   goalLabelFilter: string;
   collapsedGoalGroups: string[];
   focusGoalId: string | null;
@@ -93,6 +96,7 @@ export function useStatsPageState() {
     questSkillReq: typeof persisted.questSkillReq === 'string' ? persisted.questSkillReq : 'all',
     questlinesCollapsed: persisted.questlinesCollapsed === true,
     questlinesHideCompleted: persisted.questlinesHideCompleted === true,
+    questlinesPinned: Array.isArray(persisted.questlinesPinned) ? persisted.questlinesPinned : [],
     goalLabelFilter: typeof persisted.goalLabelFilter === 'string' ? persisted.goalLabelFilter : '',
     collapsedGoalGroups: Array.isArray(persisted.collapsedGoalGroups) ? persisted.collapsedGoalGroups : [],
     focusGoalId: typeof persisted.focusGoalId === 'string' ? persisted.focusGoalId : null,

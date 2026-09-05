@@ -176,6 +176,11 @@ watch([selectedQuestSlug, selectedSeriesName, highlightedQuestName], () => {
   props.statsState.highlightedNodeSlug = node ? node.slug : null;
 });
 
+function togglePinSeries(name: string) {
+  const pinned = props.statsState.questlinesPinned;
+  props.statsState.questlinesPinned = pinned.includes(name) ? pinned.filter((entry) => entry !== name) : [name, ...pinned];
+}
+
 function handleConfirmQuestGoal(drafts: any[]) {
   create(drafts);
   questGoalDraftQuest.value = null;
@@ -189,8 +194,10 @@ function handleConfirmQuestGoal(drafts: any[]) {
     :selected-series-name="selectedSeriesName"
     :collapsed="statsState.questlinesCollapsed"
     :hide-completed="statsState.questlinesHideCompleted"
+    :pinned="statsState.questlinesPinned"
     @toggle-collapsed="statsState.questlinesCollapsed = !statsState.questlinesCollapsed"
     @toggle-hide-completed="statsState.questlinesHideCompleted = !statsState.questlinesHideCompleted"
+    @toggle-pin="togglePinSeries"
     @select-series="onSelectSeries"
   />
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { statusOf } from '@shared/quest-status.js';
 
@@ -18,6 +18,17 @@ import { statusOf } from '@shared/quest-status.js';
  * completed count already equals total — the count badge above the row
  * keeps counting every questline regardless, since that's "how many exist,"
  * not "how many are offered right now."
+ *
+ * Pin mode (the pin-icon checkbox beside "Hide completed") repurposes a
+ * chip click while it's on: instead of selecting that series for the
+ * dependency map, it toggles the series into/out of `pinned` (owned by
+ * statsState/QuestsTab.vue, since it's worth remembering across a reload —
+ * there's no curated "which questlines matter" data to sort by otherwise,
+ * so this just lets a viewer say so themselves). Pinned chips sort to the
+ * front, most-recently-pinned first, ahead of the plain alphabetical order
+ * everything else keeps. `pinMode` itself is deliberately local, unpersisted
+ * state — a viewer turns it on, rearranges a few chips, and it's back off
+ * next visit rather than silently changing what a plain click does.
  */
 
 // A handful of series where the wiki's own seriesPosition picks a quest
@@ -33,9 +44,12 @@ const props = defineProps<{
   selectedSeriesName: string | null;
   collapsed: boolean;
   hideCompleted: boolean;
+  pinned: string[];
 }>();
 
-const emit = defineEmits<{ toggleCollapsed: []; toggleHideCompleted: []; selectSeries: [name: string] }>();
+const emit = defineEmits<{ toggleCollapsed: []; toggleHideCompleted: []; togglePin: [name: string]; selectSeries: [name: string] }>();
+
+const pinMode = ref(false);
 
 const series = computed(() => {
   if (!props.quests) return [];
@@ -49,6 +63,7 @@ const series = computed(() => {
 
   const completedSet = new Set(props.player.completedQuests ?? []);
   const startedSet = new Set(props.player.startedQuests ?? []);
+  const pinRank = new Map(props.pinned.map((name, index) => [name, index]));
 
   return [...bySeries.entries()]
     .map(([name, members]) => {
@@ -59,10 +74,21 @@ const series = computed(() => {
         total: members.length,
         completed: members.filter((member) => statusOf(member, completedSet, startedSet) === 'completed').length,
         final: override ?? members.reduce((latest, member) => (member.seriesPosition > latest.seriesPosition ? member : latest)),
+        pinRank: pinRank.get(name) ?? null,
       };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      if (a.pinRank !== null && b.pinRank !== null) return a.pinRank - b.pinRank;
+      if (a.pinRank !== null) return -1;
+      if (b.pinRank !== null) return 1;
+      return a.name.localeCompare(b.name);
+    });
 });
+
+function onChipClick(name: string) {
+  if (pinMode.value) emit('togglePin', name);
+  else emit('selectSeries', name);
+}
 
 // The count badge always reads off `series` itself (every questline this
 // player has), not this — "Hide completed" trims what's offered to click,
@@ -78,20 +104,34 @@ const visibleSeries = computed(() => (props.hideCompleted ? series.value.filter(
         <h2>Questlines</h2>
         <span class="quest-series-count">{{ series.length }}</span>
       </button>
-      <label class="quest-series-hide-completed">
-        <input type="checkbox" :checked="hideCompleted" @change="emit('toggleHideCompleted')" />
-        <span>Hide completed</span>
-      </label>
+      <div class="quest-series-controls">
+        <label class="quest-series-hide-completed">
+          <input type="checkbox" :checked="hideCompleted" @change="emit('toggleHideCompleted')" />
+          <span>Hide completed</span>
+        </label>
+        <label class="quest-series-hide-completed quest-series-pin-mode" :class="{ 'is-active': pinMode }" title="Pin questlines to the front of this row">
+          <input type="checkbox" v-model="pinMode" />
+          <svg class="pin-mode-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+            <line x1="9" y1="15" x2="9" y2="17.5" class="pin-mode-icon-line" />
+          </svg>
+          <span class="visually-hidden">Pin questlines</span>
+        </label>
+      </div>
     </div>
+    <div v-if="!collapsed && pinMode" class="quest-series-pin-hint">Click a questline to pin it to the front.</div>
     <div v-if="!collapsed && visibleSeries.length > 0" class="quest-series-links">
       <button
         v-for="s in visibleSeries"
         :key="s.name"
         type="button"
-        :class="`quest-series-link${s.name === selectedSeriesName ? ' is-selected' : ''}${s.completed === s.total ? ' is-done' : ''}`"
-        :title="`Show every quest in the ${s.name} series (ends with ${s.final.name})`"
-        @click="emit('selectSeries', s.name)"
+        :class="`quest-series-link${s.name === selectedSeriesName ? ' is-selected' : ''}${s.completed === s.total ? ' is-done' : ''}${s.pinRank !== null ? ' is-pinned' : ''}`"
+        :title="pinMode ? `${s.pinRank !== null ? 'Unpin' : 'Pin'} ${s.name}` : `Show every quest in the ${s.name} series (ends with ${s.final.name})`"
+        @click="onChipClick(s.name)"
       >
+        <svg v-if="s.pinRank !== null" class="quest-series-link-pin" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+          <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+        </svg>
         {{ s.name }} {{ s.completed }}/{{ s.total }}
       </button>
     </div>

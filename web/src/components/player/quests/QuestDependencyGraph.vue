@@ -55,7 +55,10 @@ import {
  * own name — the same highlightNode emit that dims the rest of the graph)
  * over the plain selection: that's what lets clicking around a whole
  * questline's map pick out one member's guide, not just whatever single
- * quest the map happened to be anchored on. useQuestGuides.ts's own
+ * quest the map happened to be anchored on. That same click (onNodeClick
+ * below) also switches `view` to 'guide' itself, so clicking a quest in
+ * the map jumps straight to its guide rather than just quietly queuing it
+ * up for whenever the viewer next flips the toggle by hand. useQuestGuides.ts's own
  * quest-guides.json is only ever requested once a viewer actually switches
  * to this view — not just from opening the Quests tab, same lazy-load
  * reasoning as useQuests.ts's own quest list fetch. Which quest's guide
@@ -178,6 +181,16 @@ function offerGoal(node: any) {
 }
 function position(name: string) {
   return layout.value!.positionByName.get(name)!;
+}
+
+/** A node's own name click — highlights it (unchanged) and also switches
+ * this panel over to the quick guide, since guideQuest above already
+ * resolves to whichever node was just highlighted; without this, clicking
+ * a quest in the map only queued up its guide invisibly for whenever a
+ * viewer next switched views by hand. */
+function onNodeClick(name: string) {
+  emit('highlightNode', name);
+  view.value = 'guide';
 }
 
 // Escape is the standard way out of any fullscreen-shaped UI; the overlay
@@ -307,7 +320,7 @@ const LEGEND_ITEMS: Array<[string, string]> = [
                 </button>
                 <span v-else class="quest-graph-node-expand-btn is-empty" aria-hidden="true" />
 
-                <button type="button" class="quest-graph-node-select" :title="nodeTitle(node, statusOfNode(node), targetCount)" @click="emit('highlightNode', node.name)">
+                <button type="button" class="quest-graph-node-select" :title="nodeTitle(node, statusOfNode(node), targetCount)" @click="onNodeClick(node.name)">
                   <span v-if="STATUS_MARKER[statusOfNode(node)]" class="quest-graph-node-check" aria-hidden="true">{{ STATUS_MARKER[statusOfNode(node)] }}</span>
                   <span class="quest-graph-node-name">{{ node.name }}</span>
                 </button>

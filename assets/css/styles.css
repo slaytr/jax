@@ -2457,6 +2457,54 @@ body::after {
   accent-color: var(--ember);
 }
 
+/* Groups "Hide completed" with the pin-mode checkbox below on the same
+   side of .lb-head's own space-between, so adding the second control
+   doesn't turn this into a 3-way split. */
+.quest-series-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+/* Pin mode: while checked, a chip click below toggles it into/out of the
+   pinned set instead of selecting it for the dependency map (see
+   QuestSeriesLinks.vue's own onChipClick). Ember once active, same
+   recipe as every other toggle-a-mode control on this page
+   (.gains-view-toggle.is-active, .lb-band.is-active-metric). */
+.quest-series-pin-mode.is-active {
+  color: var(--ember-ink);
+}
+
+.pin-mode-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.pin-mode-icon-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.quest-series-pin-hint {
+  margin: -0.4rem 0 0.6rem;
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+}
+
+/* A pinned chip's own marker — always visible regardless of is-selected/
+   is-done, since those are a different axis (what the map is anchored on,
+   whether it's finished) from "did a viewer pin this to the front". */
+.quest-series-link-pin {
+  width: 8px;
+  height: 8px;
+  margin-right: 0.3rem;
+  vertical-align: -1px;
+  fill: currentColor;
+}
+
 .quest-series-empty {
   font-size: 0.78rem;
   color: var(--ink-muted);
@@ -2509,6 +2557,10 @@ body::after {
 .quest-series-link.is-done:not(.is-selected) {
   border-color: var(--gain-bg);
   color: var(--gain);
+}
+
+.quest-series-link.is-pinned:not(.is-selected):not(.is-done) {
+  border-color: color-mix(in srgb, var(--ember) 45%, var(--hairline-strong));
 }
 
 /* Quests tab: the Skills grid's replacement, same 200px width as
