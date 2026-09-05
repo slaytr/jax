@@ -55,15 +55,30 @@ const queryString = (value: unknown): string | null => (typeof value === 'string
  * reopen exactly what was on screen, quest/questline selection included.
  *
  * Unlike the legacy page's own history.replaceState call at the top of
- * every render(), this uses router.replace — same "never piles up back
- * button entries" effect, just through Vue Router's own history API. And
- * unlike that page's own single syncUrlToState (a whole-page render loop
- * with one obvious place to hang it), this is the one spot every field that
- * can affect the URL flows through — deliberately, so there's exactly one
- * place computing it instead of two watchers racing to each write their own
- * partial view of it (an earlier version of the quest/series/node sync
+ * every render(), this mostly uses router.replace — same "never piles up
+ * back button entries" effect, just through Vue Router's own history API.
+ * The one deliberate exception is picking a quest or questline (`?quest=`/
+ * `?series=`): that goes through router.push instead, so the browser's
+ * back/forward buttons step through *previous selections* one at a time —
+ * "which quest was I just looking at" is exactly the kind of thing back
+ * should undo — rather than leaving the page entirely on the first press.
+ * Everything else (the active tab, filters, the highlighted map node,
+ * tasks' region/tier) stays on replace; pushing a history entry for every
+ * node click while exploring one quest's branch would make back nearly
+ * useless for its one job. See the push-vs-replace branch below for
+ * exactly which field flips it.
+ *
+ * And unlike that page's own single syncUrlToState (a whole-page render
+ * loop with one obvious place to hang it), this is the one spot every field
+ * that can affect the URL flows through — deliberately, so there's exactly
+ * one place computing it instead of two watchers racing to each write their
+ * own partial view of it (an earlier version of the quest/series/node sync
  * lived in QuestsTab.vue itself and hit exactly that race against this
- * watcher's own tab sync).
+ * watcher's own tab sync). The companion watcher just below (route → state)
+ * is what makes a back/forward press actually visible: pushing a history
+ * entry only moves the address bar, so without it QuestsTab.vue would keep
+ * showing whatever it last selected regardless of which way the user just
+ * navigated.
  */
 export function useStatsPageState() {
   const route = useRoute();
@@ -88,6 +103,24 @@ export function useStatsPageState() {
     seriesName: queryString(route.query.series),
     highlightedNodeSlug: queryString(route.query.node),
   });
+
+  // Route → state: fires on every navigation the *user's own back/forward
+  // presses* cause (a router.push/replace from the watcher below changes
+  // `route.query` too, but by then `state` already holds those exact
+  // values — see each field's assignment below — so re-assigning here is a
+  // same-value no-op Vue's reactivity drops before it can re-trigger the
+  // state → route watcher and ping-pong the two forever).
+  watch(
+    () => route.query,
+    (query) => {
+      state.tab = oneOf(PAGE_TABS, query.tab, state.tab);
+      state.taskRegionSlug = queryString(query.region);
+      state.taskTier = queryString(query.tier);
+      state.questSlug = queryString(query.quest);
+      state.seriesName = queryString(query.series);
+      state.highlightedNodeSlug = queryString(query.node);
+    },
+  );
 
   watch(
     state,
@@ -117,7 +150,14 @@ export function useStatsPageState() {
       const currentKeys = Object.keys(route.query);
       const nextKeys = Object.keys(query);
       const unchanged = nextKeys.length === currentKeys.length && nextKeys.every((key) => query[key] === route.query[key]);
-      if (!unchanged) router.replace({ query });
+      if (unchanged) return;
+
+      // A genuine quest/series pick (including clearing one) earns its own
+      // back-button stop; everything else that can touch the URL — tab,
+      // node highlight, tasks' region/tier — stays on replace.
+      const pickedDifferentQuestOrSeries = query.quest !== route.query.quest || query.series !== route.query.series;
+      if (pickedDifferentQuestOrSeries) router.push({ query });
+      else router.replace({ query });
     },
     { deep: true },
   );

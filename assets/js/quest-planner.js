@@ -41,6 +41,12 @@ export const MAX_LEVEL_GAP_PER_SKILL = 5;
 export const MAX_SUGGESTIONS = 8;
 export const MAX_QUESTLINES = 5;
 
+/** How many rows a single "Ready now" quest's own expanded forward chain
+ * (subsequentQuests below) surfaces — same "nudge, not the whole graph"
+ * reasoning as MAX_SUGGESTIONS, just scoped to one quest's own preview
+ * instead of the top-level lists. */
+export const MAX_SUBSEQUENT = 12;
+
 const QUEST_POINTS_PSEUDO_SKILL = 'quest points';
 
 /** The "quest points" pseudo-skill (see quest-goal.js's own
@@ -190,4 +196,84 @@ export function computeQuestPlan(quests, player) {
   const questlines = computeQuestlines(quests, statusByName, readiness).slice(0, MAX_QUESTLINES);
 
   return { readyNow, almostThere, questlines };
+}
+
+/**
+ * The ordered chain of not-yet-completed quests that would become doable,
+ * one after another, once `quest` itself is done — the "Ready now" row's
+ * own expandable "what comes after this" preview. Not just every quest that
+ * names `quest` as a requirement somewhere in its history (that's most of
+ * the graph for an early quest): each entry is only appended once every one
+ * of *its own* requirements is already satisfied — already completed,
+ * `quest` itself, or an earlier entry already added to this very chain — so
+ * the result is a genuine valid completion order a player could actually
+ * follow, not just "eventually needs quest" regardless of what else still
+ * stands in the way. Capped at MAX_SUBSEQUENT; a quest with a long tail
+ * behind it (e.g. an early Dragon Slayer) still only shows the nearest
+ * handful.
+ *
+ * @param quest the completed-in-this-scenario quest to look forward from.
+ * @param quests the full quest-data/quests.json list.
+ * @param player a decorated player — see computeQuestPlan.
+ * @returns quest-data records (not the `{ quest, ... }` candidate shape
+ *   used elsewhere in this file) in the order they'd become doable —
+ *   `.series` is read directly off each for the caller's own "which
+ *   questline" display.
+ */
+export function subsequentQuests(quest, quests, player) {
+  const byName = new Map(quests.map((q) => [q.name, q]));
+  const completedSet = new Set(player.completedQuests ?? []);
+  const startedSet = new Set(player.startedQuests ?? []);
+  const statusByName = new Map(quests.map((q) => [q.name, statusOf(q, completedSet, startedSet)]));
+
+  // Every not-yet-completed quest reachable by walking requirements forward
+  // from `quest` — the pool the pass below draws its ordered chain from.
+  const requiredBy = new Map();
+  for (const candidate of quests) {
+    for (const req of requirementsOf(candidate, byName)) {
+      if (!requiredBy.has(req.name)) requiredBy.set(req.name, []);
+      requiredBy.get(req.name).push(candidate.name);
+    }
+  }
+
+  const descendants = new Set();
+  const worklist = [quest.name];
+  while (worklist.length > 0) {
+    const name = worklist.pop();
+    for (const childName of requiredBy.get(name) ?? []) {
+      if (statusByName.get(childName) === 'completed') continue;
+      if (!descendants.has(childName)) {
+        descendants.add(childName);
+        worklist.push(childName);
+      }
+    }
+  }
+
+  const satisfied = new Set(quests.filter((q) => statusByName.get(q.name) === 'completed').map((q) => q.name));
+  satisfied.add(quest.name);
+
+  // A repeated pass over whatever's left (Kahn's-algorithm style) rather
+  // than a single sweep — an entry two steps behind `quest` isn't ready on
+  // the first pass (its own direct requirement, one step behind `quest`,
+  // hasn't been added to `satisfied` yet), so it has to wait for a later
+  // pass once that requirement lands.
+  const remaining = new Set(descendants);
+  const chain = [];
+  let progressed = true;
+  while (progressed && remaining.size > 0 && chain.length < MAX_SUBSEQUENT) {
+    progressed = false;
+    for (const name of remaining) {
+      const candidate = byName.get(name);
+      const ready = candidate && requirementsOf(candidate, byName).every((req) => satisfied.has(req.name));
+      if (!ready) continue;
+
+      chain.push(candidate);
+      satisfied.add(name);
+      remaining.delete(name);
+      progressed = true;
+      if (chain.length >= MAX_SUBSEQUENT) break;
+    }
+  }
+
+  return chain;
 }

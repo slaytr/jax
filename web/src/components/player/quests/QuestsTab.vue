@@ -122,33 +122,43 @@ function onHighlightNode(name: string) {
   highlightedQuestName.value = highlightedQuestName.value === name ? null : name;
 }
 
-/** Read-side: seeds the very first selection from statsState's own
- * questSlug/seriesName/highlightedNodeSlug (in turn seeded from
- * `?quest=`/`?series=`/`?node=` — see useStatsPageState.ts), including
- * `quest` beating `series` if somehow both are present, and an unmatched
- * slug/name being silently ignored rather than left half-applied. Runs once
- * quest-data has actually loaded (resolving a slug/series name needs the
- * real list) and never again — later statsState changes below are this
- * component's own doing, not something to react back into selection a
- * second time. */
-let linkParamsApplied = false;
+/** Read-side: applies statsState's own questSlug/seriesName/highlightedNodeSlug
+ * (in turn seeded from `?quest=`/`?series=`/`?node=` — see
+ * useStatsPageState.ts) to the local selection, including `quest` beating
+ * `series` if somehow both are present, and an unmatched slug/name being
+ * silently ignored rather than left half-applied. Not just a one-time seed
+ * on load: useStatsPageState.ts pushes a browser-history entry for every
+ * quest/series pick specifically so back/forward can step through them, and
+ * a back/forward press only changes the URL — this watcher is what turns
+ * that back into the map actually jumping to the quest/series it lands on.
+ * Guarded by the equality check below so it only *acts* when statsState
+ * disagrees with the current selection — otherwise every pick this
+ * component makes itself would immediately loop back through here via the
+ * write-side watcher beneath it. */
 watch(
-  quests,
-  (value) => {
-    if (!value || linkParamsApplied) return;
-    linkParamsApplied = true;
+  () => [quests.value, props.statsState.questSlug, props.statsState.seriesName, props.statsState.highlightedNodeSlug] as const,
+  ([value, questSlug, seriesName, highlightedNodeSlug]) => {
+    if (!value) return;
 
-    const quest = props.statsState.questSlug ? value.find((candidate) => candidate.slug === props.statsState.questSlug) : null;
-    if (quest) {
-      onSelectQuest(quest);
-    } else if (props.statsState.seriesName && value.some((candidate) => candidate.series === props.statsState.seriesName)) {
-      onSelectSeries(props.statsState.seriesName);
-    } else {
-      return;
+    if (questSlug !== selectedQuestSlug.value || seriesName !== selectedSeriesName.value) {
+      const quest = questSlug ? value.find((candidate) => candidate.slug === questSlug) : null;
+      if (quest) {
+        onSelectQuest(quest);
+      } else if (seriesName && value.some((candidate) => candidate.series === seriesName)) {
+        onSelectSeries(seriesName);
+      } else {
+        selectedQuestSlug.value = null;
+        selectedSeriesName.value = null;
+        expandedQuestNames.value = new Set();
+        highlightedQuestName.value = null;
+      }
     }
 
-    const node = props.statsState.highlightedNodeSlug ? value.find((candidate) => candidate.slug === props.statsState.highlightedNodeSlug) : null;
-    if (node) highlightedQuestName.value = node.name;
+    const currentNodeSlug = highlightedQuestName.value ? (value.find((candidate) => candidate.name === highlightedQuestName.value)?.slug ?? null) : null;
+    if (highlightedNodeSlug !== currentNodeSlug) {
+      const node = highlightedNodeSlug ? value.find((candidate) => candidate.slug === highlightedNodeSlug) : null;
+      highlightedQuestName.value = node ? node.name : null;
+    }
   },
   { immediate: true },
 );

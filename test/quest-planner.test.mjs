@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { computeQuestPlan, MAX_LEVEL_GAP_PER_SKILL } from '../assets/js/quest-planner.js';
+import { computeQuestPlan, subsequentQuests, MAX_LEVEL_GAP_PER_SKILL, MAX_SUBSEQUENT } from '../assets/js/quest-planner.js';
 
 const quest = (name, overrides = {}) => ({
   name,
@@ -162,5 +162,70 @@ describe('computeQuestPlan — questlines', () => {
     ];
     const plan = computeQuestPlan(quests, player({ completedQuests: ['Done'] }));
     assert.equal(plan.questlines[0].next.quest.name, 'First', 'both are ready now, so seriesPosition breaks the tie');
+  });
+});
+
+describe('subsequentQuests', () => {
+  it('returns nothing behind a quest nothing else requires', () => {
+    const quests = [quest('Lonely')];
+    assert.deepEqual(subsequentQuests(quest('Lonely'), quests, player()), []);
+  });
+
+  it('returns a direct child once its only requirement is this quest', () => {
+    const quests = [
+      quest('A'),
+      quest('B', { questRequirements: [questReq('A')] }),
+    ];
+    const chain = subsequentQuests(quests[0], quests, player());
+    assert.deepEqual(chain.map((q) => q.name), ['B']);
+  });
+
+  it('orders a two-deep chain by how many quests behind `quest` each one sits', () => {
+    const quests = [
+      quest('A'),
+      quest('B', { questRequirements: [questReq('A')] }),
+      quest('C', { questRequirements: [questReq('B')] }),
+    ];
+    const chain = subsequentQuests(quests[0], quests, player());
+    assert.deepEqual(chain.map((q) => q.name), ['B', 'C']);
+  });
+
+  it('withholds a quest that also needs something else not yet satisfied', () => {
+    const quests = [
+      quest('A'),
+      quest('Other'),
+      quest('Needs Both', { questRequirements: [questReq('A'), questReq('Other')] }),
+    ];
+    const chain = subsequentQuests(quests[0], quests, player());
+    assert.deepEqual(chain, [], "Needs Both also needs Other, which isn't done or in the chain");
+  });
+
+  it('includes a quest once its other requirement is already completed', () => {
+    const quests = [
+      quest('A'),
+      quest('Other'),
+      quest('Needs Both', { questRequirements: [questReq('A'), questReq('Other')] }),
+    ];
+    const chain = subsequentQuests(quests[0], quests, player({ completedQuests: ['Other'] }));
+    assert.deepEqual(chain.map((q) => q.name), ['Needs Both']);
+  });
+
+  it('never re-surfaces an already-completed descendant', () => {
+    const quests = [
+      quest('A'),
+      quest('B', { questRequirements: [questReq('A')] }),
+    ];
+    const chain = subsequentQuests(quests[0], quests, player({ completedQuests: ['B'] }));
+    assert.deepEqual(chain, []);
+  });
+
+  it('caps the chain at MAX_SUBSEQUENT even on a long straight line', () => {
+    const quests = [quest('Q0')];
+    for (let i = 1; i <= MAX_SUBSEQUENT + 5; i += 1) {
+      quests.push(quest(`Q${i}`, { questRequirements: [questReq(`Q${i - 1}`)] }));
+    }
+    const chain = subsequentQuests(quests[0], quests, player());
+    assert.equal(chain.length, MAX_SUBSEQUENT);
+    assert.deepEqual(chain.map((q) => q.name).slice(0, 3), ['Q1', 'Q2', 'Q3']);
   });
 });

@@ -3105,6 +3105,71 @@ body::after {
   color: var(--gain);
 }
 
+/* "Ready now" row's own "what comes after this" disclosure — same "+"/"–"
+   text-button recipe as .quest-graph-node-expand-btn, just trailing the row
+   instead of leading it. */
+.quest-plan-expand-btn {
+  flex: none;
+  width: 1.1em;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: center;
+  color: var(--ink-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.quest-plan-expand-btn:hover,
+.quest-plan-expand-btn.is-expanded {
+  color: var(--ink);
+}
+
+.quest-plan-expand-btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+/* The expanded forward chain itself (subsequentQuests, quest-planner.js) —
+   flex-basis: 100% pushes it onto its own line under the row it belongs to,
+   since .quest-plan-item is already a wrapping flex row rather than a
+   two-part layout that would need restructuring just for this. */
+.quest-plan-subsequent-list {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin: 0.4rem 0 0;
+  padding: 0.4rem 0 0 1.1rem;
+  border-top: 1px dashed var(--hairline);
+  list-style: none;
+}
+
+.quest-plan-subsequent-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+}
+
+.quest-plan-subsequent-item .quest-plan-name {
+  flex: none;
+  width: auto;
+}
+
+/* Which questline (if any) a subsequent quest belongs to — a quiet aside,
+   not something competing with the quest name itself for attention. */
+.quest-plan-subsequent-series {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+}
+
 /* The questlines section's own two-line row: series progress on top, its
    next actionable quest below — unlike the plain single-line rows above,
    so the name button reverts to block-level rather than flex: 1. */
