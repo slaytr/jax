@@ -73,11 +73,11 @@ function childProgress(child: any) {
   return skillGoalProgress(child, props.bySkillId.get(child.skillId), props.player, true);
 }
 
-/** A click anywhere on a card sets it as the tab's one focus goal — except
- * a click that actually landed on the delete button or the wiki-guide
- * link, which already handle themselves. stopPropagation matters for a
- * nested requirement row specifically: it sits inside its own quest's
- * card, which is itself clickable. */
+/** A nested requirement row still sets itself as the tab's one focus goal
+ * on click — except a click that actually landed on its own delete button,
+ * which handles itself. A top-level card no longer does this (see
+ * .goal-card-focus below); only a requirement row nested inside one still
+ * uses this. */
 function focusClick(id: string, event: MouseEvent) {
   if ((event.target as HTMLElement).closest('button, a')) return;
   event.stopPropagation();
@@ -86,11 +86,24 @@ function focusClick(id: string, event: MouseEvent) {
 </script>
 
 <template>
-  <li class="goal-card" :class="{ 'is-complete': complete, 'is-focused': isFocused }" @click="focusClick(goal.id, $event)">
+  <li class="goal-card" :class="{ 'is-complete': complete, 'is-focused': isFocused }">
     <template v-if="isQuest">
       <div class="goal-card-head">
         <img class="goal-card-icon" :src="QUEST_POINTS_ICON" alt="" width="18" height="18" decoding="async" />
         <span class="goal-card-name">{{ goal.questName }}</span>
+        <button
+          type="button"
+          class="goal-card-focus"
+          :class="{ 'is-focused': isFocused }"
+          :aria-pressed="isFocused"
+          :title="isFocused ? 'Unfocus this goal' : 'Focus this goal'"
+          @click="emit('focus', goal.id)"
+        >
+          <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+          </svg>
+          <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
+        </button>
         <a
           class="goal-card-wiki-link"
           :href="questWikiUrl(goal.questName)"
@@ -121,7 +134,22 @@ function focusClick(id: string, event: MouseEvent) {
     </template>
 
     <template v-else-if="!complete">
-      <div class="goal-subgoal-row">
+      <div class="goal-subgoal-row is-static">
+        <img class="goal-subgoal-icon" :src="iconFor(skill)" alt="" width="16" height="16" decoding="async" />
+        <span class="goal-subgoal-name">{{ skill!.name }}</span>
+        <button
+          type="button"
+          class="goal-card-focus"
+          :class="{ 'is-focused': isFocused }"
+          :aria-pressed="isFocused"
+          :title="isFocused ? 'Unfocus this goal' : 'Focus this goal'"
+          @click="emit('focus', goal.id)"
+        >
+          <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+          </svg>
+          <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
+        </button>
         <SkillProgressRow
           :goal="goal"
           :skill="skill"
@@ -130,6 +158,7 @@ function focusClick(id: string, event: MouseEvent) {
           :target-value="goal.targetValue"
           :fraction="skillProgress!.fraction"
           :can-edit="canEdit"
+          :show-label="false"
           @delete="emit('delete', goal.id)"
         />
       </div>
@@ -145,6 +174,19 @@ function focusClick(id: string, event: MouseEvent) {
       <div class="goal-card-head">
         <img class="goal-card-icon" :src="iconFor(skill)" alt="" width="18" height="18" decoding="async" />
         <span class="goal-card-name">{{ skill!.name }}</span>
+        <button
+          type="button"
+          class="goal-card-focus"
+          :class="{ 'is-focused': isFocused }"
+          :aria-pressed="isFocused"
+          :title="isFocused ? 'Unfocus this goal' : 'Focus this goal'"
+          @click="emit('focus', goal.id)"
+        >
+          <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+          </svg>
+          <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
+        </button>
         <span class="goal-card-target">✓ {{ goalTargetLabel(goal) }}</span>
         <button v-if="canEdit" type="button" class="goal-card-delete" aria-label="Delete this goal" @click="emit('delete', goal.id)">×</button>
       </div>
