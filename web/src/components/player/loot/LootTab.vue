@@ -41,6 +41,26 @@ function selectBoss(boss: NonNullable<typeof selectedBoss.value>) {
   props.statsState.lootBossSlug = boss.slug;
 }
 
+const CATEGORY_LABELS: Record<string, string> = { Boss: 'Bosses', Monster: 'Monsters' };
+
+/** The sidebar's own Bosses/Monsters split — grouped by first appearance in
+ * boss-loot-tables.js (GWD1 bosses are listed before the monsters, so
+ * Bosses always renders first) rather than a fixed category order, so a
+ * future third category needs no change here. */
+const groupedBosses = computed(() => {
+  if (!bosses.value) return [];
+  const groups: { category: string; label: string; entries: NonNullable<typeof bosses.value> }[] = [];
+  for (const boss of bosses.value) {
+    let group = groups.find((candidate) => candidate.category === boss.category);
+    if (!group) {
+      group = { category: boss.category, label: CATEGORY_LABELS[boss.category] ?? boss.category, entries: [] };
+      groups.push(group);
+    }
+    group.entries.push(boss);
+  }
+  return groups;
+});
+
 const KILL_PRESETS = [1, 10, 50, 100, 250, 500];
 const killCount = ref(100);
 
@@ -85,7 +105,9 @@ function roll() {
 /** A boss's own Unique table (or, on Nex, its equivalent "Main drop" roll —
  * Nex has no section literally named Unique, but that 6/128 table is the
  * same kind of signature-item roll every other GWD1 boss's Unique section
- * is) — the section names the simulator's own purple border picks out. */
+ * is) — the section names the simulator's own purple border picks out for
+ * most bosses. An individual item's own `unique: true` (Cave horror's
+ * Black mask (10), filed under "Armour") covers the rest. */
 function isUniqueSection(sectionName: string): boolean {
   return sectionName === 'Unique' || sectionName.startsWith('Main drop');
 }
@@ -115,7 +137,7 @@ const simulatedDrops = computed(() => {
         name: item.name,
         qty: result.qty,
         noIcon: Boolean(item.noIcon),
-        isUnique: isUniqueSection(section.name),
+        isUnique: Boolean(item.unique) || isUniqueSection(section.name),
       };
     })
     .filter((drop) => !drop.noIcon)
@@ -128,15 +150,17 @@ const simulatedDrops = computed(() => {
     <p v-if="status !== 'ready' || !selectedBoss" class="chart-empty">{{ status === 'error' ? error : 'Loading boss loot data…' }}</p>
     <template v-else>
       <section class="lb quest-list-card">
-        <div class="lb-head"><div class="lb-title"><h2>Bosses</h2></div></div>
-        <ul class="quest-list loot-boss-list">
-          <li v-for="boss in bosses" :key="boss.slug" :class="`quest-list-item${boss.slug === selectedBoss.slug ? ' is-selected' : ''}`">
-            <button type="button" class="quest-list-name loot-boss-name" @click="selectBoss(boss)">
-              <img :src="bossIconFor(boss.slug)" alt="" class="loot-boss-thumb" width="20" height="20" decoding="async" />
-              {{ boss.name }}
-            </button>
-          </li>
-        </ul>
+        <div v-for="group in groupedBosses" :key="group.category" class="loot-boss-group">
+          <div class="lb-head"><div class="lb-title"><h2>{{ group.label }}</h2></div></div>
+          <ul class="quest-list loot-boss-list">
+            <li v-for="boss in group.entries" :key="boss.slug" :class="`quest-list-item${boss.slug === selectedBoss.slug ? ' is-selected' : ''}`">
+              <button type="button" class="quest-list-name loot-boss-name" @click="selectBoss(boss)">
+                <img :src="bossIconFor(boss.slug)" alt="" class="loot-boss-thumb" width="20" height="20" decoding="async" />
+                {{ boss.name }}
+              </button>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <section class="lb loot-detail">

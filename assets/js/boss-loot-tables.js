@@ -1,8 +1,13 @@
 /**
- * Loot tables for God Wars Dungeon 1's five bosses — Kree'arra, K'ril
- * Tsutsaroth, General Graardor, Commander Zilyana, and Nex — for the Loot
- * tab (LootTab.vue, loaded lazily via useBossLoot.ts, same "static data
- * module, not a database table" shape as area-tasks.js).
+ * Loot tables for the Loot tab (LootTab.vue, loaded lazily via
+ * useBossLoot.ts, same "static data module, not a database table" shape as
+ * area-tasks.js) — God Wars Dungeon 1's five bosses (Kree'arra, K'ril
+ * Tsutsaroth, General Graardor, Commander Zilyana, Nex) plus, so far, three
+ * ordinary monsters (Desert strykewyrm, Jungle strykewyrm, Cave horror).
+ * Each entry's own
+ * `category` ('Boss' or 'Monster') is what splits the Loot tab's sidebar
+ * into its two headed sections — nothing else about a Monster entry's
+ * shape differs from a Boss one.
  *
  * Normal-mode drop tables only (hard mode reworks quantities/rates for the
  * same items rather than adding new ones — a later pass can add it as a
@@ -66,6 +71,7 @@ export const BOSS_LOOT_TABLES = [
     slug: 'kreearra',
     wikiUrl: "https://runescape.wiki/w/Kree%27arra",
     image: "Kree'arra.png",
+    category: 'Boss',
     combatLevel: 580,
     location: "Armadyl's Eyrie, God Wars Dungeon",
     sections: [
@@ -179,6 +185,7 @@ export const BOSS_LOOT_TABLES = [
     // in-game bulk suggests, so LootTab.vue displays (and
     // fetch-boss-icons.mjs fetches) his portrait at 2x the others' size.
     portraitScale: 2,
+    category: 'Boss',
     combatLevel: 650,
     location: "Zamorak's Fortress, God Wars Dungeon",
     sections: [
@@ -271,6 +278,7 @@ export const BOSS_LOOT_TABLES = [
     slug: 'general-graardor',
     wikiUrl: 'https://runescape.wiki/w/General_Graardor',
     image: 'General Graardor.png',
+    category: 'Boss',
     combatLevel: 624,
     location: "Bandos's Stronghold, God Wars Dungeon",
     sections: [
@@ -367,6 +375,7 @@ export const BOSS_LOOT_TABLES = [
     slug: 'commander-zilyana',
     wikiUrl: 'https://runescape.wiki/w/Commander_Zilyana',
     image: 'Commander Zilyana.png',
+    category: 'Boss',
     combatLevel: 596,
     location: "Saradomin's Encampment, God Wars Dungeon",
     sections: [
@@ -473,6 +482,7 @@ export const BOSS_LOOT_TABLES = [
     slug: 'nex',
     wikiUrl: 'https://runescape.wiki/w/Nex',
     image: 'Nex.png',
+    category: 'Boss',
     combatLevel: 1001,
     location: 'Ancient Prison, God Wars Dungeon',
     sections: [
@@ -558,6 +568,314 @@ export const BOSS_LOOT_TABLES = [
           { name: 'Green charm', quantity: '20', rarity: '13.437/1,000' },
           { name: 'Crimson charm', quantity: '20', rarity: '48.372/1,000' },
           { name: 'Blue charm', quantity: '20', rarity: '239.176/1,000' },
+        ],
+      },
+    ],
+  },
+  // ---------------------------------------------------------------------
+  // Monsters — same DropsLine-sourced-from-raw-wikitext approach as the
+  // five GWD1 bosses above, scraped on 2026-09-07. Both strykewyrms share
+  // an identical drop-table shape (a Slayer-task-gated unique, Herb/Seed/
+  // Talisman/Gem "table trigger" rows shared with dozens of other RS3
+  // monsters, kept here as one reference row apiece rather than fully
+  // transcribed — see the file-level doc comment above for why) and the
+  // same DropsLineEffigy/DropsLineSpiritGems/DropsLineMimic macros GWD1
+  // uses, just at these two's own much lower combat level:
+  // - Starved ancient effigy: no `roll` param on either page, so
+  //   DropsLineEffigy computes it from combat level — floor(45000000 /
+  //   floor(level/2)^2): 1/17,300 at level 103 (Desert), 1/21,266 at level
+  //   93 (Jungle).
+  // - Mimic kill token: 1/max(50, 10000-level) — 1/9,897 (Desert),
+  //   1/9,907 (Jungle).
+  // - Spirit sapphire/emerald/ruby: the same constant 5/2000, 3/2000,
+  //   2/2000 GWD1 uses (DropsLineSpiritGems' own defaults, unoverridden).
+  {
+    name: 'Desert strykewyrm',
+    slug: 'desert-strykewyrm',
+    wikiUrl: 'https://runescape.wiki/w/Desert_strykewyrm',
+    image: 'Desert strykewyrm.png',
+    category: 'Monster',
+    combatLevel: 103,
+    location: 'East of Al Kharid',
+    sections: [
+      {
+        name: 'Unique',
+        items: [
+          {
+            name: 'Focus sight',
+            quantity: '1',
+            rarity: '1/512',
+            note: '1/256 while on a Slayer assignment for this monster.',
+          },
+        ],
+      },
+      {
+        name: 'Runes',
+        items: [{ name: 'Death rune', quantity: '15', rarity: '3/101' }],
+      },
+      {
+        name: 'Herbs',
+        items: [
+          { name: 'Grimy toadflax', quantity: '1 (noted)', rarity: '2/101' },
+          { name: 'Herb drop table', quantity: '', rarity: '12/101', note: 'Rolls a random noted herb.', wikiUrl: 'https://runescape.wiki/w/Herb_drop_table', noIcon: true },
+        ],
+      },
+      {
+        name: 'Seeds',
+        items: [
+          { name: 'Cadantine seed', quantity: '1', rarity: '2/101', wikiFile: 'Cadantine seed 5' },
+          { name: 'Rare seed drop table', quantity: '', rarity: '8/101', note: 'Rolls a random rare seed.', wikiUrl: 'https://runescape.wiki/w/Rare_seed_drop_table', noIcon: true },
+          { name: 'Tree seed drop table', quantity: '', rarity: '1/101', note: 'Rolls a random tree seed.', wikiUrl: 'https://runescape.wiki/w/Tree_seed_drop_table', noIcon: true },
+        ],
+      },
+      {
+        name: 'Consumables',
+        items: [
+          { name: 'Super defence (2)', quantity: '1', rarity: '13/101' },
+          { name: 'Swordfish', quantity: '2', rarity: '1/101' },
+        ],
+      },
+      {
+        name: 'Talismans',
+        items: [{ name: 'Talisman drop table', quantity: '', rarity: '1/101', note: 'Rolls a random elemental talisman.', wikiUrl: 'https://runescape.wiki/w/Talisman_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Adamantite stone spirit', quantity: '3', rarity: '4/101' },
+          { name: 'Yew wood spirit', quantity: '6', rarity: '6/101', note: 'Always dropped alongside 200 coins.' },
+        ],
+      },
+      {
+        name: 'Coins',
+        items: [
+          { name: 'Coins', quantity: '200', rarity: '11/101' },
+          { name: 'Coins', quantity: '440', rarity: '13/101' },
+          { name: 'Coins', quantity: '2,100-4,199', rarity: '3/101' },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Waterskin (4)', quantity: '2', rarity: '14/101' },
+          { name: 'Goat horn dust', quantity: '3 (noted)', rarity: '5/101', note: 'Dropped alongside a seed.' },
+          { name: 'Potato cactus', quantity: '5-9 (noted)', rarity: '6/101' },
+          { name: 'Tiny bladed rune salvage', quantity: '1', rarity: '2/101' },
+          { name: 'Spirit weed seed', quantity: '1', rarity: '2/101', wikiFile: 'Spirit weed seed 5' },
+        ],
+      },
+      {
+        name: 'Gem drop table',
+        items: [{ name: 'Gem drop table', quantity: '', rarity: '9/101', note: 'Rolls a random uncut gem.', wikiUrl: 'https://runescape.wiki/w/Gem_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Sealed clue scroll (hard)', quantity: '1', rarity: '10/1,280' },
+          { name: 'Sealed clue scroll (elite)', quantity: '1', rarity: '297/128,000' },
+          { name: 'Sealed clue scroll (master)', quantity: '1', rarity: '3/128,000' },
+          { name: 'Starved ancient effigy', quantity: '1', rarity: '1/17,300' },
+          { name: 'Spirit sapphire', quantity: '1', rarity: '5/2,000' },
+          { name: 'Spirit emerald', quantity: '1', rarity: '3/2,000' },
+          { name: 'Spirit ruby', quantity: '1', rarity: '2/2,000' },
+          { name: 'Mimic kill token', quantity: '1', rarity: '1/9,897' },
+        ],
+      },
+      {
+        name: 'Charms',
+        items: [
+          { name: 'Gold charm', quantity: '1', rarity: '37.325/1,000' },
+          { name: 'Green charm', quantity: '1', rarity: '18.662/1,000' },
+          { name: 'Crimson charm', quantity: '1', rarity: '119.439/1,000' },
+          { name: 'Blue charm', quantity: '1', rarity: '7.465/1,000' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Jungle strykewyrm',
+    slug: 'jungle-strykewyrm',
+    wikiUrl: 'https://runescape.wiki/w/Jungle_strykewyrm',
+    image: 'Jungle strykewyrm.png',
+    category: 'Monster',
+    combatLevel: 93,
+    location: 'Southwest of Feldip Hills',
+    sections: [
+      {
+        name: 'Unique',
+        items: [
+          {
+            name: 'Hexcrest',
+            quantity: '1',
+            rarity: '1/512',
+            note: '1/256 while on a Slayer assignment for this monster.',
+          },
+        ],
+      },
+      {
+        name: 'Runes',
+        items: [{ name: 'Death rune', quantity: '10', rarity: '3/101' }],
+      },
+      {
+        name: 'Herbs',
+        items: [
+          { name: 'Grimy cadantine', quantity: '1 (noted)', rarity: '2/101' },
+          { name: 'Herb drop table', quantity: '', rarity: '12/101', note: 'Rolls a random noted herb.', wikiUrl: 'https://runescape.wiki/w/Herb_drop_table', noIcon: true },
+        ],
+      },
+      {
+        name: 'Seeds',
+        items: [
+          { name: 'Toadflax seed', quantity: '1', rarity: '2/101', wikiFile: 'Toadflax seed 5' },
+          { name: 'Rare seed drop table', quantity: '', rarity: '8/101', note: 'Rolls a random rare seed.', wikiUrl: 'https://runescape.wiki/w/Rare_seed_drop_table', noIcon: true },
+          { name: 'Tree seed drop table', quantity: '', rarity: '1/101', note: 'Rolls a random tree seed.', wikiUrl: 'https://runescape.wiki/w/Tree_seed_drop_table', noIcon: true },
+        ],
+      },
+      {
+        name: 'Consumables',
+        items: [
+          { name: 'Super defence (1)', quantity: '1', rarity: '13/101' },
+          { name: 'Lobster', quantity: '1', rarity: '13/101' },
+          { name: 'Lobster', quantity: '2', rarity: '1/101' },
+        ],
+      },
+      {
+        name: 'Talismans',
+        items: [{ name: 'Talisman drop table', quantity: '', rarity: '1/101', note: 'Rolls a random elemental talisman.', wikiUrl: 'https://runescape.wiki/w/Talisman_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Mithril stone spirit', quantity: '2', rarity: '5/101', note: 'Dropped alongside a seed.' },
+          { name: 'Mithril stone spirit', quantity: '5', rarity: '4/101' },
+          { name: 'Teak wood spirit', quantity: '8', rarity: '6/101', note: 'Always dropped alongside 200 coins.' },
+        ],
+      },
+      {
+        name: 'Coins',
+        items: [
+          { name: 'Coins', quantity: '200', rarity: '11/101' },
+          { name: 'Coins', quantity: '220', rarity: '13/101' },
+          { name: 'Coins', quantity: '1,000-2,499', rarity: '3/101' },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Papaya fruit', quantity: '5-9 (noted)', rarity: '6/101' },
+          { name: 'Tiny bladed adamant salvage', quantity: '1', rarity: '2/101' },
+          { name: 'Spirit weed seed', quantity: '1', rarity: '2/101', wikiFile: 'Spirit weed seed 5' },
+        ],
+      },
+      {
+        name: 'Gem drop table',
+        items: [{ name: 'Gem drop table', quantity: '', rarity: '4/101', note: 'Rolls a random uncut gem.', wikiUrl: 'https://runescape.wiki/w/Gem_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Sealed clue scroll (hard)', quantity: '1', rarity: '10/1,280' },
+          { name: 'Sealed clue scroll (elite)', quantity: '1', rarity: '297/128,000' },
+          { name: 'Sealed clue scroll (master)', quantity: '1', rarity: '3/128,000' },
+          { name: 'Starved ancient effigy', quantity: '1', rarity: '1/21,266' },
+          { name: 'Spirit sapphire', quantity: '1', rarity: '5/2,000' },
+          { name: 'Spirit emerald', quantity: '1', rarity: '3/2,000' },
+          { name: 'Spirit ruby', quantity: '1', rarity: '2/2,000' },
+          { name: 'Mimic kill token', quantity: '1', rarity: '1/9,907' },
+        ],
+      },
+      {
+        name: 'Charms',
+        items: [
+          { name: 'Gold charm', quantity: '1', rarity: '55.987/1,000' },
+          { name: 'Green charm', quantity: '1', rarity: '139.968/1,000' },
+          { name: 'Crimson charm', quantity: '1', rarity: '22.394/1,000' },
+          { name: 'Blue charm', quantity: '1', rarity: '11.197/1,000' },
+        ],
+      },
+    ],
+  },
+  // Scraped 2026-09-07, same raw-wikitext approach as everything else here.
+  // No Gem/Rare drop table roll on this one's own page (unlike the
+  // strykewyrms above) — its drop list really is just what's below.
+  // DropsLineEffigy/DropsLineMimic at level=77 (no roll param on either):
+  // effigy 1/floor(45000000/floor(77/2)^2) = 1/31,163; mimic
+  // 1/max(50,10000-77) = 1/9,923.
+  {
+    name: 'Cave horror',
+    slug: 'cave-horror',
+    wikiUrl: 'https://runescape.wiki/w/Cave_horror',
+    image: 'Cave horror.png',
+    category: 'Monster',
+    combatLevel: 77,
+    location: "Mos Le'Harmless Caves",
+    sections: [
+      {
+        name: 'Guaranteed',
+        items: [{ name: 'Big bones', quantity: '1', rarity: 'Always' }],
+      },
+      {
+        // The wiki files this under its own "Armour" heading rather than
+        // "Unique" (Cave horror's page has no section literally named
+        // that), but it's the same kind of signature drop everything
+        // else's Unique section holds — `unique: true` is what the
+        // simulator's own purple border actually keys off, independent of
+        // whatever the section itself is called.
+        name: 'Armour',
+        items: [{ name: 'Black mask (10)', quantity: '1', rarity: '1/512', unique: true }],
+      },
+      {
+        name: 'Herbs',
+        items: [
+          { name: 'Grimy ranarr', quantity: '2 (noted)', rarity: '8/128' },
+          { name: 'Grimy lantadyme', quantity: '1 (noted)', rarity: '6/128' },
+          { name: 'Grimy dwarf weed', quantity: '1 (noted)', rarity: '6/128' },
+        ],
+      },
+      {
+        name: 'Coins',
+        items: [
+          { name: 'Coins', quantity: '2,250-3,750', rarity: '10/128' },
+          { name: 'Coins', quantity: '3,750-6,250', rarity: '8/128' },
+          { name: 'Coins', quantity: '7,500-12,500', rarity: '2/128' },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Teak logs', quantity: '6-10 (noted)', rarity: '12/128' },
+          { name: 'Mahogany logs', quantity: '2-6 (noted)', rarity: '8/128' },
+          { name: 'Weapon poison+ (2)', quantity: '1', rarity: '14/128' },
+          { name: 'Big bones', quantity: '13-17 (noted)', rarity: '10/128' },
+          { name: 'Monkey bones', quantity: '2 (noted)', rarity: '10/128' },
+          { name: 'Raw swordfish', quantity: '7-9 (noted)', rarity: '10/128' },
+          { name: 'Ruby ring', quantity: '3 (noted)', rarity: '7/128' },
+          { name: 'Ruby necklace', quantity: '2 (noted)', rarity: '7/128' },
+          { name: 'Poison ivy berries', quantity: '2 (noted)', rarity: '6/128' },
+          { name: 'Coconut', quantity: '1 (noted)', rarity: '4/128' },
+        ],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Foot bone', quantity: '1', rarity: '1/4', note: "Only during the Fur 'n Seek wish list." },
+          { name: 'Long bone', quantity: '1', rarity: '1/400' },
+          { name: 'Curved bone', quantity: '1', rarity: '1/5,012.5' },
+          { name: 'Sealed clue scroll (hard)', quantity: '1', rarity: '1/128' },
+          { name: 'Starved ancient effigy', quantity: '1', rarity: '1/31,163' },
+          { name: 'Spirit sapphire', quantity: '1', rarity: '5/2,000' },
+          { name: 'Spirit emerald', quantity: '1', rarity: '3/2,000' },
+          { name: 'Spirit ruby', quantity: '1', rarity: '2/2,000' },
+          { name: 'Mimic kill token', quantity: '1', rarity: '1/9,923' },
+        ],
+      },
+      {
+        name: 'Charms',
+        items: [
+          { name: 'Gold charm', quantity: '1', rarity: '38.071/1,000' },
+          { name: 'Green charm', quantity: '1', rarity: '19.036/1,000' },
+          { name: 'Crimson charm', quantity: '1', rarity: '133.249/1,000' },
+          { name: 'Blue charm', quantity: '1', rarity: '3.807/1,000' },
         ],
       },
     ],

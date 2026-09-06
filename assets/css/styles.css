@@ -3376,6 +3376,14 @@ body::after {
   overflow-y: visible;
 }
 
+/* Separates the sidebar's Bosses group from its Monsters group below it —
+   each group is its own .lb-head + .loot-boss-list pair (LootTab.vue's own
+   groupedBosses), so this is the only spacing between them; the first
+   group needs none of its own. */
+.loot-boss-group + .loot-boss-group {
+  margin-top: 1.25rem;
+}
+
 /* The detail pane's own header — boss portrait beside its name/wiki-link/
    combat-level line, above that boss's stack of drop-table sections. */
 .loot-boss-header {

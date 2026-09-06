@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 /** One drop-table row. `wikiFile` only matters to scripts/fetch-boss-icons.mjs
  * (which wiki file to download the icon from); the page only ever reads
- * `name`/`quantity`/`rarity`/`note`/`wikiUrl`/`noIcon`. */
+ * `name`/`quantity`/`rarity`/`note`/`wikiUrl`/`noIcon`/`unique`. */
 export interface BossLootItem {
   name: string;
   quantity: string;
@@ -11,6 +11,12 @@ export interface BossLootItem {
   wikiFile?: string;
   wikiUrl?: string;
   noIcon?: boolean;
+  // Marks a signature drop that isn't in a section literally named
+  // "Unique" (Cave horror's Black mask (10) sits under "Armour") — the
+  // Loot tab's own simulator purple-borders this the same as a Unique
+  // section's own rows. Most bosses don't need this at all; their own
+  // Unique (or Nex's Main drop) section name is enough on its own.
+  unique?: boolean;
 }
 
 export interface BossLootSection {
@@ -23,6 +29,9 @@ export interface Boss {
   slug: string;
   wikiUrl: string;
   image: string;
+  // Splits the Loot tab's sidebar into headed sections (LootTab.vue's own
+  // groupedBosses) — otherwise identical in shape to a 'Boss' entry.
+  category: 'Boss' | 'Monster';
   // Multiplies LootTab.vue's own base portrait width (and, via
   // scripts/fetch-boss-icons.mjs, the resolution it's fetched at) — unset
   // for every boss whose wiki portrait already reads at a normal size next
