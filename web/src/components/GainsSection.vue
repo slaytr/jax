@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-import type { AllGains, GainsPeriod, GainsView } from '@/lib/gains';
+import { computeAllGains, latestUtcDay, MAX_DAY_OFFSET, type AllGains, type GainsPeriod, type GainsView } from '@/lib/gains';
 import GainsGrid from '@/components/GainsGrid.vue';
 import GainsSplitView from '@/components/GainsSplitView.vue';
 import MetricLineCharts from '@/components/charts/MetricLineCharts.vue';
@@ -9,10 +9,35 @@ import PeriodToggle from '@/components/PeriodToggle.vue';
 import ViewToggle from '@/components/ViewToggle.vue';
 import { usePrefs } from '@/composables/usePrefs';
 
-const props = defineProps<{ gains: AllGains; players: any[] }>();
+const props = defineProps<{ gains: AllGains; players: any[]; snapshots: any[] }>();
 
 const view = defineModel<GainsView>('view', { required: true });
 const period = defineModel<GainsPeriod>('period', { required: true });
+
+/**
+ * The Day period's own day picker — M T W T F S S, oldest to newest,
+ * ending on whatever day counts as "today" (the most recent snapshot's own
+ * UTC day, same anchor CALENDAR_DAY itself resolves to) so it reads the
+ * same "last 7 days" shape regardless of which weekday today happens to
+ * be. `dayOffset` 0 is today; picking any other button re-derives every
+ * Day-period figure as of that specific past day instead (dayGains below)
+ * — Week/Month, and every other section reading the same `gainsPeriod`
+ * (Standings.vue), are untouched by it.
+ */
+const dayOffset = ref(0);
+const dayButtons = computed(() => {
+  const today = latestUtcDay(props.snapshots);
+  if (today == null) return [];
+  const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const buttons = [];
+  for (let offset = MAX_DAY_OFFSET; offset >= 0; offset -= 1) {
+    const dayStart = today - offset * 86400;
+    buttons.push({ offset, label: WEEKDAY_LETTERS[new Date(dayStart * 1000).getUTCDay()] });
+  }
+  return buttons;
+});
+
+const dayGains = computed(() => (dayOffset.value > 0 ? computeAllGains(props.snapshots, props.players, dayOffset.value) : props.gains));
 
 const { prefs, savePref } = usePrefs();
 const selectedPlayer = ref<string | null>(
@@ -55,31 +80,46 @@ watch(
         </h2>
         <ViewToggle v-model="view" label="Gains view" :show-split="true" />
       </div>
+      <div v-if="period === 'day'" class="gains-day-picker" role="tablist" aria-label="Which day">
+        <button
+          v-for="day in dayButtons"
+          :key="day.offset"
+          type="button"
+          class="gains-view-toggle"
+          role="tab"
+          :aria-selected="dayOffset === day.offset"
+          :title="day.offset === 0 ? 'Today' : `${day.offset} day${day.offset === 1 ? '' : 's'} ago`"
+          :class="{ 'is-active': dayOffset === day.offset }"
+          @click="dayOffset = day.offset"
+        >
+          {{ day.label }}
+        </button>
+      </div>
       <PeriodToggle v-model="period" />
     </div>
 
     <GainsGrid
       v-if="view === 'grid'"
-      :levels="gains.levels[period]"
-      :xp="gains.xp[period]"
-      :quests="gains.quests[period]"
-      :hot-levels-slug="gains.hot.levels[period]"
-      :hot-xp-slug="gains.hot.xp[period]"
-      :hot-quests-slug="gains.hot.quests[period]"
+      :levels="dayGains.levels[period]"
+      :xp="dayGains.xp[period]"
+      :quests="dayGains.quests[period]"
+      :hot-levels-slug="dayGains.hot.levels[period]"
+      :hot-xp-slug="dayGains.hot.xp[period]"
+      :hot-quests-slug="dayGains.hot.quests[period]"
       :selected-player="selectedPlayer"
       @select="selectPlayer"
     />
     <GainsSplitView
       v-else-if="view === 'split'"
-      :gains="gains"
+      :gains="dayGains"
       :period="period"
-      :hot-levels-slug="gains.hot.levels[period]"
-      :hot-xp-slug="gains.hot.xp[period]"
-      :hot-quests-slug="gains.hot.quests[period]"
+      :hot-levels-slug="dayGains.hot.levels[period]"
+      :hot-xp-slug="dayGains.hot.xp[period]"
+      :hot-quests-slug="dayGains.hot.quests[period]"
     />
     <MetricLineCharts
       v-else
-      :series="gains.series"
+      :series="dayGains.series"
       :period="period"
       :signed="true"
       :animate="animateLines"

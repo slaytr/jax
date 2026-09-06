@@ -1346,6 +1346,26 @@ body::after {
   gap: 0.35rem;
 }
 
+/* The Day period's own day picker (GainsSection.vue) — sits between the
+   title/view-toggle group and the period toggle in .lb-head's own flex
+   row, `flex: 1` claiming whatever room is left between them so its
+   buttons centre in that middle stretch rather than crowding either
+   neighbour. Reuses .gains-view-toggle itself (below) for the buttons —
+   same shape as the grid/line/split icons, just a weekday letter instead
+   of an icon. */
+.gains-day-picker {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.gains-day-picker .gains-view-toggle {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
 /* Same recipe as .matrix-invert: outlined and muted at rest so it doesn't
    compete with the title, filled ember when active. */
 .gains-view-toggle {

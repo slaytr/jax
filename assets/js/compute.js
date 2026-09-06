@@ -209,6 +209,21 @@ export function standings(players, metric = 'xp') {
 const latestSnapshot = (snapshots) => snapshots[snapshots.length - 1] ?? null;
 
 /**
+ * The snapshot a compute function should treat as "now" — the latest one
+ * overall, or (when `asOf` is given, a unix-seconds instant) the latest
+ * at-or-before it. Lets every gains function below double as "gains as of
+ * this specific past day" (the Gains section's own day picker,
+ * lib/gains.ts's computeAllGains) with no change to how it resolves a
+ * window's cutoff/baseline from whatever it decides is "current" — day
+ * windows in particular fall out of this for free, since resolveCutoff
+ * already anchors CALENDAR_DAY to *its* own day, not literally today.
+ */
+function currentSnapshot(snapshots, asOf) {
+  if (asOf == null) return latestSnapshot(snapshots);
+  return snapshots.length > 0 ? snapshotAtOrBefore(snapshots, asOf) : null;
+}
+
+/**
  * Sentinel for the Gains "day" period: anchors the cutoff to the start of
  * the current UTC day instead of `latest - 24h`, so the figure resets to
  * zero at midnight rather than decaying on a rolling window. Week/month
@@ -218,7 +233,7 @@ const latestSnapshot = (snapshots) => snapshots[snapshots.length - 1] ?? null;
  */
 export const CALENDAR_DAY = Symbol('calendar-day');
 
-const utcDayStart = (unixSeconds) => {
+export const utcDayStart = (unixSeconds) => {
   const date = new Date(unixSeconds * 1000);
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000);
 };
@@ -249,9 +264,11 @@ function snapshotAtOrBefore(snapshots, cutoff) {
  *
  * @param window seconds (a rolling span) or CALENDAR_DAY (aligned to the
  *   start of the current UTC day)
+ * @param asOf unix seconds — treat this instant as "now" instead of the
+ *   latest snapshot (a past CALENDAR_DAY's own figures)
  */
-export function computeGains(snapshots, players, window) {
-  const current = latestSnapshot(snapshots);
+export function computeGains(snapshots, players, window, { asOf } = {}) {
+  const current = currentSnapshot(snapshots, asOf);
   const cutoff = current ? resolveCutoff(current.t, window) : null;
   const baseline = current ? snapshotAtOrBefore(snapshots, cutoff) : null;
 
@@ -298,9 +315,9 @@ export function computeGains(snapshots, players, window) {
  * Snapshots older than the `q` field predate quest-point tracking, so only
  * snapshots carrying it count — same reasoning as computeLevelGains and `l`.
  */
-export function computeQuestGains(snapshots, players, window) {
+export function computeQuestGains(snapshots, players, window, { asOf } = {}) {
   const withQuests = snapshots.filter((snapshot) => snapshot.q && typeof snapshot.q === 'object');
-  const current = latestSnapshot(withQuests);
+  const current = currentSnapshot(withQuests, asOf);
   const cutoff = current ? resolveCutoff(current.t, window) : null;
   const baseline = current ? snapshotAtOrBefore(withQuests, cutoff) : null;
 
@@ -343,7 +360,7 @@ export function computeQuestGains(snapshots, players, window) {
  * (the matrix cell's "+N today" chip) and `rows` — ranked, with `bySkill` as
  * an array like computeGains — for a leaderboard band.
  */
-export function computeLevelGains(snapshots, players, window = 86400) {
+export function computeLevelGains(snapshots, players, window = 86400, { asOf } = {}) {
   const levelled = snapshots.filter((snapshot) => snapshot.l && typeof snapshot.l === 'object');
   const empty = () => ({
     hasSpan: false,
@@ -356,7 +373,7 @@ export function computeLevelGains(snapshots, players, window = 86400) {
 
   if (levelled.length < 2) return empty();
 
-  const current = levelled[levelled.length - 1];
+  const current = currentSnapshot(levelled, asOf);
   const cutoff = resolveCutoff(current.t, window);
   const baseline = snapshotAtOrBefore(levelled, cutoff);
 
@@ -458,7 +475,7 @@ function utcMidnightsBetween(firstT, lastT) {
  * off, plotting raw totals over time to match what the rest of that section
  * shows.
  */
-export function computeGainsSeries(snapshots, players, window, metric, { relative = false } = {}) {
+export function computeGainsSeries(snapshots, players, window, metric, { relative = false, asOf = null } = {}) {
   const valueAt = (snapshot, slug) => {
     if (metric === 'xp') return snapshot.p?.[slug]?.[0] ?? null;
     if (metric === 'level') return snapshot.l?.[slug]?.[0] ?? null;
@@ -466,12 +483,12 @@ export function computeGainsSeries(snapshots, players, window, metric, { relativ
     return null;
   };
 
-  const current = latestSnapshot(snapshots);
+  const current = currentSnapshot(snapshots, asOf);
   if (!current) return { hasSpan: false, spanSeconds: 0, rows: [] };
 
   const cutoff = resolveCutoff(current.t, window);
   const baseline = snapshotAtOrBefore(snapshots, cutoff);
-  const windowed = snapshots.filter((snapshot) => snapshot.t >= baseline.t);
+  const windowed = snapshots.filter((snapshot) => snapshot.t >= baseline.t && snapshot.t <= current.t);
 
   const t0 = windowed[0].t;
   const spanSeconds = windowed[windowed.length - 1].t - t0;

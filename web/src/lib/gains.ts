@@ -1,4 +1,4 @@
-import { CALENDAR_DAY, computeGains, computeGainsSeries, computeLevelGains, computeQuestGains } from '@shared/compute.js';
+import { CALENDAR_DAY, computeGains, computeGainsSeries, computeLevelGains, computeQuestGains, utcDayStart } from '@shared/compute.js';
 
 export type GainsPeriod = 'day' | 'week' | 'month';
 export type GainsView = 'grid' | 'line' | 'split';
@@ -6,6 +6,49 @@ export type GainsView = 'grid' | 'line' | 'split';
 const WEEK_SECONDS = 7 * 86400;
 const MONTH_SECONDS = 30 * 86400;
 const PERIOD_WINDOWS: Record<GainsPeriod, any> = { day: CALENDAR_DAY, week: WEEK_SECONDS, month: MONTH_SECONDS };
+
+// The day picker (GainsSection.vue) only ever offers the last 7 calendar
+// days — today (0) through six days ago — same footprint as
+// computeDailyBreakdown's own default `days`.
+export const MAX_DAY_OFFSET = 6;
+
+/** The most recent snapshot's own UTC day (start-of-day, unix seconds) —
+ * what CALENDAR_DAY itself already treats as "today" — or `null` with no
+ * snapshots to anchor to. The Gains section's day picker (GainsSection.vue)
+ * labels its seven buttons by walking back from this, same anchor
+ * dayOffsetAsOf uses below. */
+export function latestUtcDay(snapshots: any[]): number | null {
+  const latest = snapshots[snapshots.length - 1];
+  return latest ? utcDayStart(latest.t) : null;
+}
+
+/**
+ * The last instant of "dayOffset days before the most recent snapshot's own
+ * UTC day" — 0 is today. Every gains function's own CALENDAR_DAY window
+ * resolves its cutoff from whichever snapshot it's told counts as "now"
+ * (compute.js's currentSnapshot); passing this back in as that function's
+ * own `asOf` is what turns an otherwise-unmodified computeGains/
+ * computeQuestGains/computeLevelGains/computeGainsSeries call into "as of
+ * this specific past day" instead of "as of right now". `null` when there's
+ * no data to anchor "today" to at all.
+ */
+export function dayOffsetAsOf(snapshots: any[], dayOffset: number): number | null {
+  const today = latestUtcDay(snapshots);
+  return today == null ? null : today - dayOffset * 86400 + 86400 - 1;
+}
+
+// TS infers these four straight from compute.js's own JS (no .d.ts, plain
+// description-only JSDoc — see PlayerView.vue/SkillMatrix.vue's own
+// `CALENDAR_DAY as any` for the same friction on `window`), which mistakes
+// CALENDAR_DAY's own Symbol for a plain number and, worse, infers an
+// options object with no room for `asOf` at all from its `{}` default.
+// Wrapping each call once here — rather than casting at every call site
+// below — keeps computeAllGains itself reading like a normal, typed call.
+const computeGainsAsOf = (s: any[], p: any[], asOf: number) => (computeGains as any)(s, p, CALENDAR_DAY, { asOf });
+const computeQuestGainsAsOf = (s: any[], p: any[], asOf: number) => (computeQuestGains as any)(s, p, CALENDAR_DAY, { asOf });
+const computeLevelGainsAsOf = (s: any[], p: any[], asOf: number) => (computeLevelGains as any)(s, p, CALENDAR_DAY, { asOf });
+const computeGainsSeriesAsOf = (s: any[], p: any[], metric: string, asOf: number, relative = false) =>
+  (computeGainsSeries as any)(s, p, CALENDAR_DAY, metric, { relative, asOf });
 
 /**
  * Whichever player currently leads a Gains band (levels/xp/quests), if
@@ -60,8 +103,13 @@ function hotSlugFor(
  * line view) and `totalsSeries` (raw totals, for Account Standings' line
  * view) both come from the same computeGainsSeries — see that function's
  * own doc comment on `relative`.
+ *
+ * `dayOffset` (0 = today, see MAX_DAY_OFFSET) re-anchors only the `day`
+ * period's own entries to that past day's own figures — the Gains
+ * section's day picker, for stepping back through the last week one
+ * calendar day at a time without disturbing week/month at all.
  */
-export function computeAllGains(snapshots: any[], players: any[]) {
+export function computeAllGains(snapshots: any[], players: any[], dayOffset = 0) {
   const forEachPeriod = (compute: (s: any[], p: any[], w: any) => any) => ({
     day: compute(snapshots, players, CALENDAR_DAY),
     week: compute(snapshots, players, WEEK_SECONDS),
@@ -72,11 +120,37 @@ export function computeAllGains(snapshots: any[], players: any[]) {
   const xp = forEachPeriod(computeGains);
   const quests = forEachPeriod(computeQuestGains);
 
+  const asOf = dayOffset > 0 ? dayOffsetAsOf(snapshots, dayOffset) : null;
+  if (asOf != null) {
+    levels.day = computeLevelGainsAsOf(snapshots, players, asOf);
+    xp.day = computeGainsAsOf(snapshots, players, asOf);
+    quests.day = computeQuestGainsAsOf(snapshots, players, asOf);
+  }
+
   const hotForEachPeriod = (perPeriod: Record<GainsPeriod, any>, valueKey: 'total' | 'gained', compute: (s: any[], p: any[], w: any) => any) => ({
     day: hotSlugFor(perPeriod.day, snapshots, players, PERIOD_WINDOWS.day, valueKey, compute),
     week: hotSlugFor(perPeriod.week, snapshots, players, PERIOD_WINDOWS.week, valueKey, compute),
     month: hotSlugFor(perPeriod.month, snapshots, players, PERIOD_WINDOWS.month, valueKey, compute),
   });
+
+  const series = {
+    levels: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'level', { relative: true })),
+    xp: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'xp', { relative: true })),
+    quests: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'quests', { relative: true })),
+  };
+  const totalsSeries = {
+    levels: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'level')),
+    xp: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'xp')),
+    quests: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'quests')),
+  };
+  if (asOf != null) {
+    series.levels.day = computeGainsSeriesAsOf(snapshots, players, 'level', asOf, true);
+    series.xp.day = computeGainsSeriesAsOf(snapshots, players, 'xp', asOf, true);
+    series.quests.day = computeGainsSeriesAsOf(snapshots, players, 'quests', asOf, true);
+    totalsSeries.levels.day = computeGainsSeriesAsOf(snapshots, players, 'level', asOf);
+    totalsSeries.xp.day = computeGainsSeriesAsOf(snapshots, players, 'xp', asOf);
+    totalsSeries.quests.day = computeGainsSeriesAsOf(snapshots, players, 'quests', asOf);
+  }
 
   return {
     levels,
@@ -87,16 +161,8 @@ export function computeAllGains(snapshots: any[], players: any[]) {
       xp: hotForEachPeriod(xp, 'total', computeGains),
       quests: hotForEachPeriod(quests, 'gained', computeQuestGains),
     },
-    series: {
-      levels: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'level', { relative: true })),
-      xp: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'xp', { relative: true })),
-      quests: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'quests', { relative: true })),
-    },
-    totalsSeries: {
-      levels: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'level')),
-      xp: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'xp')),
-      quests: forEachPeriod((s, p, w) => computeGainsSeries(s, p, w, 'quests')),
-    },
+    series,
+    totalsSeries,
   };
 }
 

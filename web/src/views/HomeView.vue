@@ -35,7 +35,7 @@ watch(
        warns about it in dev builds, so it's easy to miss). -->
   <div v-if="data" class="home-view">
     <HighlightsRow :gains="gains!" :snapshots="data.snapshots" :players="data.players" />
-    <GainsSection :gains="gains!" :players="data.players" v-model:view="gainsView" v-model:period="gainsPeriod" />
+    <GainsSection :gains="gains!" :players="data.players" :snapshots="data.snapshots" v-model:view="gainsView" v-model:period="gainsPeriod" />
     <Standings :players="data.players" :gains="gains!" :period="gainsPeriod" v-model:view="standingsView" />
     <SkillMatrix :players="data.players" :snapshots="data.snapshots" />
   </div>
