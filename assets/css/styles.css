@@ -2566,8 +2566,16 @@ body::after {
   color: var(--ember-ink);
 }
 
+/* Font Awesome Free's own "thumbtack" solid glyph (viewBox 0 0 384 512,
+   CC BY 4.0 — https://fontawesome.com/license/free), reused verbatim
+   rather than freehanded: a hand-drawn attempt at this exact silhouette
+   kept reading as a stray loop-and-slash at these sizes, where a settled,
+   professionally-drawn glyph just reads correctly. Same icon at all three
+   pin spots on this page (.quest-series-link-pin, .goal-card-focus-icon),
+   each at its own size — 384:512 is a 3:4 ratio, so width is always 0.75×
+   height. */
 .pin-mode-icon {
-  width: 12px;
+  width: 9px;
   height: 12px;
   fill: currentColor;
 }
@@ -2582,8 +2590,8 @@ body::after {
    is-done, since those are a different axis (what the map is anchored on,
    whether it's finished) from "did a viewer pin this to the front". */
 .quest-series-link-pin {
-  width: 8px;
-  height: 8px;
+  width: 7.5px;
+  height: 10px;
   margin-right: 0.3rem;
   vertical-align: -1px;
   fill: currentColor;
@@ -4696,6 +4704,30 @@ body::after {
   white-space: nowrap;
 }
 
+/* A quest goal's own title, once it links to that quest's quick guide
+   (GoalCard.vue's questSlug) — same font as the plain .goal-card-name span
+   it replaces, just with button chrome stripped back off and an
+   underline-on-hover/focus affordance added in its place. */
+.goal-card-name-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goal-card-name-link:hover,
+.goal-card-name-link:focus-visible {
+  text-decoration: underline;
+}
+
+.goal-card-name-link:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
 .goal-card-wiki-link {
   display: inline-flex;
   flex: none;
@@ -4746,7 +4778,7 @@ body::after {
 }
 
 .goal-card-focus-icon {
-  width: 13px;
+  width: 10px;
   height: 13px;
   fill: currentColor;
 }

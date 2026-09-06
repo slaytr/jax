@@ -12,12 +12,14 @@ import QuestsTab from '@/components/player/quests/QuestsTab.vue';
 import QuestList from '@/components/player/quests/QuestList.vue';
 import TasksTab from '@/components/player/tasks/TasksTab.vue';
 import { useGroupData } from '@/composables/useGroupData';
+import { usePrefs } from '@/composables/usePrefs';
 import { useQuests } from '@/composables/useQuests';
 import { useStatsPageState, PAGE_TABS } from '@/composables/useStatsPageState';
 
 const route = useRoute();
 const { data } = useGroupData();
 const statsState = useStatsPageState();
+const { savePref } = usePrefs();
 
 const slug = computed(() => String(route.params.slug));
 const player = computed(() => data.value?.players.find((p: any) => p.slug === slug.value) ?? null);
@@ -67,6 +69,19 @@ const goalQuestSkillReq = ref('all');
 const newGoalQuest = ref<any | null>(null);
 function handleGoalQuestSelect(quest: any) {
   newGoalQuest.value = quest;
+}
+
+// A quest goal card's own title (GoalCard.vue, "openGuide") — jumps
+// straight to that quest's quick guide on the Quests tab, same place its
+// own dependency-map node lands you (QuestDependencyGraph.vue's own
+// onNodeClick). The map/guide toggle there is prefs-driven, not part of
+// statsState/the URL, so it's set here rather than via statsState.tab —
+// QuestDependencyGraph.vue only reads it at setup, but switching tabs
+// unmounts/remounts it, so a fresh instance picks this up the same tick.
+function handleOpenQuestGuide(slug: string) {
+  savePref({ questGraphView: 'guide' });
+  statsState.tab = 'quests';
+  statsState.questSlug = slug;
 }
 
 const { quests: goalQuests, status: goalQuestsStatus, error: goalQuestsError, ensureLoaded: ensureGoalQuestsLoaded } = useQuests();
@@ -157,6 +172,7 @@ watch(
         :quests="goalQuests"
         @clear-new-goal-skill="newGoalSkillId = null"
         @clear-new-goal-quest="newGoalQuest = null"
+        @open-guide="handleOpenQuestGuide"
       />
     </div>
   </div>

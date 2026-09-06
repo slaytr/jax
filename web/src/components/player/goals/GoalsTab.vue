@@ -36,7 +36,7 @@ const props = defineProps<{
   quests: any[] | null;
 }>();
 
-const emit = defineEmits<{ clearNewGoalSkill: []; clearNewGoalQuest: [] }>();
+const emit = defineEmits<{ clearNewGoalSkill: []; clearNewGoalQuest: []; openGuide: [slug: string] }>();
 
 const canEdit = true;
 
@@ -142,6 +142,7 @@ function handleConfirmQuestGoal(drafts: any[]) {
     @toggle-group="toggleGroup"
     @focus="focusGoal"
     @delete="requestDelete"
+    @open-guide="(slug) => emit('openGuide', slug)"
   />
 
   <GoalDialog

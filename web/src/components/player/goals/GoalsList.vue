@@ -36,6 +36,7 @@ const emit = defineEmits<{
   toggleGroup: [title: string];
   focus: [id: string | null];
   delete: [id: string];
+  openGuide: [slug: string];
 }>();
 
 const bySkillId = new Map(SKILLS.map((skill: any) => [skill.id, skill]));
@@ -257,6 +258,7 @@ watch(view, (value) => savePref({ goalsView: value }));
             :labels-by-name="labelsByName"
             :can-edit="canEdit"
             :focused-id="focusGoalId"
+            :quests="quests"
             :draggable="canEdit"
             title="Drag to reorder"
             @dragstart="onItemDragStart($event, item.quest.id)"
@@ -264,6 +266,7 @@ watch(view, (value) => savePref({ goalsView: value }));
             @drop="onItemDrop($event, section, item.quest.id)"
             @focus="toggleFocus"
             @delete="(id) => emit('delete', id)"
+            @open-guide="(slug) => emit('openGuide', slug)"
           />
         </ul>
       </div>
