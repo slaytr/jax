@@ -7,6 +7,7 @@ import { MAX_QUEST_POINTS, MAX_TOTAL_LEVEL, QUEST_POINTS_ICON, TOTAL_LEVEL_ICON 
 import type { AllGains, GainsPeriod, GainsView } from '@/lib/gains';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
 import MetricLineCharts from '@/components/charts/MetricLineCharts.vue';
+import OdometerValue from '@/components/OdometerValue.vue';
 import ViewToggle from '@/components/ViewToggle.vue';
 import { usePrefs } from '@/composables/usePrefs';
 
@@ -140,7 +141,7 @@ function questTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>{{ formatNumber(row.player.total?.level ?? 0) }}</span>
+              <OdometerValue :value="row.player.total?.level ?? 0" :format="formatNumber" />
               <span v-if="(levelGains[row.player.slug] ?? 0) > 0" class="chip-up lb-gain">
                 <span>+{{ formatNumber(levelGains[row.player.slug]) }}</span>
                 <span class="visually-hidden">levels gained {{ periodLabel }}</span>
@@ -175,7 +176,7 @@ function questTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>{{ formatCompact(row.player.total?.xp ?? 0) }}</span>
+              <OdometerValue :value="row.player.total?.xp ?? 0" :format="formatCompact" />
               <span v-if="(xpGains[row.player.slug] ?? 0) > 0" class="chip-up lb-gain">
                 <span>+{{ formatCompact(xpGains[row.player.slug]) }}</span>
                 <span class="visually-hidden">xp gained {{ periodLabel }}</span>
@@ -210,7 +211,8 @@ function questTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>{{ Number.isFinite(row.player.questPoints) ? formatNumber(row.player.questPoints) : '—' }}</span>
+              <OdometerValue v-if="Number.isFinite(row.player.questPoints)" :value="row.player.questPoints" :format="formatNumber" />
+              <span v-else>—</span>
               <span class="lb-value-icon">
                 <img :src="QUEST_POINTS_ICON" alt="" width="15" height="15" decoding="async" />
                 <span class="visually-hidden">quest points</span>

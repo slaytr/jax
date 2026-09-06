@@ -57,7 +57,7 @@ watch([loading, error], ([isLoading]) => {
 
     <p v-if="loading" class="loading">Reading the ledger…</p>
 
-    <div v-else-if="error" class="empty empty-error">
+    <div v-else-if="error && !data" class="empty empty-error">
       <p class="empty-title">Could not load hiscore data</p>
       <p class="empty-body">{{ error }}</p>
     </div>

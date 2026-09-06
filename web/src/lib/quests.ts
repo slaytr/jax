@@ -48,6 +48,7 @@ export const SORT_OPTIONS: Array<[string, string]> = [
 export const STATUS_OPTIONS: Array<[string, string]> = [
   ['all', 'All quests'],
   ['completed', 'Completed'],
+  ['not-completed', 'Not completed'],
   ['in-progress', 'In progress'],
   ['not-started', 'Not started'],
 ];
@@ -77,7 +78,10 @@ export function filterAndSortQuests(quests: any[], player: any, filters: QuestFi
 
   const filtered = quests.filter((quest) => {
     if (query && !quest.name.toLowerCase().includes(query)) return false;
-    if (filters.status !== 'all' && statusOf(quest, completedSet, startedSet) !== filters.status) return false;
+    if (filters.status !== 'all') {
+      const status = statusOf(quest, completedSet, startedSet);
+      if (filters.status === 'not-completed' ? status === 'completed' : status !== filters.status) return false;
+    }
     if (filters.skillReq !== 'all' && meetsSkillRequirements(quest, skillLevels) !== (filters.skillReq === 'met')) return false;
     return true;
   });

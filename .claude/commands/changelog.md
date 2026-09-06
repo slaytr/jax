@@ -1,5 +1,5 @@
 ---
-description: Add an entry to the site's own changelog (Home page, next to Weekly highlights)
+description: Add an entry to the site's own changelog (Home page, next to Weekly leaders)
 ---
 
 Add a changelog entry from what the user typed after the command:
@@ -11,7 +11,7 @@ $ARGUMENTS
    written), not a bare calendar date — HighlightsRow.vue's own `changelogDate`
    formats it in NZT (`Intl`'s `Pacific/Auckland` zone, which handles the
    NZST/NZDT switch on its own) for display in the Home page's "Changelog"
-   column (third panel next to Weekly highlights and the Activity feed).
+   column (third panel next to Weekly leaders and the Activity feed).
    Nothing else touches this file.
 2. Turn the text above into one clean changelog line (or a few short ones if
    they described several distinct changes in one go — keep each as its own

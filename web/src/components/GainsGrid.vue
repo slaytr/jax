@@ -5,6 +5,7 @@ import { el } from '@shared/dom.js';
 import { formatCompact, formatNumber } from '@shared/format.js';
 import { iconFor, QUEST_POINTS_ICON } from '@shared/config.js';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
+import OdometerValue from '@/components/OdometerValue.vue';
 
 const props = defineProps<{
   levels: { rows: any[] };
@@ -83,7 +84,10 @@ function questGainTooltip(row: any) {
 <template>
   <div class="lb-stack">
     <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'levels' }">
-      <div class="lb-band-head"><p class="lb-band-label">Levels</p></div>
+      <div class="lb-band-head">
+        <button v-if="activeMetric !== undefined" type="button" class="lb-band-label lb-band-label-button" @click="emit('select', '', 'levels')">Levels</button>
+        <p v-else class="lb-band-label">Levels</p>
+      </div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in levelRows" :key="row.player.slug">
           <button
@@ -102,7 +106,7 @@ function questGainTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>+{{ formatNumber(row.total) }}</span>
+              <span>+<OdometerValue :value="row.total" :format="formatNumber" /></span>
               <span v-if="row.bySkill[0]" class="lb-sub skill-gain">
                 <img :src="iconFor(row.bySkill[0].skill)" alt="" width="14" height="14" decoding="async" />
                 <span class="visually-hidden">{{ row.bySkill[0].skill.name }} </span>
@@ -116,7 +120,10 @@ function questGainTooltip(row: any) {
     </div>
 
     <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'xp' }">
-      <div class="lb-band-head"><p class="lb-band-label">XP</p></div>
+      <div class="lb-band-head">
+        <button v-if="activeMetric !== undefined" type="button" class="lb-band-label lb-band-label-button" @click="emit('select', '', 'xp')">XP</button>
+        <p v-else class="lb-band-label">XP</p>
+      </div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in xpRows" :key="row.player.slug">
           <button
@@ -135,7 +142,7 @@ function questGainTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>+{{ formatCompact(row.total) }}</span>
+              <span>+<OdometerValue :value="row.total" :format="formatCompact" /></span>
               <span v-if="row.bySkill[0]" class="lb-sub skill-gain">
                 <img :src="iconFor(row.bySkill[0].skill)" alt="" width="14" height="14" decoding="async" />
                 <span class="visually-hidden">{{ row.bySkill[0].skill.name }} </span>
@@ -149,7 +156,10 @@ function questGainTooltip(row: any) {
     </div>
 
     <div class="lb-band" :class="{ 'is-active-metric': activeMetric === 'quests' }">
-      <div class="lb-band-head"><p class="lb-band-label">Quest points</p></div>
+      <div class="lb-band-head">
+        <button v-if="activeMetric !== undefined" type="button" class="lb-band-label lb-band-label-button" @click="emit('select', '', 'quests')">Quest points</button>
+        <p v-else class="lb-band-label">Quest points</p>
+      </div>
       <div class="lb-row">
         <template v-for="{ row, place, value } in questRows" :key="row.player.slug">
           <button
@@ -168,7 +178,7 @@ function questGainTooltip(row: any) {
               <span>{{ row.player.name }}</span>
             </span>
             <span class="lb-value">
-              <span>+{{ formatNumber(row.gained) }}</span>
+              <span>+<OdometerValue :value="row.gained" :format="formatNumber" /></span>
               <span class="lb-value-icon">
                 <img :src="QUEST_POINTS_ICON" alt="" width="15" height="15" decoding="async" />
                 <span class="visually-hidden">quest points</span>

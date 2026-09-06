@@ -906,9 +906,9 @@ body::after {
   font-size: 0.58rem;
 }
 
-/* -------------------------------------------------- weekly highlights */
+/* -------------------------------------------------- weekly leaders */
 
-/* The row Weekly highlights used to have entirely to itself, now split
+/* The row Weekly leaders used to have entirely to itself, now split
    three ways with the activity feed and changelog beside it — all three
    panels stretch to the tallest of the three, so a short "no activity
    yet"/"nothing here yet" placeholder doesn't leave its own panel looking
@@ -976,7 +976,7 @@ body::after {
      enough for that keeps every row's activity column the same width —
      otherwise activity-feed-levelup's centering (styles.css) drifts
      row to row along with it. */
-  grid-template-columns: auto minmax(0, 5rem) 1fr 5.5rem;
+  grid-template-columns: auto minmax(0, 7.5rem) 1fr 5.5rem;
   align-items: center;
   column-gap: 0.5rem;
   padding: 0.22rem 0.5rem 0.22rem 0.35rem;
@@ -989,6 +989,19 @@ body::after {
 .activity-feed-list li:focus-visible {
   background: var(--surface-2);
   outline: none;
+}
+
+/* Name plus its own "leads N skill rows" badge (same ★ + count as that
+   player's own column header on the Skill Leaderboard, SkillMatrix.vue's
+   .player-leads) — kept as one flex group sharing the name's own grid
+   column, rather than a fifth column, so the activity/age columns after it
+   stay aligned exactly as they were before this badge existed. */
+.activity-feed-name-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .activity-feed-name {
@@ -1544,6 +1557,25 @@ body::after {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink);
+}
+
+/* The split view's band label doubles as a click target for switching the
+   chart to that metric — same act as clicking one of the row's own player
+   cells, just without picking a particular player. Reset to plain-text
+   chrome first (it's a <button> only here, a <p> in the plain grid) so it
+   still reads as a label, not a button, until you hover it. */
+.lb-band-label-button {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lb-band-label-button:hover,
+.lb-band-label-button:focus-visible {
+  color: var(--ember-ink);
 }
 
 /* A band identified by its game icon (quest points) rather than a text label. */
@@ -4878,6 +4910,107 @@ body::after {
   color: var(--ink-2);
 }
 
+/* HighlightsRow.vue's own "a crown just changed hands" dialog
+   (HighlightChangeDialog.vue) — same .goal-dialog chrome as every other
+   dialog, listing however many of the Ranker/Grind King/Quest God badges
+   moved since this browser last looked (see weeklyHighlightWinners in
+   prefs.js), each animating from the outgoing leader to the new one rather
+   than a flat cut. */
+.highlight-change-dialog {
+  width: min(380px, calc(100vw - 2rem));
+}
+
+.highlight-change-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.highlight-change-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+/* Bigger than the badge row's own ring, and a touch slower to transition —
+   synced with the swap below so the ring's colour and the name underneath
+   settle on the new leader together. */
+.highlight-change-medal {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0;
+  transition:
+    box-shadow 0.4s var(--ease),
+    color 0.4s var(--ease);
+}
+
+.highlight-change-medal .highlight-medal-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.highlight-change-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.highlight-change-label {
+  margin: 0 0 0.15rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ember-ink);
+}
+
+.highlight-change-player {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.highlight-change-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.highlight-change-value {
+  flex: none;
+  color: var(--gain);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* The outgoing leader slides up and out while the new one rises in from
+   below — same "roll over to reveal what's underneath" read as a scoreboard
+   flip, not a cross-fade that could pass for a loading flicker. */
+.highlight-change-swap-enter-active,
+.highlight-change-swap-leave-active {
+  transition:
+    opacity 0.35s var(--ease),
+    transform 0.35s var(--ease);
+}
+
+.highlight-change-swap-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.highlight-change-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 /* The "include this quest's whole prerequisite tree" checkbox
    (renderQuestGoalDialog, player-goals.js) — same row shape as
    goal-target-choice, just a checkbox instead of a radio pair. */
@@ -6953,7 +7086,7 @@ body::after {
   gap: 0.25rem 0.9rem;
 }
 
-/* A Weekly Highlights badge's per-day breakdown — same separator/label
+/* A Weekly Leaders badge's per-day breakdown — same separator/label
    treatment as .tooltip-skills, its own .tooltip-rows grid for the figures. */
 .tooltip-daily {
   margin-top: 0.6rem;
@@ -7182,7 +7315,7 @@ body[data-ready] .loading {
   }
 
   /* Three columns is too tight to be worth it below this width — stack the
-     cards instead. Weekly Highlights is the exception (see below): it stays
+     cards instead. Weekly Leaders is the exception (see below): it stays
      three-across even here, just squeezed and stripped down, rather than
      stacking into a tall three-row column of its own. */
   .chart-section {

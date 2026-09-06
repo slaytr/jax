@@ -1,4 +1,6 @@
 [
+  { "date": "2026-09-06T00:41:17.431Z", "text": "Added stars to the activity feed so it can be clearly identified that Bill is superior." },
+  { "date": "2026-09-06T00:36:36.281Z", "text": "Fixed a hover tooltip getting stuck on screen after navigating away via a nav item.\nClicking a Gains hybrid view row's label now switches the graph to that metric too." },
   { "date": "2026-09-05T23:29:35.802Z", "text": "Added a takeover animation when a Weekly Highlights badge changes hands." },
   { "date": "2026-09-05T23:29:18.397Z", "text": "Fixed the graph in the Gains hybrid view not animating like the graph view.\nAdded a spinner to the refresh button." },
   { "date": "2026-09-05T23:17:12.648Z", "text": "Added odometer animations to grids and the header." },

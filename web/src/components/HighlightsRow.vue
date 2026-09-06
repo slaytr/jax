@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-import { computeDailyBreakdown } from '@shared/compute.js';
+import { buildMatrix, buildTotalsRow, computeDailyBreakdown, leaderCounts } from '@shared/compute.js';
 import { el } from '@shared/dom.js';
 import { formatCompact, formatNumber, formatRelativeTime, formatWeekday } from '@shared/format.js';
-import { QUEST_POINTS_ICON, SKILLS, TOTAL_LEVEL_ICON, iconFor } from '@shared/config.js';
+import { QUEST_POINTS_ICON, SKILLS, iconFor } from '@shared/config.js';
 import type { AllGains } from '@/lib/gains';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
+import { usePrefs } from '@/composables/usePrefs';
+import HighlightChangeDialog, { type HighlightChange } from '@/components/HighlightChangeDialog.vue';
+import HighlightMedalIcon from '@/components/HighlightMedalIcon.vue';
+import OdometerValue from '@/components/OdometerValue.vue';
 import changelogEntries from '@shared/changelog.json';
 
 const props = defineProps<{ gains: AllGains; snapshots: any[]; players: any[] }>();
@@ -54,6 +58,13 @@ const activityFeed = computed(() =>
     }))
     .sort((a, b) => Date.parse(b.activity.date) - Date.parse(a.activity.date)),
 );
+
+/** How many skill rows (plus the Total row) each player leads the group
+ * in — the exact same figure, same ★ + count treatment, as each player's
+ * own column header on the Skill Leaderboard (SkillMatrix.vue's `leads`) —
+ * shown here too so a name in the feed carries that same context without
+ * having to go check the table below. */
+const leads = computed(() => leaderCounts([...buildMatrix(props.players, 'level'), buildTotalsRow(props.players)]));
 
 function activityTooltip(entry: (typeof activityFeed.value)[number]) {
   return () =>
@@ -105,6 +116,52 @@ const highlights = computed(() => {
     };
   });
 });
+
+/**
+ * Notices a crown changing hands since this browser last looked — compared
+ * against weeklyHighlightWinners (prefs.js), a slug per badge recorded every
+ * time this computed re-settles, not just on a page load, so an SSE-driven
+ * refresh mid-visit triggers the same dialog a fresh visit would. Only a
+ * real player-to-player handover pops the dialog: a badge that had no
+ * recorded winner yet (first time this pref key exists at all, or nobody
+ * had gains last time) just seeds silently — there's no outgoing leader to
+ * animate away from, so nothing to show.
+ */
+const { prefs, savePref } = usePrefs();
+const highlightChanges = ref<HighlightChange[]>([]);
+
+watch(
+  highlights,
+  (list) => {
+    const stored = (prefs.weeklyHighlightWinners as Record<string, string | null> | undefined) ?? {};
+    const next: Record<string, string | null> = { ...stored };
+    const changes: HighlightChange[] = [];
+
+    for (const entry of list) {
+      const hadStoredValue = Object.prototype.hasOwnProperty.call(stored, entry.key);
+      const previousSlug = stored[entry.key] ?? null;
+      const winnerSlug = entry.winner?.player.slug ?? null;
+
+      if (hadStoredValue && previousSlug && winnerSlug && previousSlug !== winnerSlug) {
+        const previousPlayer = props.players.find((player) => player.slug === previousSlug);
+        changes.push({
+          key: entry.key,
+          label: entry.label,
+          previous: previousPlayer
+            ? { name: previousPlayer.name, colour: previousPlayer.colour }
+            : { name: 'the previous leader', colour: 'var(--ink-muted)' },
+          next: { name: entry.winner!.player.name, colour: entry.winner!.player.colour, value: entry.winner!.value, formatValue: entry.formatValue, unit: entry.unit },
+        });
+      }
+
+      if (winnerSlug !== previousSlug) next[entry.key] = winnerSlug;
+    }
+
+    savePref({ weeklyHighlightWinners: next });
+    if (changes.length > 0) highlightChanges.value = changes;
+  },
+  { immediate: true },
+);
 
 /** The hover tooltip's extra section: that day's gain for each of the last
  * 7 UTC calendar days, oldest first — a raw DOM node (not a Vue template)
@@ -166,7 +223,7 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
           <svg class="lb-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
             <polygon points="9,1 11,6.5 17,7 12.5,10.8 14,17 9,13.5 4,17 5.5,10.8 1,7 7,6.5" />
           </svg>
-          <span>Weekly highlights</span>
+          <span>Weekly leaders</span>
         </h2>
       </div>
 
@@ -181,11 +238,7 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
           v-tooltip="buildTooltip(entry)"
         >
           <div class="highlight-medal">
-            <img v-if="entry.key === 'level'" class="highlight-medal-icon is-photo" :src="TOTAL_LEVEL_ICON" alt="" width="22" height="22" decoding="async" />
-            <svg v-else-if="entry.key === 'xp'" class="highlight-medal-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-              <polygon points="2,14 2,6 5.5,9.5 9,3.5 12.5,9.5 16,6 16,14" />
-            </svg>
-            <img v-else class="highlight-medal-icon is-photo" :src="QUEST_POINTS_ICON" alt="" width="22" height="22" decoding="async" />
+            <HighlightMedalIcon :badge-key="entry.key" />
           </div>
           <p class="highlight-label">{{ entry.label }}</p>
           <p v-if="entry.winner" class="highlight-answer">
@@ -195,7 +248,7 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
           <p v-else class="highlight-answer">
             <span class="highlight-name">No gains yet</span>
           </p>
-          <p v-if="entry.winner" class="highlight-value">+{{ entry.formatValue(entry.winner.value) }}</p>
+          <p v-if="entry.winner" class="highlight-value">+<OdometerValue :value="entry.winner.value" :format="entry.formatValue" /></p>
         </div>
       </div>
     </section>
@@ -217,7 +270,14 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
       <ul v-if="activityFeed.length" class="activity-feed-list">
         <li v-for="entry in activityFeed" :key="entry.player.slug" tabindex="0" v-tooltip="activityTooltip(entry)">
           <span class="swatch" :style="{ '--swatch': entry.player.colour }" aria-hidden="true" />
-          <span class="activity-feed-name">{{ entry.player.name }}</span>
+          <span class="activity-feed-name-group">
+            <span class="activity-feed-name">{{ entry.player.name }}</span>
+            <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
+              <span class="player-leads-star" aria-hidden="true">★</span>
+              <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
+              <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
+            </span>
+          </span>
           <span v-if="entry.levelUp" class="activity-feed-text activity-feed-levelup">
             <img :src="iconFor(entry.levelUp.skill)" class="activity-feed-skill-icon" width="14" height="14" alt="" decoding="async" />
             {{ entry.levelUp.level }}
@@ -262,4 +322,6 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
       </div>
     </section>
   </div>
+
+  <HighlightChangeDialog v-if="highlightChanges.length > 0" :changes="highlightChanges" @close="highlightChanges = []" />
 </template>

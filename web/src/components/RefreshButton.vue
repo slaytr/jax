@@ -52,8 +52,8 @@ async function loadCooldown() {
 }
 
 const label = computed(() => {
-  if (status.value === 'running') return 'Refreshing…';
   if (cooldownSeconds.value > 0) return `Available in ${cooldownSeconds.value}s`;
+  if (status.value === 'running') return 'Refreshing…';
   if (status.value === 'error') return 'Retry refresh';
   return 'REFRESH NOW';
 });
@@ -94,16 +94,19 @@ onUnmounted(() => {
 async function handleClick() {
   status.value = 'running';
   errorMessage.value = null;
+  // Starts ticking the instant the click happens, not once the POST below
+  // resolves — the server's own cooldown clock starts the moment it
+  // inserts the run row, a moment from now either way, so waiting on the
+  // round-trip just left the button showing a static "Refreshing…" for no
+  // reason before the countdown appeared.
+  startCountdown(COOLDOWN_SECONDS);
   try {
     const path = props.scope === 'player' ? `/players/${props.slug}/refresh` : '/refresh';
     await apiPost(path);
-    // The server's own cooldown clock started the instant it inserted the
-    // run row, a moment ago — close enough to "now" to count down from
-    // here rather than round-tripping to ask.
-    startCountdown(COOLDOWN_SECONDS);
   } catch (cause) {
-    // Covers a 429 from the server-side cooldown too — api-client.js
-    // surfaces that response's own `error` string as this message.
+    // The click never actually started a run (a 429 from the server-side
+    // cooldown, say) — the optimistic countdown above was wrong, so drop it.
+    startCountdown(0);
     status.value = 'error';
     errorMessage.value = cause instanceof Error ? cause.message : String(cause);
   }

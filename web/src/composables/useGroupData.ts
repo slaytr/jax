@@ -18,15 +18,58 @@ const error = ref<string | null>(null);
 const loading = ref(true);
 let started = false;
 
+/** Byte-for-byte comparison — every field this API returns is plain
+ * JSON (no functions/dates/cycles) with a stable key order from one call
+ * to the next, so stringifying is a cheap, correct stand-in for a real
+ * deep-equal here. */
+function sameContent(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Reuses `previous`'s own element for anything in `next` whose content
+ * didn't change, keyed by `keyOf` (a player's slug, a snapshot's epoch
+ * second) — a reload without this would swap in a brand new object for
+ * every player/snapshot, and since those flow straight into components as
+ * `:player="player"` props, every one of those subtrees (skill grid, quest
+ * list, goals, …) would re-render on every refresh even when that specific
+ * player's numbers didn't move. Keeping the reference stable for anything
+ * unchanged means Vue's own prop-diffing skips that subtree entirely — a
+ * refresh only re-renders whichever few players/points actually changed. */
+function reconcile<T>(previous: T[], next: T[], keyOf: (item: T) => string): T[] {
+  const previousByKey = new Map(previous.map((item) => [keyOf(item), item]));
+  return next.map((item) => {
+    const before = previousByKey.get(keyOf(item));
+    return before && sameContent(before, item) ? before : item;
+  });
+}
+
 async function reload() {
-  loading.value = true;
+  // Only the very first load has nothing on screen yet to justify App.vue's
+  // full-page "Reading the ledger…" gate — a refresh (cron, the button, or
+  // someone else's, all via SSE) already has good data showing, and
+  // flipping this back on would unmount/remount the whole routed page
+  // (App.vue's `v-if="loading"`) just to swap in numbers the reconcile
+  // below, plus OdometerValue, already update in place without it.
+  const isInitialLoad = data.value === null;
+  if (isInitialLoad) loading.value = true;
   try {
-    data.value = await loadGroupData();
+    const next = await loadGroupData();
+    const previous = data.value;
+    data.value = previous
+      ? {
+          ...next,
+          players: reconcile(previous.players, next.players, (player: { slug: string }) => player.slug),
+          snapshots: reconcile(previous.snapshots, next.snapshots, (snapshot: { t: number }) => String(snapshot.t)),
+        }
+      : next;
     error.value = null;
   } catch (cause) {
+    // A background refresh failing shouldn't take an already-loaded page
+    // down with it — only surface the full error state when there's
+    // nothing on screen already (App.vue checks `error && !data`).
     error.value = cause instanceof Error ? cause.message : String(cause);
   } finally {
-    loading.value = false;
+    if (isInitialLoad) loading.value = false;
   }
 }
 

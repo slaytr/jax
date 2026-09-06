@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 
 import { formatCompact, formatDuration, formatNumber, formatRelativeTime, formatShortAge } from '@shared/format.js';
 import { nextRunEstimate } from '@shared/compute.js';
+import OdometerValue from '@/components/OdometerValue.vue';
 import RefreshButton from '@/components/RefreshButton.vue';
 import PlayerMasthead from '@/components/player/PlayerMasthead.vue';
 
@@ -46,9 +47,7 @@ onMounted(() => {
 });
 onUnmounted(() => clearInterval(timer));
 
-const rankValue = computed(() =>
-  props.groupRank && Number.isFinite(props.groupRank.rank) ? formatNumber(props.groupRank.rank) : '—',
-);
+const hasRank = computed(() => Boolean(props.groupRank && Number.isFinite(props.groupRank.rank)));
 const nextRun = computed(() => nextRunEstimate(props.fetchedAt));
 const nextRunLabel = computed(() => {
   void now.value;
@@ -99,7 +98,10 @@ const sparklinePoints = computed(() => {
         <!-- Shown only where the metric strip has no room for the rank column. -->
         <span class="identity-rank">
           <span class="identity-rank-label">Rank</span>
-          <span class="identity-rank-value">{{ rankValue }}</span>
+          <span class="identity-rank-value">
+            <OdometerValue v-if="hasRank" :value="groupRank!.rank" :format="formatNumber" />
+            <span v-else>—</span>
+          </span>
           <span v-if="rankDelta && rankDelta.delta !== 0" class="delta" :class="rankClimbed ? 'is-better' : 'is-worse'">
             <span aria-hidden="true">{{ rankClimbed ? '▼' : '▲' }}</span>
             <span>{{ formatNumber(Math.abs(rankDelta.delta)) }}</span>
@@ -115,16 +117,19 @@ const sparklinePoints = computed(() => {
       <div class="metrics">
         <div class="metric metric-rank">
           <p class="metric-label">Group rank</p>
-          <p class="metric-value"><span>{{ rankValue }}</span></p>
+          <p class="metric-value">
+            <OdometerValue v-if="hasRank" :value="groupRank!.rank" :format="formatNumber" />
+            <span v-else>—</span>
+          </p>
         </div>
         <div class="metric metric-level">
           <p class="metric-label">Total level</p>
-          <p class="metric-value"><span>{{ formatNumber(summary.totalLevel) }}</span></p>
+          <p class="metric-value"><OdometerValue :value="summary.totalLevel" :format="formatNumber" /></p>
         </div>
         <div class="metric metric-xp">
           <p class="metric-label">Total xp</p>
           <p class="metric-value">
-            <span>{{ formatCompact(summary.totalXp) }}</span>
+            <OdometerValue :value="summary.totalXp" :format="formatCompact" />
             <svg
               v-if="sparklinePoints"
               class="sparkline"
