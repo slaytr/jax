@@ -112,8 +112,8 @@ const visibleSeries = computed(() => (props.hideCompleted ? series.value.filter(
         <label class="quest-series-hide-completed quest-series-pin-mode" :class="{ 'is-active': pinMode }" title="Pin questlines to the front of this row">
           <input type="checkbox" v-model="pinMode" />
           <svg class="pin-mode-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
-            <line x1="9" y1="15" x2="9" y2="17.5" class="pin-mode-icon-line" />
+            <circle cx="9" cy="6.2" r="4.2" />
+            <polygon points="6.2,9.6 11.8,9.6 9,17" />
           </svg>
           <span class="visually-hidden">Pin questlines</span>
         </label>
@@ -130,7 +130,8 @@ const visibleSeries = computed(() => (props.hideCompleted ? series.value.filter(
         @click="onChipClick(s.name)"
       >
         <svg v-if="s.pinRank !== null" class="quest-series-link-pin" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-          <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+          <circle cx="9" cy="6.2" r="4.2" />
+          <polygon points="6.2,9.6 11.8,9.6 9,17" />
         </svg>
         {{ s.name }} {{ s.completed }}/{{ s.total }}
       </button>

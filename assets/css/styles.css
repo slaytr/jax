@@ -2541,13 +2541,6 @@ body::after {
   fill: currentColor;
 }
 
-.pin-mode-icon-line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-}
-
 .quest-series-pin-hint {
   margin: -0.4rem 0 0.6rem;
   font-size: 0.68rem;

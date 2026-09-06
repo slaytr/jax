@@ -100,7 +100,8 @@ function focusClick(id: string, event: MouseEvent) {
           @click="emit('focus', goal.id)"
         >
           <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+            <circle cx="9" cy="6.2" r="4.2" />
+            <polygon points="6.2,9.6 11.8,9.6 9,17" />
           </svg>
           <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
         </button>
@@ -146,7 +147,8 @@ function focusClick(id: string, event: MouseEvent) {
           @click="emit('focus', goal.id)"
         >
           <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+            <circle cx="9" cy="6.2" r="4.2" />
+            <polygon points="6.2,9.6 11.8,9.6 9,17" />
           </svg>
           <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
         </button>
@@ -183,7 +185,8 @@ function focusClick(id: string, event: MouseEvent) {
           @click="emit('focus', goal.id)"
         >
           <svg class="goal-card-focus-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-            <path d="M9 2 L13 6 L10.2 8.8 L11 13 L9 15 L7 13 L7.8 8.8 L5 6 Z" />
+            <circle cx="9" cy="6.2" r="4.2" />
+            <polygon points="6.2,9.6 11.8,9.6 9,17" />
           </svg>
           <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
         </button>
