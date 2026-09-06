@@ -6748,9 +6748,12 @@ body::after {
 /* The active chart at 2× the width of the two stacked beside it — since
    every chart shares one aspect-ratio (.bar-chart-svg below), doubling the
    width doubles its rendered height too, with no separate "big" geometry
-   to maintain. Explicit grid placement (rather than DOM order) puts the
-   comparison card directly under the active chart, in its own column,
-   while the stack spans both rows beside them. */
+   to maintain. .bar-chart-main and .bar-chart-stack are two independent
+   flex columns (not grid row-spanning) specifically because the stack
+   holds three cards against .bar-chart-main's two — letting the stack
+   span both grid rows left its own larger total height dictating row-1's
+   auto height, which pushed the comparison card in column 1 well past its
+   intended 0.9rem gap under the active chart to keep pace with column 2. */
 .bar-chart-layout {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -6758,19 +6761,11 @@ body::after {
   align-items: start;
 }
 
-.bar-chart-layout > .bar-chart-card.is-active {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.bar-chart-layout > .player-compare-card {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.bar-chart-layout > .bar-chart-stack {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+.bar-chart-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
 }
 
 .bar-chart-stack {

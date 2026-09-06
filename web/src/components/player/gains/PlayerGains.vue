@@ -118,56 +118,58 @@ const activityBadges = computed(() => computeActivityBadges(props.snapshots, pro
     </div>
 
     <div class="bar-chart-layout">
-      <div class="chart-card bar-chart-card is-active">
-        <div class="bar-chart-header">
-          <p class="chart-card-label">{{ activeCard.label }}</p>
-          <p class="bar-chart-total">
-            <span>+{{ activeCard.totalFormat(activeCard.total) }}</span>
-            <span class="bar-chart-total-label">{{ gainsWindow === 'week' ? ' this week' : ' this month' }}</span>
-          </p>
+      <div class="bar-chart-main">
+        <div class="chart-card bar-chart-card is-active">
+          <div class="bar-chart-header">
+            <p class="chart-card-label">{{ activeCard.label }}</p>
+            <p class="bar-chart-total">
+              <span>+{{ activeCard.totalFormat(activeCard.total) }}</span>
+              <span class="bar-chart-total-label">{{ gainsWindow === 'week' ? ' this week' : ' this month' }}</span>
+            </p>
+          </div>
+          <BarChart
+            v-if="activeCard.hasData"
+            :entries="activeCard.entries"
+            :accent="player.colour"
+            :show-labels="gainsWindow === 'week'"
+            :label="activeCard.label"
+            :unit="activeCard.unit"
+            :show-axis="activeCard.showAxis"
+            :format-value="activeCard.totalFormat"
+          />
+          <p v-else class="chart-empty">No data yet.</p>
         </div>
-        <BarChart
-          v-if="activeCard.hasData"
-          :entries="activeCard.entries"
-          :accent="player.colour"
-          :show-labels="gainsWindow === 'week'"
-          :label="activeCard.label"
-          :unit="activeCard.unit"
-          :show-axis="activeCard.showAxis"
-          :format-value="activeCard.totalFormat"
-        />
-        <p v-else class="chart-empty">No data yet.</p>
-      </div>
 
-      <div class="chart-card player-compare-card">
-        <p class="chart-card-label">{{ comparisonLabel }}</p>
-        <div class="player-toggle-row">
-          <button
-            v-for="p in players"
-            :key="p.slug"
-            type="button"
-            class="player-toggle"
-            :class="{ 'is-hidden': hiddenSlugs.has(p.slug) }"
-            :aria-pressed="hiddenSlugs.has(p.slug) ? 'false' : 'true'"
-            @click="toggleHidden(p.slug)"
-          >
-            <span class="swatch" :style="{ '--swatch': p.colour }" aria-hidden="true" />
-            <span>{{ p.name }}</span>
-          </button>
+        <div class="chart-card player-compare-card">
+          <p class="chart-card-label">{{ comparisonLabel }}</p>
+          <div class="player-toggle-row">
+            <button
+              v-for="p in players"
+              :key="p.slug"
+              type="button"
+              class="player-toggle"
+              :class="{ 'is-hidden': hiddenSlugs.has(p.slug) }"
+              :aria-pressed="hiddenSlugs.has(p.slug) ? 'false' : 'true'"
+              @click="toggleHidden(p.slug)"
+            >
+              <span class="swatch" :style="{ '--swatch': p.colour }" aria-hidden="true" />
+              <span>{{ p.name }}</span>
+            </button>
+          </div>
+          <ComparisonChart
+            v-if="comparisonHasData"
+            :player-rows="comparisonRows"
+            :show-labels="gainsWindow === 'week'"
+            :label="activeCard.label"
+            :unit="activeCard.unit"
+            :format-value="activeCard.totalFormat"
+            :hidden-slugs="hiddenSlugs"
+            :subject-slug="player.slug"
+            :emphasized-slugs="emphasizedSlugs"
+            @toggle-emphasis="toggleEmphasis"
+          />
+          <p v-else class="chart-empty">No data yet.</p>
         </div>
-        <ComparisonChart
-          v-if="comparisonHasData"
-          :player-rows="comparisonRows"
-          :show-labels="gainsWindow === 'week'"
-          :label="activeCard.label"
-          :unit="activeCard.unit"
-          :format-value="activeCard.totalFormat"
-          :hidden-slugs="hiddenSlugs"
-          :subject-slug="player.slug"
-          :emphasized-slugs="emphasizedSlugs"
-          @toggle-emphasis="toggleEmphasis"
-        />
-        <p v-else class="chart-empty">No data yet.</p>
       </div>
 
       <div class="bar-chart-stack">
