@@ -141,7 +141,13 @@ const simulatedDrops = computed(() => {
 
       <section class="lb loot-detail">
         <div class="loot-boss-header">
-          <img :src="bossIconFor(selectedBoss.slug)" :alt="selectedBoss.name" class="loot-boss-portrait" decoding="async" />
+          <img
+            :src="bossIconFor(selectedBoss.slug)"
+            :alt="selectedBoss.name"
+            class="loot-boss-portrait"
+            :style="selectedBoss.portraitScale ? { width: `${120 * selectedBoss.portraitScale}px` } : undefined"
+            decoding="async"
+          />
           <div class="loot-boss-info">
             <div class="lb-title">
               <h2>{{ selectedBoss.name }}</h2>
@@ -224,14 +230,8 @@ const simulatedDrops = computed(() => {
             <p v-if="!results" class="loot-sim-empty">Press Roll to simulate loot from that many kills.</p>
             <p v-else-if="simulatedDrops.length === 0" class="loot-sim-empty">Nothing dropped this roll.</p>
             <div v-else class="loot-sim-results">
-              <span
-                v-for="drop in simulatedDrops"
-                :key="drop.key"
-                class="loot-sim-drop"
-                :class="{ 'is-unique': drop.isUnique }"
-                :title="`${drop.name}: ${drop.qty.toLocaleString()}`"
-              >
-                <img :src="itemIconFor(drop.name)" alt="" width="22" height="22" decoding="async" loading="lazy" />
+              <span v-for="drop in simulatedDrops" :key="drop.key" class="loot-sim-drop" :class="{ 'is-unique': drop.isUnique }">
+                <img :src="itemIconFor(drop.name)" :alt="drop.name" :title="drop.name" width="22" height="22" decoding="async" loading="lazy" />
                 <span class="loot-sim-drop-qty">{{ drop.qty.toLocaleString() }}</span>
               </span>
             </div>

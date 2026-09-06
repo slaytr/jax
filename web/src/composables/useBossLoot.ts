@@ -23,6 +23,12 @@ export interface Boss {
   slug: string;
   wikiUrl: string;
   image: string;
+  // Multiplies LootTab.vue's own base portrait width (and, via
+  // scripts/fetch-boss-icons.mjs, the resolution it's fetched at) — unset
+  // for every boss whose wiki portrait already reads at a normal size next
+  // to the others. See K'ril's own entry in boss-loot-tables.js for why he
+  // needs one.
+  portraitScale?: number;
   combatLevel: number;
   location: string;
   sections: BossLootSection[];

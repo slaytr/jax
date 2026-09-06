@@ -173,6 +173,12 @@ export const BOSS_LOOT_TABLES = [
     slug: 'kril-tsutsaroth',
     wikiUrl: "https://runescape.wiki/w/K%27ril_Tsutsaroth",
     image: "K'ril Tsutsaroth.png",
+    // His own wiki portrait is framed much wider than the other four (a
+    // 1497×979 original, versus roughly 650×1000 for the rest) — at the
+    // shared portrait width he reads noticeably smaller than his own
+    // in-game bulk suggests, so LootTab.vue displays (and
+    // fetch-boss-icons.mjs fetches) his portrait at 2x the others' size.
+    portraitScale: 2,
     combatLevel: 650,
     location: "Zamorak's Fortress, God Wars Dungeon",
     sections: [

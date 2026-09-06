@@ -75,7 +75,11 @@ async function main() {
 
   for (const boss of BOSS_LOOT_TABLES) {
     const wikiFile = boss.image.replace(/\.png$/i, '');
-    const result = await download(wikiFile, join(BOSS_DIR, `${boss.slug}.png`), 200);
+    // A boss displayed larger than the shared portrait size (portraitScale
+    // on its own entry — see boss-loot-tables.js's own K'ril comment) needs
+    // a proportionally larger source image too, or its own larger display
+    // size just upscales a 200px-wide fetch into visible blur.
+    const result = await download(wikiFile, join(BOSS_DIR, `${boss.slug}.png`), 200 * (boss.portraitScale ?? 1));
     count += 1;
     console.log(result.ok ? `  ok    ${boss.name.padEnd(24)} ${result.bytes} bytes` : `  FAIL  ${boss.name.padEnd(24)} ${result.error}`);
     if (!result.ok) failures.push({ label: boss.name, error: result.error });
