@@ -9,9 +9,11 @@
  * its dependency map or quick guide (questGraphView — see
  * QuestDependencyGraph.vue), plus which quest's own quick guide was last
  * shown there (lastQuestGuideSlug), independent of the URL-param round-trip
- * QuestsTab.vue's own plain quest/questline selection already gets. Everything
- * else (sort order, the invert toggle) resets on reload; these are the ones
- * worth a reader not having to redo.
+ * QuestsTab.vue's own plain quest/questline selection already gets. Also
+ * whether the Home page's Skill Leaderboard was last showing its comparison
+ * table or every player's own grid side by side (skillMatrixView — see
+ * SkillMatrix.vue). Everything else (sort order, the invert toggle) resets
+ * on reload; these are the ones worth a reader not having to redo.
  *
  * localStorage only: per-browser, never sent anywhere. Reads/writes are
  * best-effort — private browsing or a full/blocked store should never break

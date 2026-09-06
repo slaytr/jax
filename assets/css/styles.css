@@ -884,6 +884,18 @@ body::after {
   color: var(--ink-muted);
 }
 
+/* The Skill Leaderboard's "grid" view (SkillMatrix.vue) — every player's
+   own SkillGrid.vue (same 200px-wide 3×10 matrix the Stats tab shows for
+   one account) laid out side by side instead of the table's one-row-per-
+   skill comparison. Plain flex-wrap, same as .player-row, so a roster too
+   wide for one line just wraps to a second rather than forcing horizontal
+   scroll. */
+.skill-matrix-grids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
 /* The identity dot. Never the sole identifier — a name always sits beside it. */
 .swatch {
   width: 9px;
@@ -2429,6 +2441,15 @@ body::after {
 
 .skill-cell.is-selected:hover {
   background: color-mix(in srgb, var(--accent) 34%, var(--surface-1));
+}
+
+/* The grid's own Total cell (SkillGrid.vue) — a plain div, not a button
+   like every skill cell around it (there's no skill id to select), so the
+   pointer cursor is the one thing worth overriding; it still hovers/
+   focuses like its neighbours so the tooltip's own affordance reads the
+   same way. */
+.skill-cell.is-total {
+  cursor: default;
 }
 
 .skill-cell-icon {

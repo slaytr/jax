@@ -1,16 +1,40 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { CALENDAR_DAY, buildMatrix, buildTotalsRow, computeLevelGains, leaderCounts, TOTAL_MEASURE } from '@shared/compute.js';
 import { formatNumber, formatRank } from '@shared/format.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '@shared/config.js';
 import { xpForLevel } from '@shared/xp-table.js';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
+import { usePrefs } from '@/composables/usePrefs';
+import SkillGrid from '@/components/player/SkillGrid.vue';
 
 const props = defineProps<{ players: any[]; snapshots: any[] }>();
 
 const sortedBy = ref<string | null>(null);
 const invertLeaders = ref(false);
+
+// 'table' is the original one-row-per-skill comparison below; 'grid' shows
+// every player's own SkillGrid (the per-player Stats-tab matrix) side by
+// side instead — same data, laid out the way each player already sees
+// their own skills, for comparing at a glance rather than row by row.
+// Persisted like Standings' own view toggle (useGainsViewState.ts), just
+// kept local here since nothing outside this component reads it.
+type SkillMatrixView = 'table' | 'grid';
+const isSkillMatrixView = (value: unknown): value is SkillMatrixView => value === 'table' || value === 'grid';
+const { prefs, savePref } = usePrefs();
+const view = ref<SkillMatrixView>(isSkillMatrixView(prefs.skillMatrixView) ? prefs.skillMatrixView : 'table');
+watch(view, (value) => savePref({ skillMatrixView: value }));
+
+// Shared across every player's own grid in the 'grid' view — clicking a
+// cell in any one of them highlights that same skill on all the others
+// too (SkillGrid's own is-selected), so a viewer can pick one skill and
+// visually compare it across the whole roster at once instead of hunting
+// the same row in each grid separately.
+const selectedGridSkillId = ref<number | null>(null);
+function toggleGridSkill(skillId: number) {
+  selectedGridSkillId.value = selectedGridSkillId.value === skillId ? null : skillId;
+}
 
 /** Melooms alone gets the five-star consolation badge on a shutout —
  * everyone else's zero still reads as "★ 0". */
@@ -76,8 +100,9 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
   <section class="matrix-section">
     <div class="matrix-head">
       <div class="matrix-title">
-        <h2>Skill Leaderboard{{ invertLeaders ? ' (Inverse)' : '' }}</h2>
+        <h2>Skill Leaderboard{{ view === 'table' && invertLeaders ? ' (Inverse)' : '' }}</h2>
         <button
+          v-if="view === 'table'"
           type="button"
           class="matrix-invert"
           :class="{ 'is-active': invertLeaders }"
@@ -92,9 +117,45 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
           <span aria-hidden="true">{{ invertLeaders ? '▼' : '▲' }}</span>
           <span class="visually-hidden">{{ invertLeaders ? 'Showing lowest' : 'Showing highest' }}</span>
         </button>
+        <div class="gains-view-tabs" role="tablist" aria-label="Skill Leaderboard view">
+          <button
+            type="button"
+            class="gains-view-toggle"
+            :class="{ 'is-active': view === 'table' }"
+            role="tab"
+            :aria-selected="view === 'table'"
+            title="Show the skill-by-skill comparison table"
+            @click="view = 'table'"
+          >
+            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <rect x="1.5" y="2" width="15" height="14" rx="1" />
+              <line x1="1.5" y1="6.5" x2="16.5" y2="6.5" class="toggle-line" />
+              <line x1="1.5" y1="11" x2="16.5" y2="11" class="toggle-line" />
+            </svg>
+            <span class="visually-hidden">Show the table view</span>
+          </button>
+          <button
+            type="button"
+            class="gains-view-toggle"
+            :class="{ 'is-active': view === 'grid' }"
+            role="tab"
+            :aria-selected="view === 'grid'"
+            title="Show each player's own skill grid side by side"
+            @click="view = 'grid'"
+          >
+            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <rect x="1.5" y="1.5" width="6.5" height="6.5" rx="1" />
+              <rect x="10" y="1.5" width="6.5" height="6.5" rx="1" />
+              <rect x="1.5" y="10" width="6.5" height="6.5" rx="1" />
+              <rect x="10" y="10" width="6.5" height="6.5" rx="1" />
+            </svg>
+            <span class="visually-hidden">Show grids side by side</span>
+          </button>
+        </div>
       </div>
       <p class="matrix-note">
-        <template v-if="sortedBy">
+        <template v-if="view !== 'table'">Click a skill in any grid to highlight it across every player.</template>
+        <template v-else-if="sortedBy">
           Sorted by {{ players.find((p) => p.slug === sortedBy)?.name }} — click the column again to reset.
         </template>
         <template v-else>
@@ -104,7 +165,19 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
       </p>
     </div>
 
-    <div class="matrix-scroll">
+    <div v-if="view === 'grid'" class="skill-matrix-grids">
+      <SkillGrid
+        v-for="player in players"
+        :key="player.slug"
+        :player="player"
+        :today-level-gains="levelGains"
+        :selected-skill-id="selectedGridSkillId"
+        :title="player.name"
+        @select="toggleGridSkill"
+      />
+    </div>
+
+    <div v-else class="matrix-scroll">
       <table class="matrix">
         <caption class="visually-hidden">
           Every RuneScape 3 skill level by player, plus totals. The {{ invertLeaders ? 'account behind' : 'group leader' }} is

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { SKILL_GRID, iconFor } from '@shared/config.js';
+import { SKILL_GRID, MAX_TOTAL_LEVEL, TOTAL_LEVEL_ICON, iconFor } from '@shared/config.js';
 import { formatNumber, formatRank } from '@shared/format.js';
 import { xpForLevel, xpProgress } from '@shared/xp-table.js';
 import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
@@ -20,7 +20,7 @@ import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
  */
 const props = withDefaults(
   defineProps<{
-    player: { slug: string; colour: string; skillById?: Record<number, any> };
+    player: { slug: string; colour: string; skillById?: Record<number, any>; total?: { level: number; xp: number; rank: number | null } };
     todayLevelGains: any;
     selectedSkillId: number | null;
     // "Skills" on the Stats tab, "Set Skill Goals" on the Goals tab
@@ -40,8 +40,10 @@ const bySlug = computed(() => props.todayLevelGains?.bySlug?.[props.player.slug]
 // SKILL_GRID has one `null` sentinel (bottom-right, RS3's own skills-tab
 // layout leaves that slot empty) — dropped here rather than rendered, same
 // as the legacy view's el() silently dropping a null child. 29 real cells
-// across a 3-column grid naturally leave that same slot blank via ordinary
-// grid auto-placement, so no placeholder element is needed to hold its spot.
+// across a 3-column grid naturally leave that same slot open via ordinary
+// grid auto-placement; the template's own extra Total cell (below) is what
+// actually fills it, same "same account standings icon, bottom-right"
+// spot the Skill Leaderboard's own comparison table gives its Total row.
 const cells = computed(() =>
   SKILL_GRID.flat()
     .filter((skill: any) => skill !== null)
@@ -70,6 +72,26 @@ function cellTooltip(cell: (typeof cells.value)[number]) {
     ]);
   };
 }
+
+// MAX_TOTAL_LEVEL (not TOTAL_MEASURE.max, the theoretical every-skill-99
+// ceiling compute.js's own table row bar uses) is deliberately the same
+// denominator Account Standings' own Total levels bar fills against — this
+// cell's whole point is reading as that section's figure landing on the
+// grid, not a second, differently-scaled one.
+const totalGainedToday = computed(() => bySlug.value?.total ?? 0);
+const totalProgress = computed(() => Math.min(1, (props.player.total?.level ?? 0) / MAX_TOTAL_LEVEL));
+
+function totalTooltip() {
+  const total = props.player.total ?? { level: 0, xp: 0, rank: null };
+  const gainedToday = totalGainedToday.value;
+  return () =>
+    tooltipContent('Total level', [
+      ['Level', formatNumber(total.level)],
+      ['Levels today', gainedToday > 0 ? `+${gainedToday}` : 'none'],
+      ['Experience', `${formatNumber(total.xp)} xp`],
+      ['Rank', formatRank(total.rank)],
+    ]);
+}
 </script>
 
 <template>
@@ -95,6 +117,19 @@ function cellTooltip(cell: (typeof cells.value)[number]) {
           <span class="cell-rule-fill" :style="{ width: `${(xpProgress(cell.skill, cell.value.level, cell.value.xp) * 100).toFixed(1)}%` }" />
         </span>
       </button>
+      <!-- Fills the grid's own bottom-right slot (the 30th cell SKILL_GRID
+           leaves as a null sentinel) with this player's Total level — same
+           icon Account Standings and the Skill Leaderboard's own Total row
+           use, not a skill of its own, so it's a plain div rather than
+           another clickable, select-emitting .skill-cell button. -->
+      <div class="skill-cell is-total" tabindex="0" v-tooltip="totalTooltip()">
+        <img class="skill-cell-icon" :src="TOTAL_LEVEL_ICON" alt="" width="18" height="18" decoding="async" />
+        <span class="visually-hidden">Total level </span>
+        <span class="cell-primary">{{ formatNumber(player.total?.level ?? 0) }}</span>
+        <span class="cell-rule" role="presentation">
+          <span class="cell-rule-fill" :style="{ width: `${(totalProgress * 100).toFixed(1)}%` }" />
+        </span>
+      </div>
     </div>
   </section>
 </template>
