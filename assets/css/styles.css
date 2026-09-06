@@ -50,6 +50,12 @@
   --crimson: #8a1c2b;
   --leaf: #2c9e4d;
 
+  /* Marks a Unique-table drop in the Loot tab's own simulator results
+     (.loot-sim-drop.is-unique) — deliberately apart from every hue above,
+     so it reads as its own distinct signal rather than borrowing --ember's
+     or --gain's existing meaning. */
+  --unique: #a366e0;
+
   /* Podium stripe for a leaderboard's 1st/2nd/3rd column — stands in for the
      rank number, so it's deliberately gold/silver/bronze, not a series hue. */
   --medal-gold: #d9b44a;
@@ -1550,6 +1556,15 @@ body::after {
   color: var(--ember-ink);
 }
 
+.tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tab:disabled:hover {
+  color: var(--ink-muted);
+}
+
 /* The three periods share one bordered block so a player can be followed down
    the columns; each band is still ranked independently. */
 .lb-stack {
@@ -2464,6 +2479,17 @@ body::after {
   width: 25%;
 }
 
+/* The same switcher with the disabled Guides/Loot placeholders inserted —
+   a 6-tab variant. Scaled up from .tabs-4up's own per-tab width rather than
+   its total, so the four real tabs keep roughly the same breathing room. */
+.tabs-6up {
+  min-width: 23rem;
+}
+
+.tabs-6up .tabs-indicator {
+  width: 16.666%;
+}
+
 .page-tabs {
   margin-bottom: 1rem;
 }
@@ -3322,6 +3348,316 @@ body::after {
 
 .task-list-empty {
   margin: 0;
+}
+
+/* -------------------------------------------------------- loot tab */
+
+/* The boss list's own name button — .quest-list-name plus a small leading
+   portrait thumbnail (region list rows have no icon of their own; this one
+   does, so it isn't just plain .quest-list-name unchanged). */
+.loot-boss-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.loot-boss-thumb {
+  flex: none;
+  border-radius: 2px;
+}
+
+/* Overrides .quest-list's own fixed 400px scroll box — five GWD1 bosses
+   (and however many more join later) sit well under that, so the plain
+   region-list height just left a tall stretch of empty card below the
+   last row instead of the list ending where its own rows do. */
+.loot-boss-list {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* The detail pane's own header — boss portrait beside its name/wiki-link/
+   combat-level line, above that boss's stack of drop-table sections. */
+.loot-boss-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.loot-boss-portrait {
+  flex: none;
+  width: 120px;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.loot-boss-info {
+  min-width: 0;
+}
+
+.loot-boss-meta {
+  margin: 0.2rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.loot-section {
+  margin-bottom: 0.9rem;
+}
+
+.loot-section:last-child {
+  margin-bottom: 0;
+}
+
+.loot-section-title {
+  margin: 0 0 0.15rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Deliberately tight both ways — this table's whole point is fitting
+   loot/quantity/rarity for a boss's entire drop list on one screen without
+   scrolling. `width: auto` (not 100%) plus content-sized columns (no
+   percentage widths forcing Quantity/Rarity out to a fraction of whatever
+   width .loot-detail happens to have) is what keeps it from stretching
+   into wide gaps horizontally the way a 100%-wide table with short numeric
+   columns otherwise would; vertically every row is trimmed to its text's
+   own height rather than the site's usual roomier .task-table row. */
+.loot-table {
+  width: auto;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+}
+
+.loot-table th {
+  padding: 0.1rem 0.35rem;
+  border-bottom: 1px solid var(--hairline-strong);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.loot-col-qty,
+.loot-col-rarity {
+  text-align: right;
+}
+
+.loot-table td {
+  padding: 0.08rem 0.35rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.loot-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.loot-cell-icon {
+  padding-top: 0.05rem;
+  padding-bottom: 0.05rem;
+  padding-right: 0.15rem;
+  line-height: 0;
+}
+
+.loot-cell-icon img {
+  display: block;
+}
+
+.loot-cell-name a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.loot-cell-name a:hover {
+  text-decoration: underline;
+}
+
+.loot-cell-qty,
+.loot-cell-rarity {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+/* -------------------------------------------------- loot simulator */
+
+/* The boss detail pane's own two-column body — the reference drop tables
+   (left, the wider/growing column) beside the loot simulator (right, a
+   fixed-ish sidebar card) — rather than the simulator sitting full-width
+   above the tables. Wraps to stacked (simulator below the tables) once the
+   pane is too narrow for both, same "flex-wrap over a hard breakpoint"
+   move as .player-row itself. */
+.loot-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.loot-tables {
+  flex: 1 1 380px;
+  min-width: 280px;
+}
+
+/* The Loot tab's own simulator — a separate card beside the reference
+   tables (unlike an earlier version of this that bolted a "Rolled" column
+   onto every table, or one before that which spanned full width above
+   them). Controls up top, an icon+number results strip underneath once a
+   Roll has actually been pressed. */
+.loot-sim-panel {
+  flex: 0 1 260px;
+  min-width: 220px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.loot-sim-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.loot-sim-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.loot-sim-kills-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-2);
+  font-size: 0.68rem;
+}
+
+/* A plain bordered chip, same anatomy as .task-req-chip — .is-active picks
+   out whichever preset matches the current kill count exactly (typing a
+   custom value un-picks all of them, same as none being selected). */
+.loot-sim-preset {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  cursor: pointer;
+  transition: color 0.12s var(--ease), border-color 0.12s var(--ease);
+}
+
+.loot-sim-preset:hover {
+  color: var(--ink);
+}
+
+.loot-sim-preset.is-active {
+  border-color: var(--ember);
+  color: var(--ember-ink);
+}
+
+.loot-sim-kills {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.22rem 0.4rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.loot-sim-kills:focus-visible,
+.loot-sim-preset:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.loot-sim-roll {
+  width: 100%;
+  padding: 0.32rem 0.8rem;
+  border: 1px solid var(--ember);
+  border-radius: 3px;
+  background: rgba(217, 89, 38, 0.13);
+  color: var(--ember-ink);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.loot-sim-roll:hover {
+  background: rgba(217, 89, 38, 0.22);
+}
+
+.loot-sim-meta {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+}
+
+.loot-sim-empty {
+  margin: 0.6rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+}
+
+/* The actual haul — one chip per item that dropped at least once, icon
+   over count, nothing else (no name text; the icon plus its title-attr
+   tooltip carries that). Ordered by boss-page position (LootTab.vue's own
+   simulatedDrops), not by count, so a re-roll doesn't shuffle the grid. */
+.loot-sim-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.loot-sim-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: var(--surface-0);
+}
+
+/* A drop from the boss's own Unique table (or Nex's equivalent Main drop
+   roll) — LootTab.vue's own simulatedDrops flags these by section name.
+   Purple is otherwise unused anywhere on the page (see --unique's own
+   comment), so a glance at the results strip picks the uniques out from
+   the far more common charms/ammo/salvage chips around them. */
+.loot-sim-drop.is-unique {
+  border: 2px solid var(--unique);
+  background: rgba(163, 102, 224, 0.14);
+}
+
+.loot-sim-drop-qty {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
 }
 
 /* The Quests tab's Planner (quest-planner.js/views/quest-planner.js) — a

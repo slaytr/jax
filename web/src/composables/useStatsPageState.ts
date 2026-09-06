@@ -3,15 +3,19 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 import { loadStatsState, saveStatsState } from '@shared/stats-state.js';
 
-export const PAGE_TABS: Array<[string, string]> = [
+// The third element marks a tab disabled (rendered but not selectable) —
+// Guides is a placeholder for a feature that doesn't exist yet.
+export const PAGE_TABS: Array<[string, string, boolean?]> = [
   ['stats', 'Stats'],
   ['quests', 'Quests'],
   ['tasks', 'Tasks'],
+  ['guides', 'Guides', true],
+  ['loot', 'Loot'],
   ['goals', 'Goals'],
 ];
 
-const oneOf = (options: Array<[string, string]>, value: unknown, fallback: string) =>
-  options.some(([option]) => option === value) ? (value as string) : fallback;
+const oneOf = (options: Array<[string, string, boolean?]>, value: unknown, fallback: string) =>
+  options.some(([option, , disabled]) => option === value && !disabled) ? (value as string) : fallback;
 
 export interface StatsPageState {
   tab: string;
@@ -33,6 +37,9 @@ export interface StatsPageState {
   // alone) so a link to one specific tier's task list actually reopens it.
   taskRegionSlug: string | null;
   taskTier: string | null;
+  // Which boss the Loot tab is showing — same round-tripped-not-persisted
+  // reasoning as taskRegionSlug/taskTier above, via `?boss=`.
+  lootBossSlug: string | null;
   // Which quest/questline the Quests tab's dependency map is anchored on,
   // and which node in it is highlighted — QuestsTab.vue's own doing (reads
   // these once to seed its selection, writes back on every change, clears
@@ -103,6 +110,7 @@ export function useStatsPageState() {
     taskSearch: typeof persisted.taskSearch === 'string' ? persisted.taskSearch : '',
     taskRegionSlug: queryString(route.query.region),
     taskTier: queryString(route.query.tier),
+    lootBossSlug: queryString(route.query.boss),
     questSlug: queryString(route.query.quest),
     seriesName: queryString(route.query.series),
     highlightedNodeSlug: queryString(route.query.node),
@@ -120,6 +128,7 @@ export function useStatsPageState() {
       state.tab = oneOf(PAGE_TABS, query.tab, state.tab);
       state.taskRegionSlug = queryString(query.region);
       state.taskTier = queryString(query.tier);
+      state.lootBossSlug = queryString(query.boss);
       state.questSlug = queryString(query.quest);
       state.seriesName = queryString(query.series);
       state.highlightedNodeSlug = queryString(query.node);
@@ -129,7 +138,7 @@ export function useStatsPageState() {
   watch(
     state,
     (value) => {
-      const { questSlug, seriesName, highlightedNodeSlug, taskRegionSlug, taskTier, ...persistable } = value;
+      const { questSlug, seriesName, highlightedNodeSlug, taskRegionSlug, taskTier, lootBossSlug, ...persistable } = value;
       saveStatsState(persistable);
 
       // quest/series/node only ever apply while actually on the Quests tab
@@ -142,6 +151,7 @@ export function useStatsPageState() {
       delete query.node;
       delete query.region;
       delete query.tier;
+      delete query.boss;
       if (value.tab === 'quests') {
         if (value.questSlug) query.quest = value.questSlug;
         else if (value.seriesName) query.series = value.seriesName;
@@ -149,6 +159,8 @@ export function useStatsPageState() {
       } else if (value.tab === 'tasks') {
         if (value.taskRegionSlug) query.region = value.taskRegionSlug;
         if (value.taskRegionSlug && value.taskTier) query.tier = value.taskTier;
+      } else if (value.tab === 'loot') {
+        if (value.lootBossSlug) query.boss = value.lootBossSlug;
       }
 
       const currentKeys = Object.keys(route.query);

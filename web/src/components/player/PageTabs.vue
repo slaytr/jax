@@ -12,10 +12,15 @@ import { nextTick, ref, watch } from 'vue';
 // doesn't reliably type-check against a camelCase `ariaLabel` prop under
 // vue-tsc (same fix ViewToggle.vue already needed), so this sets
 // `:aria-label="label"` internally instead.
-const props = defineProps<{ tabs: Array<[string, string]>; label: string }>();
+const props = defineProps<{ tabs: Array<[string, string, boolean?]>; label: string }>();
 const active = defineModel<string>({ required: true });
 
 const indexOf = (value: string) => props.tabs.findIndex(([v]) => v === value);
+
+const select = (value: string, disabled: boolean | undefined) => {
+  if (disabled) return;
+  active.value = value;
+};
 const indicatorIndex = ref(indexOf(active.value));
 
 watch(active, async (value, previous) => {
@@ -30,17 +35,24 @@ watch(active, async (value, previous) => {
 </script>
 
 <template>
-  <div class="tabs" :class="{ 'tabs-2up': tabs.length === 2, 'tabs-4up': tabs.length === 4 }" role="tablist" :aria-label="props.label">
+  <div
+    class="tabs"
+    :class="{ 'tabs-2up': tabs.length === 2, 'tabs-4up': tabs.length === 4, 'tabs-6up': tabs.length === 6 }"
+    role="tablist"
+    :aria-label="props.label"
+  >
     <span class="tabs-indicator" aria-hidden="true" :style="{ transform: `translateX(${indicatorIndex * 100}%)` }" />
     <button
-      v-for="[value, label] in tabs"
+      v-for="[value, label, disabled] in tabs"
       :key="value"
       type="button"
       class="tab"
       :class="{ 'is-active': active === value }"
       role="tab"
       :aria-selected="active === value"
-      @click="active = value"
+      :aria-disabled="disabled || undefined"
+      :disabled="disabled"
+      @click="select(value, disabled)"
     >
       {{ label }}
     </button>

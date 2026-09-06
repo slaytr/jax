@@ -51,8 +51,12 @@ const RAW_SKILLS = [
   { id: 29, name: 'Necromancy', max: 120, combat: true },
 ];
 
-/** Shared by the icon downloader and the renderer so filenames cannot drift. */
-export const skillSlug = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+/** Shared by every icon downloader and renderer (skills, bosses, boss drops)
+ * so filenames cannot drift between the fetch script and the page. */
+export const slugify = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+/** Old name, kept for the skill-specific callers already using it. */
+export const skillSlug = slugify;
 
 export const SKILLS = Object.freeze(
   RAW_SKILLS.map((skill) => Object.freeze({ ...skill, slug: skillSlug(skill.name) })),
@@ -85,6 +89,16 @@ export const WIKI_ICON = new URL('../icons/wiki.png', import.meta.url).href;
  * used by TasksTab.vue for an Area Tasks requirement phrased as a combat
  * level rather than any one skill's own. */
 export const COMBAT_ICON = new URL('../icons/combat.png', import.meta.url).href;
+
+/** The Loot tab's boss portrait (scripts/fetch-boss-icons.mjs) — same
+ * module-relative reasoning as iconFor. */
+export const bossIconFor = (slug) => new URL(`../icons/bosses/${slug}.png`, import.meta.url).href;
+
+/** The Loot tab's per-drop icon, keyed by the item's own display name
+ * (not a separate stored slug) so boss-loot-tables.js never has to repeat
+ * itself — scripts/fetch-boss-icons.mjs saves every item under this same
+ * slugify(name). */
+export const itemIconFor = (name) => new URL(`../icons/items/${slugify(name)}.png`, import.meta.url).href;
 
 /**
  * When the update job is scheduled to run, in UTC — on the hour, every hour.
