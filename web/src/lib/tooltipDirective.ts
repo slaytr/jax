@@ -63,6 +63,13 @@ function hide() {
   tip.setAttribute('aria-hidden', 'true');
 }
 
+/** Exposed for the router (see router.ts's beforeEach) — a nav click never
+ * fires the hovered element's own pointerleave (the whole page, tooltip
+ * target included, gets torn down before the mouse actually moves), so
+ * without an explicit hide here the singleton tip is left dangling
+ * data-visible on the page you just navigated to. */
+export const hideTooltip = hide;
+
 window.addEventListener('scroll', hide, { passive: true, capture: true });
 window.addEventListener('keydown', (event) => event.key === 'Escape' && hide());
 
