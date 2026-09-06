@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
+import { computed } from 'vue';
 
 import { computeActivityCalendar, ACTIVITY_CALENDAR_WEEKS } from '@shared/compute.js';
 import { formatNumber } from '@shared/format.js';
@@ -80,29 +80,10 @@ function cellTooltip(cell: Cell) {
     ]);
   };
 }
-
-const gridRoot = useTemplateRef<HTMLDivElement>('gridRoot');
-
-// Pre-scrolled to its right edge so a mobile viewer's first look is the
-// most recent days, not a year-old Sunday — see .activity-cal's own
-// internal-scroll rule in styles.css. Needs the element actually laid out
-// first (nextTick), same reasoning as the legacy view's own
-// requestAnimationFrame deferral.
-function scrollToToday() {
-  if (gridRoot.value) gridRoot.value.scrollLeft = gridRoot.value.scrollWidth;
-}
-onMounted(async () => {
-  await nextTick();
-  scrollToToday();
-});
-watch(() => props.slug, async () => {
-  await nextTick();
-  scrollToToday();
-});
 </script>
 
 <template>
-  <div v-if="days.length" ref="gridRoot" class="activity-cal">
+  <div v-if="days.length" class="activity-cal">
     <div class="activity-cal-months">
       <span v-for="(label, index) in monthLabels" :key="index" class="activity-cal-month">{{ label }}</span>
     </div>
