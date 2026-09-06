@@ -58,13 +58,12 @@ const label = computed(() => {
   return 'REFRESH NOW';
 });
 const disabled = computed(() => status.value === 'running' || cooldownSeconds.value > 0);
-// The spinner covers both "waiting" reasons (this tab's own run in flight,
-// or a cooldown counting down — whether it's ticking down from this tab's
-// own click or from someone else's run finishing) so a click transitions
-// smoothly from "Refreshing…" into the exact same spinner+countdown look
-// a passive visitor already sees once someone else's refresh completes,
-// rather than the spinner vanishing the moment the run itself finishes.
-const showSpinner = computed(() => disabled.value);
+// Only while a run is actually in flight — once the SSE 'run-finished'
+// event lands (below) and flips status back to idle/error, the spinner
+// goes away even though the button stays disabled for the rest of the
+// cooldown countdown; nothing's actually happening for that stretch, so a
+// spinner there would be showing work that isn't real.
+const showSpinner = computed(() => status.value === 'running');
 
 let unsubscribe: (() => void) | undefined;
 onMounted(() => {

@@ -3503,6 +3503,18 @@ body::after {
   padding: 1rem 0;
 }
 
+/* Groups the fullscreen toggle with the map/guide tabs so they sit right
+   next to each other at the header's right edge — .lb-head's own
+   `justify-content: space-between` only pushes its *first and last*
+   direct child apart, so without this wrapper the tabs (a 2nd child
+   between the title and the fullscreen button) would float in the middle
+   of the row on its own instead of beside the button. */
+.quest-graph-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Same recipe as .gains-view-toggle: outlined and muted at rest, filled
    ember once active (here, while the card is expanded to full screen). */
 .quest-graph-fullscreen-btn {
@@ -4442,12 +4454,10 @@ body::after {
   list-style: none;
 }
 
-/* Clickable — see toggleFocus (player-goals.js): any card sets itself as
-   the toolbar's one focus goal (renderFocusGoal, .goal-focus below). Also
-   draggable, to reorder it within its own list (GoalsList.vue's own
-   onItemDragStart) — :active swaps to a grabbing cursor for that, a plain
-   unmodified click still reads as the pointer cursor a click target
-   normally gets. */
+/* Draggable, to reorder it within its own list (GoalsList.vue's own
+   onItemDragStart) — :active swaps to a grabbing cursor for that. Setting
+   it as the toolbar's one focus goal (renderFocusGoal, .goal-focus below)
+   is the pin button's job now (.goal-card-focus), not a whole-card click. */
 .goal-card:active {
   cursor: grabbing;
 }
@@ -4460,7 +4470,6 @@ body::after {
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--surface-1);
-  cursor: pointer;
   transition: border-color 0.14s var(--ease), background-color 0.14s var(--ease);
 }
 
@@ -4510,6 +4519,19 @@ body::after {
 
 .goal-subgoal-row:hover {
   background: var(--surface-2);
+}
+
+/* A top-level active-skill-goal card renders its one row with this same
+   class for the layout (icon/name/bar alignment), but — unlike a nested
+   requirement row — nothing here is click-to-focus any more (the pin
+   button is), so it shouldn't invite a click the way its cursor/hover
+   would otherwise suggest. */
+.goal-subgoal-row.is-static {
+  cursor: default;
+}
+
+.goal-subgoal-row.is-static:hover {
+  background: none;
 }
 
 .goal-subgoal-row.is-focused {
@@ -4665,6 +4687,44 @@ body::after {
 .goal-card-wiki-link:focus-visible {
   outline: 2px solid var(--ember);
   outline-offset: 2px;
+}
+
+/* The pin-to-focus button that replaced whole-card-click focusing — sits
+   right after the name (GoalCard.vue), same quiet-until-hovered treatment
+   as .goal-card-wiki-link, but its own colour once actually pinned so the
+   currently-focused card's own icon reads as "on" at a glance among a list
+   of otherwise-identical grey pins. */
+.goal-card-focus {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--ink-muted);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.goal-card-focus:hover,
+.goal-card-focus:focus-visible {
+  opacity: 1;
+}
+
+.goal-card-focus:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.goal-card-focus.is-focused {
+  opacity: 1;
+  color: var(--brass);
+}
+
+.goal-card-focus-icon {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
 }
 
 /* Soaks up the gap between the name/current-level cluster on the left and

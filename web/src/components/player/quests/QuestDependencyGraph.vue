@@ -229,38 +229,40 @@ const LEGEND_ITEMS: Array<[string, string]> = [
     <section class="lb quest-flowchart" :class="{ 'is-fullscreen': isFullscreen }">
       <div class="lb-head">
         <div class="lb-title"><h2>{{ view === 'guide' ? 'Quick guide' : 'Dependency map' }}</h2></div>
-        <div class="gains-view-tabs" role="tablist" aria-label="Quest panel display">
-          <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'map' }" role="tab" :aria-selected="view === 'map'" title="Show the dependency map" @click="view = 'map'">
-            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-              <line x1="3.5" y1="9" x2="9" y2="3.5" class="toggle-line" />
-              <line x1="3.5" y1="9" x2="9" y2="14.5" class="toggle-line" />
-              <line x1="9" y1="3.5" x2="15" y2="9" class="toggle-line" />
-              <line x1="9" y1="14.5" x2="15" y2="9" class="toggle-line" />
-              <circle cx="3.5" cy="9" r="1.6" />
-              <circle cx="9" cy="3.5" r="1.6" />
-              <circle cx="9" cy="14.5" r="1.6" />
-              <circle cx="15" cy="9" r="1.6" />
-            </svg>
-            <span class="visually-hidden">Show the dependency map</span>
+        <div class="quest-graph-controls">
+          <button
+            type="button"
+            class="quest-graph-fullscreen-btn"
+            :title="isFullscreen ? 'Exit full screen' : 'Expand to full screen'"
+            :aria-pressed="isFullscreen ? 'true' : 'false'"
+            @click="emit('toggleFullscreen')"
+          >
+            {{ isFullscreen ? '✕' : '⛶' }}
           </button>
-          <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'guide' }" role="tab" :aria-selected="view === 'guide'" title="Show the quick guide" @click="view = 'guide'">
-            <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-              <rect x="1.5" y="2" width="15" height="3.2" rx="1" />
-              <rect x="1.5" y="7.4" width="15" height="3.2" rx="1" />
-              <rect x="1.5" y="12.8" width="15" height="3.2" rx="1" />
-            </svg>
-            <span class="visually-hidden">Show the quick guide</span>
-          </button>
+          <div class="gains-view-tabs" role="tablist" aria-label="Quest panel display">
+            <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'guide' }" role="tab" :aria-selected="view === 'guide'" title="Show the quick guide" @click="view = 'guide'">
+              <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+                <rect x="1.5" y="2" width="15" height="3.2" rx="1" />
+                <rect x="1.5" y="7.4" width="15" height="3.2" rx="1" />
+                <rect x="1.5" y="12.8" width="15" height="3.2" rx="1" />
+              </svg>
+              <span class="visually-hidden">Show the quick guide</span>
+            </button>
+            <button type="button" class="gains-view-toggle" :class="{ 'is-active': view === 'map' }" role="tab" :aria-selected="view === 'map'" title="Show the dependency map" @click="view = 'map'">
+              <svg class="toggle-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+                <line x1="3.5" y1="9" x2="9" y2="3.5" class="toggle-line" />
+                <line x1="3.5" y1="9" x2="9" y2="14.5" class="toggle-line" />
+                <line x1="9" y1="3.5" x2="15" y2="9" class="toggle-line" />
+                <line x1="9" y1="14.5" x2="15" y2="9" class="toggle-line" />
+                <circle cx="3.5" cy="9" r="1.6" />
+                <circle cx="9" cy="3.5" r="1.6" />
+                <circle cx="9" cy="14.5" r="1.6" />
+                <circle cx="15" cy="9" r="1.6" />
+              </svg>
+              <span class="visually-hidden">Show the dependency map</span>
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          class="quest-graph-fullscreen-btn"
-          :title="isFullscreen ? 'Exit full screen' : 'Expand to full screen'"
-          :aria-pressed="isFullscreen ? 'true' : 'false'"
-          @click="emit('toggleFullscreen')"
-        >
-          {{ isFullscreen ? '✕' : '⛶' }}
-        </button>
       </div>
 
       <!-- Guide view is checked ahead of the map's own `!selection` guard
