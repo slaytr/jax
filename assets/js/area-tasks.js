@@ -15029,6 +15029,7 @@ export const AREA_TASK_REGIONS = [
         rewardItem: 'Wilderness sword',
         lampXp: 10000,
         lampLevel: 30,
+        lampCount: 2,
         tasks: [
           {
             name: 'Highway to the Danger Zone!',
@@ -15175,6 +15176,7 @@ export const AREA_TASK_REGIONS = [
         rewardItem: 'Wilderness sword',
         lampXp: 40000,
         lampLevel: 52,
+        lampCount: 2,
         tasks: [
           {
             name: 'Don\'t Axe for Permission',
@@ -15365,6 +15367,7 @@ export const AREA_TASK_REGIONS = [
         rewardItem: 'Wilderness sword',
         lampXp: 77000,
         lampLevel: 67,
+        lampCount: 2,
         tasks: [
           {
             name: 'Nerves of Stele',
@@ -15539,6 +15542,7 @@ export const AREA_TASK_REGIONS = [
         rewardItem: 'Wilderness sword',
         lampXp: 95000,
         lampLevel: 85,
+        lampCount: 2,
         tasks: [
           {
             name: 'Lava Palava',

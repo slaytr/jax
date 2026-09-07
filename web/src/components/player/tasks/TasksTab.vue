@@ -111,6 +111,15 @@ function withStatus(requirements: AreaTaskRequirement[]) {
 
 const tierRequirements = computed(() => (selectedTier.value ? withStatus(selectedTier.value.requirements) : []));
 
+/** How many of `selectedTier.lampXp` a tier actually hands out — every
+ * region hands out one except Wilderness, which pays out two of the same
+ * lamp per tier (area-tasks.js's own top-level `lamps` summary already
+ * says as much: "2x 10,000 * 2x 40,000 * ..."). Not part of the inferred
+ * shape most tier literals share (only Wilderness's own four set it), so
+ * read through a loose cast here rather than fighting the union for one
+ * optional field. */
+const tierLampCount = computed(() => (selectedTier.value as any)?.lampCount ?? 1);
+
 const tierRequirementsSummary = computed(() => summarizeRequirementStatuses(tierRequirements.value.map((row) => row.status)));
 
 /** Skills/quests/other — same three-way split parseRequirement's own
@@ -372,7 +381,7 @@ const filteredTasks = computed(() => {
             <img :src="WIKI_ICON" alt="" width="10" height="10" decoding="async" />
           </a>
           {{ selectedTier.rewardItem }}<span v-if="selectedTier.lampXp"
-            >&nbsp;+ {{ selectedTier.lampXp.toLocaleString() }} XP lamp<span v-if="selectedTier.lampLevel"> (level {{ selectedTier.lampLevel }}+)</span></span
+            >&nbsp;+ {{ tierLampCount > 1 ? `${tierLampCount}× ` : '' }}{{ selectedTier.lampXp.toLocaleString() }} XP lamp<span v-if="tierLampCount > 1">s</span><span v-if="selectedTier.lampLevel"> (level {{ selectedTier.lampLevel }}+)</span></span
           ><span v-if="selectedTier.rewardNpc">&nbsp;from {{ selectedTier.rewardNpc }}<span v-if="selectedTier.rewardNpcLocation"> ({{ selectedTier.rewardNpcLocation }})</span></span>
         </p>
         <div v-if="rewardProgressionForTier" class="task-reward-effects">
