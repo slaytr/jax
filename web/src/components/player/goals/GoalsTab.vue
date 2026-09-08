@@ -70,6 +70,14 @@ function toggleGroup(title: string) {
   props.statsState.collapsedGoalGroups = [...next];
 }
 
+const collapsedItemsSet = computed(() => new Set(props.statsState.collapsedGoalItems));
+function toggleItem(id: string) {
+  const next = new Set(props.statsState.collapsedGoalItems);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  props.statsState.collapsedGoalItems = [...next];
+}
+
 function focusGoal(id: string | null) {
   props.statsState.focusGoalId = id;
 }
@@ -135,11 +143,13 @@ function handleConfirmQuestGoal(drafts: any[]) {
     :read-only-hint="readOnlyHint"
     :label-filter="statsState.goalLabelFilter"
     :collapsed-groups="collapsedGroupsSet"
+    :collapsed-items="collapsedItemsSet"
     :focus-goal-id="statsState.focusGoalId"
     :can-edit="canEdit"
     :quests="quests"
     @update:label-filter="(v) => (statsState.goalLabelFilter = v)"
     @toggle-group="toggleGroup"
+    @toggle-item="toggleItem"
     @focus="focusGoal"
     @delete="requestDelete"
     @open-guide="(slug) => emit('openGuide', slug)"

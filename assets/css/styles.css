@@ -4750,6 +4750,39 @@ body::after {
   font-size: 0.68rem;
 }
 
+/* The list view's own two columns (GoalsList.vue's `columns`) — standalone
+   skill goals on the left, every quest (with its own nested requirement
+   checklist) on the right. minmax(0, 1fr), not 1fr alone, so a long quest
+   name/label chip still ellipsizes/wraps inside its own column instead of
+   stretching the grid track past it (the usual CSS grid min-content trap).
+   Falls back to one column below — see the @media block further down. */
+.goals-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Each column stacks its own .goal-group blocks exactly as the old single
+   list did — .goal-group's own adjacent-sibling margin (below) still
+   applies since both groups in a column are still direct siblings, just
+   now scoped to whichever column they landed in. An empty column (no
+   quest goals yet, say) collapses to nothing rather than leaving a blank
+   card-shaped gap. */
+.goals-column:empty {
+  display: none;
+}
+
+/* Narrower than .player-row's own 720px mobile breakpoint (below) on
+   purpose — the Goals tab's main content column already sits beside a
+   ~200px sidebar there, so two goal columns get cramped well before the
+   viewport itself would count as "mobile". */
+@media (max-width: 900px) {
+  .goals-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
 .goal-group + .goal-group {
   margin-top: 1.1rem;
 }
@@ -4962,7 +4995,7 @@ body::after {
    since it butts up against the track rather than leading the row. */
 .goal-subgoal-start {
   flex: none;
-  width: 3.25rem;
+  width: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5148,6 +5181,67 @@ body::after {
   fill: currentColor;
 }
 
+/* A completed goal's own minimize toggle (GoalCard.vue) — sits beside the
+   focus pin, same quiet-until-hovered treatment, collapsing the card (or,
+   nested under a quest, just that one requirement row) down to its bare
+   head line. Same disclosure-triangle language as .goal-group-chevron, just
+   scaled to sit inline among the other per-goal icon buttons rather than
+   leading a section heading. */
+.goal-card-minimize {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--ink-muted);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.goal-card-minimize:hover,
+.goal-card-minimize:focus-visible {
+  opacity: 1;
+}
+
+.goal-card-minimize:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+
+.goal-card-minimize-chevron {
+  flex: none;
+  width: 0.55em;
+  border-style: solid;
+  border-width: 0.28em 0 0.28em 0.4em;
+  border-color: transparent transparent transparent currentColor;
+  transition: transform 0.14s var(--ease);
+}
+
+.goal-card.is-minimized .goal-card-minimize-chevron,
+.goal-subgoal-row.is-minimized .goal-card-minimize-chevron {
+  transform: rotate(0deg);
+}
+
+.goal-card:not(.is-minimized) .goal-card-minimize-chevron,
+.goal-subgoal-row:not(.is-minimized) .goal-card-minimize-chevron {
+  transform: rotate(90deg);
+}
+
+/* A minimized card/row reads as tucked away, same muted treatment a
+   collapsed .goal-group gets — its head line (name + ✓) still stays at full
+   legibility, only the surrounding chrome dims. */
+.goal-card.is-minimized,
+.goal-subgoal-row.is-minimized {
+  opacity: 0.7;
+}
+
+.goal-subgoal-row .goal-card-minimize {
+  width: 1.1rem;
+  height: 1.1rem;
+  justify-content: center;
+}
+
 /* Soaks up the gap between the name/current-level cluster on the left and
    the target/delete cluster on the right, so the current level reads as
    part of the name rather than getting flex-stretched away from it. */
@@ -5270,6 +5364,18 @@ body::after {
   margin: 0;
   color: var(--ink-muted);
   font-size: 0.68rem;
+}
+
+/* The figures actually worth a glance within a goal's own meta line
+   (GoalCard.vue's metaParts, GoalFocusPanel.vue's detailParts) — xp/levels
+   gained, remaining, the daily rate, ETA — stand out from the plain
+   scheduling context (Completed/Started/Took) sitting right next to them
+   in the same " · "-joined line, rather than reading as one flat run of
+   equally-muted grey text. */
+.goal-card-meta-stat {
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 700;
 }
 
 /* The "new goal" dialog a skill-grid click opens (player-goals.js). A real

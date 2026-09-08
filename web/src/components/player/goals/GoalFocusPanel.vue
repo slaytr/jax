@@ -5,7 +5,7 @@ import { formatNumber, formatCompact, formatSpan, formatRelativeTime } from '@sh
 import { iconFor, QUEST_POINTS_ICON, WIKI_ICON } from '@shared/config.js';
 import { statusOf } from '@shared/quest-status.js';
 import { questWikiUrl } from '@shared/quest-goal.js';
-import { completedSkillStats, orderByStatus, skillGoalProgress, startValueOf } from '@/lib/goals';
+import { completedSkillStats, orderByStatus, skillGoalProgress, startValueOf, type MetaPart } from '@/lib/goals';
 import SkillProgressRow from '@/components/player/goals/SkillProgressRow.vue';
 
 /**
@@ -52,24 +52,28 @@ const skillProgress = computed(() =>
   isQuest.value ? null : skillGoalProgress(props.goal, skill.value, props.player, Boolean(parentQuest.value)),
 );
 
-const detailParts = computed<string[]>(() => {
+/** `stat: true` marks the figures actually worth a second look (levels/xp
+ * gained, remaining, the daily rate, ETA) so the template can render those
+ * bolder than the plain scheduling/baseline context sitting next to them
+ * in the same line — see GoalCard.vue's own metaParts for the same split. */
+const detailParts = computed<MetaPart[]>(() => {
   if (isQuest.value) {
     return complete.value
       ? [
-          `Completed ${COMPLETED_DATE.format(new Date(props.goal.completedAt))}`,
-          `Took ${formatSpan(Date.parse(props.goal.completedAt) - Date.parse(props.goal.startedAt))}`,
+          { text: `Completed ${COMPLETED_DATE.format(new Date(props.goal.completedAt))}` },
+          { text: `Took ${formatSpan(Date.parse(props.goal.completedAt) - Date.parse(props.goal.startedAt))}` },
         ]
-      : [`Started ${formatRelativeTime(props.goal.startedAt)}`];
+      : [{ text: `Started ${formatRelativeTime(props.goal.startedAt)}` }];
   }
 
   if (complete.value) {
     const { startedMs, completedMs, levelsGained, xpGained, ratePerDay } = completedSkillStats(props.goal);
     return [
-      `Completed ${COMPLETED_DATE.format(new Date(completedMs))}`,
-      `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'}`,
-      `+${formatNumber(xpGained)} xp`,
-      `Took ${formatSpan(completedMs - startedMs)}`,
-      `${formatCompact(ratePerDay)} xp/day avg`,
+      { text: `Completed ${COMPLETED_DATE.format(new Date(completedMs))}` },
+      { text: `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'}`, stat: true },
+      { text: `+${formatNumber(xpGained)} xp`, stat: true },
+      { text: `Took ${formatSpan(completedMs - startedMs)}` },
+      { text: `${formatCompact(ratePerDay)} xp/day avg`, stat: true },
     ];
   }
 
@@ -83,15 +87,15 @@ const detailParts = computed<string[]>(() => {
   const xpRemaining = Math.max(0, targetXp - currentXp);
   const etaDays = ratePerDay > 0 ? xpRemaining / ratePerDay : null;
   return [
-    `Started ${formatRelativeTime(props.goal.startedAt)}`,
-    `Start ${formatNumber(props.goal.startXp)} xp`,
-    `Current ${formatNumber(currentXp)} xp`,
-    `${formatNumber(xpRemaining)} xp to go`,
-    `Target ${formatNumber(targetXp)} xp`,
-    `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'} so far`,
-    `+${formatNumber(xpGained)} xp so far`,
-    `${formatCompact(ratePerDay)} xp/day avg`,
-    etaDays !== null ? `ETA ~${formatSpan(etaDays * 86400000)}` : 'no progress yet',
+    { text: `Started ${formatRelativeTime(props.goal.startedAt)}` },
+    { text: `Start ${formatNumber(props.goal.startXp)} xp` },
+    { text: `Current ${formatNumber(currentXp)} xp` },
+    { text: `${formatNumber(xpRemaining)} xp to go`, stat: true },
+    { text: `Target ${formatNumber(targetXp)} xp` },
+    { text: `+${formatNumber(levelsGained)} level${levelsGained === 1 ? '' : 's'} so far`, stat: true },
+    { text: `+${formatNumber(xpGained)} xp so far`, stat: true },
+    { text: `${formatCompact(ratePerDay)} xp/day avg`, stat: true },
+    etaDays !== null ? { text: `ETA ~${formatSpan(etaDays * 86400000)}`, stat: true } : { text: 'no progress yet' },
   ];
 });
 
@@ -134,7 +138,7 @@ function childProgress(child: any) {
 
     <template v-if="isQuest">
       <p class="goal-card-meta">
-        <template v-for="(part, i) in detailParts" :key="i"><span v-if="i > 0" aria-hidden="true"> · </span><span>{{ part }}</span></template>
+        <template v-for="(part, i) in detailParts" :key="i"><span v-if="i > 0" aria-hidden="true"> · </span><span :class="{ 'goal-card-meta-stat': part.stat }">{{ part.text }}</span></template>
       </p>
       <ul v-if="requirements.length" class="goal-subgoals">
         <li
@@ -151,6 +155,9 @@ function childProgress(child: any) {
             :current-value="childProgress(req).currentValue"
             :target-value="req.targetValue"
             :fraction="childProgress(req).fraction"
+            :current-xp="childProgress(req).currentXp"
+            :target-xp="childProgress(req).targetXp"
+            :base-xp="childProgress(req).baseXp"
             :can-edit="canEdit"
             @delete="emit('delete', req.id)"
           />
@@ -167,13 +174,16 @@ function childProgress(child: any) {
           :current-value="skillProgress!.currentValue"
           :target-value="goal.targetValue"
           :fraction="skillProgress!.fraction"
+          :current-xp="skillProgress!.currentXp"
+          :target-xp="skillProgress!.targetXp"
+          :base-xp="skillProgress!.baseXp"
           :can-edit="canEdit"
           :show-label="false"
           @delete="emit('delete', goal.id)"
         />
       </div>
       <p class="goal-card-meta">
-        <template v-for="(part, i) in detailParts" :key="i"><span v-if="i > 0" aria-hidden="true"> · </span><span>{{ part }}</span></template>
+        <template v-for="(part, i) in detailParts" :key="i"><span v-if="i > 0" aria-hidden="true"> · </span><span :class="{ 'goal-card-meta-stat': part.stat }">{{ part.text }}</span></template>
       </p>
     </template>
   </div>

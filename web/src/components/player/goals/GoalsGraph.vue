@@ -72,7 +72,7 @@ const customConnections = useGoalGraphConnections(props.player.slug);
 const notesStore = useGoalGraphNotes(props.player.slug);
 const calculatorNodesStore = useGoalGraphCalculatorNodes(props.player.slug);
 
-const items = computed(() => props.sections.flatMap(itemsFor));
+const items = computed(() => props.sections.flatMap((section) => itemsFor(section)));
 
 /** Which of `items` this view actually draws, plus the quest-requires-quest
  * edges between them — see visibleGoalItems's own doc comment for the full

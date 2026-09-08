@@ -77,11 +77,18 @@ export function distinctValues(goals: any[], field: string): string[] {
 }
 
 /** Active ones first (creation order), completed ones shuffled to the
- * bottom (most recently finished first). */
-export function orderByStatus(goals: any[]): any[] {
+ * bottom (most recently finished first) — and, among those, one further
+ * split: a completed goal the viewer has minimized (`collapsedIds`, keyed
+ * by goal id — GoalCard.vue's own per-item toggle) sinks below every
+ * completed-but-still-expanded one, so clearing clutter one skill at a time
+ * actually pushes it further out of the way instead of leaving it wherever
+ * its completion date happened to land. */
+export function orderByStatus(goals: any[], collapsedIds: ReadonlySet<string> = new Set()): any[] {
   const active = goals.filter((goal) => !goal.completedAt);
   const completed = goals.filter((goal) => goal.completedAt).sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt));
-  return [...active, ...completed];
+  const shown = completed.filter((goal) => !collapsedIds.has(goal.id));
+  const minimized = completed.filter((goal) => collapsedIds.has(goal.id));
+  return [...active, ...shown, ...minimized];
 }
 
 export interface GoalSection {
@@ -115,12 +122,12 @@ export interface GoalItem {
  * dependency cluster per item — a childless item is just an isolated node
  * there). `quest` is named for the common case but is a plain skill goal in
  * the childless branch — see the callers' own handling either way. */
-export function itemsFor(section: GoalSection): GoalItem[] {
+export function itemsFor(section: GoalSection, collapsedIds: ReadonlySet<string> = new Set()): GoalItem[] {
   const quest = section.goals.find((goal) => goal.kind === 'quest');
   if (quest) {
     return [{ quest, children: section.goals.filter((goal) => goal !== quest) }];
   }
-  return orderByStatus(section.goals).map((goal) => ({ quest: goal, children: [] }));
+  return orderByStatus(section.goals, collapsedIds).map((goal) => ({ quest: goal, children: [] }));
 }
 
 export const sectionIsComplete = (section: GoalSection) => section.goals.length > 0 && section.goals.every((goal) => goal.completedAt);
@@ -155,6 +162,12 @@ export interface SkillGoalProgress {
   currentValue: number;
   currentXp: number;
   targetXp: number;
+  // The xp the progress bar's own 0% mark represents — a requirement's own
+  // startLevel threshold, or the goal's own startXp for a personal
+  // milestone (see `requirementScoped` below). Exposed (rather than kept
+  // internal to `fraction`) so a caller can report "gained so far" as
+  // `currentXp - baseXp`, scoped the same way the fill itself is.
+  baseXp: number;
   fraction: number;
 }
 
@@ -170,7 +183,18 @@ export function skillGoalProgress(goal: any, skill: any, player: any, requiremen
   const targetXp = targetXpOf(goal, skill, currentXp);
   const baseXp = requirementScoped ? baseXpOf(goal, skill) : goal.startXp;
   const fraction = xpProgressFraction(baseXp, currentXp, targetXp);
-  return { currentValue, currentXp, targetXp, fraction };
+  return { currentValue, currentXp, targetXp, baseXp, fraction };
+}
+
+/** One segment of a goal card/focus panel's own " · "-joined meta line
+ * (GoalCard.vue's metaParts, GoalFocusPanel.vue's detailParts) — `stat`
+ * marks the figures actually worth a glance (xp/levels gained, rate,
+ * remaining, ETA) so the template can render those with more visual weight
+ * than the plain scheduling context (Started/Completed/Took) sitting next
+ * to them in the same line. */
+export interface MetaPart {
+  text: string;
+  stat?: boolean;
 }
 
 export interface CompletedSkillStats {

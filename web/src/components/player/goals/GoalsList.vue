@@ -23,6 +23,10 @@ const props = defineProps<{
   readOnlyHint: string | null;
   labelFilter: string;
   collapsedGroups: Set<string>;
+  // Individual completed goals (standalone or nested under a quest) a
+  // viewer has minimized (GoalCard.vue's own per-item toggle) — orthogonal
+  // to collapsedGroups, which only ever hides/shows a whole section.
+  collapsedItems: Set<string>;
   focusGoalId: string | null;
   canEdit: boolean;
   // The full quest-data list, for GoalsGraph.vue's own quest-requires-quest
@@ -34,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:labelFilter': [value: string];
   toggleGroup: [title: string];
+  toggleItem: [id: string];
   focus: [id: string | null];
   delete: [id: string];
   openGuide: [slug: string];
@@ -61,6 +66,27 @@ const emptyMessage = computed(() => {
  * needs inventing just to drag one. */
 const sectionKey = (section: GoalSection) => section.title ?? ' ';
 
+/** A section is a "quest" one the moment it has a quest-kind goal in it —
+ * true for every *named* group (goalSections only ever names a group after
+ * the one quest goal that created it, sharing that group with its own
+ * skill-requirement children — see QuestGoalDialog.vue) and false only for
+ * the single leftover ungrouped section holding every standalone skill
+ * goal. Used to split the list view into two columns (below) — a nested
+ * requirement stays inside its own quest's card either way, since itemsFor
+ * already nests it as a child rather than surfacing it as its own item. */
+const isQuestSection = (section: GoalSection) => section.goals.some((goal) => goal.kind === 'quest');
+
+/** The list view's own two columns — skills' own leftover ungrouped
+ * section on the left, every named (quest) group on the right, both still
+ * drawn from the one `sections` list above so ordering/reordering keeps
+ * working exactly as it did before the split. A plain array (not two
+ * separate computeds) so the template below only needs a single v-for
+ * nest rather than duplicating the whole per-section block twice. */
+const columns = computed(() => [
+  { key: 'skills', sections: sections.value.filter((section) => !isQuestSection(section)) },
+  { key: 'quests', sections: sections.value.filter(isQuestSection) },
+]);
+
 const goalOrder = useGoalOrder(props.player.slug);
 
 /** orderSectionsByStatus's own active-then-completed split stays fixed —
@@ -77,7 +103,7 @@ const sections = computed(() => {
  * one item (the ungrouped "Skills" bucket, in practice), a no-op harmless
  * to run for every other section too. */
 function orderedItemsFor(section: GoalSection) {
-  return applyCustomOrder(itemsFor(section), goalOrder.order.items, (item) => item.quest.id);
+  return applyCustomOrder(itemsFor(section, props.collapsedItems), goalOrder.order.items, (item) => item.quest.id);
 }
 
 function toggleFocus(id: string) {
@@ -218,57 +244,63 @@ watch(view, (value) => savePref({ goalsView: value }));
     <p v-if="filteredGoals.length === 0" class="chart-empty">{{ emptyMessage }}</p>
 
     <template v-else-if="view === 'list'">
-      <div
-        v-for="section in sections"
-        :key="sectionKey(section)"
-        class="goal-group"
-        :class="{ 'is-collapsed': section.title !== null && collapsedGroups.has(section.title), 'is-complete': sectionIsComplete(section) }"
-        :draggable="canEdit"
-        title="Drag to reorder"
-        @dragstart="onSectionDragStart($event, sectionKey(section))"
-        @dragover.prevent
-        @drop="onSectionDrop($event, sectionKey(section))"
-      >
-        <button
-          v-if="section.title"
-          type="button"
-          class="goal-group-title"
-          :aria-expanded="collapsedGroups.has(section.title) ? 'false' : 'true'"
-          :draggable="canEdit"
-          title="Drag to reorder"
-          @click="emit('toggleGroup', section.title!)"
-          @dragstart="onSectionDragStart($event, sectionKey(section))"
-          @dragover.prevent.stop
-          @drop.stop="onSectionDrop($event, sectionKey(section))"
-        >
-          <span class="goal-group-chevron" aria-hidden="true" />
-          <span v-if="sectionIsComplete(section)" class="goal-group-check" aria-hidden="true">✓</span>
-          <span class="goal-group-name">{{ section.title }}</span>
-          <span class="goal-group-count">{{ section.goals.length }}</span>
-        </button>
-
-        <ul v-if="section.title === null || !collapsedGroups.has(section.title)" class="goals-list">
-          <GoalCard
-            v-for="item in orderedItemsFor(section)"
-            :key="item.quest.id"
-            :goal="item.quest"
-            :child-goals="item.children"
-            :by-skill-id="bySkillId"
-            :player="player"
-            :labels-by-name="labelsByName"
-            :can-edit="canEdit"
-            :focused-id="focusGoalId"
-            :quests="quests"
+      <div class="goals-columns">
+        <div v-for="column in columns" :key="column.key" class="goals-column">
+          <div
+            v-for="section in column.sections"
+            :key="sectionKey(section)"
+            class="goal-group"
+            :class="{ 'is-collapsed': section.title !== null && collapsedGroups.has(section.title), 'is-complete': sectionIsComplete(section) }"
             :draggable="canEdit"
             title="Drag to reorder"
-            @dragstart="onItemDragStart($event, item.quest.id)"
-            @dragover.prevent.stop
-            @drop="onItemDrop($event, section, item.quest.id)"
-            @focus="toggleFocus"
-            @delete="(id) => emit('delete', id)"
-            @open-guide="(slug) => emit('openGuide', slug)"
-          />
-        </ul>
+            @dragstart="onSectionDragStart($event, sectionKey(section))"
+            @dragover.prevent
+            @drop="onSectionDrop($event, sectionKey(section))"
+          >
+            <button
+              v-if="section.title"
+              type="button"
+              class="goal-group-title"
+              :aria-expanded="collapsedGroups.has(section.title) ? 'false' : 'true'"
+              :draggable="canEdit"
+              title="Drag to reorder"
+              @click="emit('toggleGroup', section.title!)"
+              @dragstart="onSectionDragStart($event, sectionKey(section))"
+              @dragover.prevent.stop
+              @drop.stop="onSectionDrop($event, sectionKey(section))"
+            >
+              <span class="goal-group-chevron" aria-hidden="true" />
+              <span v-if="sectionIsComplete(section)" class="goal-group-check" aria-hidden="true">✓</span>
+              <span class="goal-group-name">{{ section.title }}</span>
+              <span class="goal-group-count">{{ section.goals.length }}</span>
+            </button>
+
+            <ul v-if="section.title === null || !collapsedGroups.has(section.title)" class="goals-list">
+              <GoalCard
+                v-for="item in orderedItemsFor(section)"
+                :key="item.quest.id"
+                :goal="item.quest"
+                :child-goals="item.children"
+                :by-skill-id="bySkillId"
+                :player="player"
+                :labels-by-name="labelsByName"
+                :can-edit="canEdit"
+                :focused-id="focusGoalId"
+                :quests="quests"
+                :collapsed-items="collapsedItems"
+                :draggable="canEdit"
+                title="Drag to reorder"
+                @dragstart="onItemDragStart($event, item.quest.id)"
+                @dragover.prevent.stop
+                @drop="onItemDrop($event, section, item.quest.id)"
+                @focus="toggleFocus"
+                @delete="(id) => emit('delete', id)"
+                @open-guide="(slug) => emit('openGuide', slug)"
+                @toggle-item="(id) => emit('toggleItem', id)"
+              />
+            </ul>
+          </div>
+        </div>
       </div>
     </template>
 

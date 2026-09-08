@@ -30,6 +30,11 @@ export interface StatsPageState {
   questlinesPinned: string[];
   goalLabelFilter: string;
   collapsedGoalGroups: string[];
+  // Individual completed skill goals a viewer has minimized (GoalCard.vue's
+  // own per-item toggle) — unlike collapsedGoalGroups, this works whether
+  // the goal sits standalone in the ungrouped "Skills" bucket or nested as
+  // one requirement inside a quest goal's own checklist.
+  collapsedGoalItems: string[];
   focusGoalId: string | null;
   taskSearch: string;
   // Which region/tier the Tasks tab is showing — like questSlug/seriesName
@@ -106,6 +111,7 @@ export function useStatsPageState() {
     questlinesPinned: Array.isArray(persisted.questlinesPinned) ? persisted.questlinesPinned : [],
     goalLabelFilter: typeof persisted.goalLabelFilter === 'string' ? persisted.goalLabelFilter : '',
     collapsedGoalGroups: Array.isArray(persisted.collapsedGoalGroups) ? persisted.collapsedGoalGroups : [],
+    collapsedGoalItems: Array.isArray(persisted.collapsedGoalItems) ? persisted.collapsedGoalItems : [],
     focusGoalId: typeof persisted.focusGoalId === 'string' ? persisted.focusGoalId : null,
     taskSearch: typeof persisted.taskSearch === 'string' ? persisted.taskSearch : '',
     taskRegionSlug: queryString(route.query.region),

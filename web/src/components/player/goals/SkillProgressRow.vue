@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { formatNumber } from '@shared/format.js';
 import { iconFor } from '@shared/config.js';
 import { progressFillStyle } from '@/lib/goals';
+import { tooltipContent, vTooltip } from '@/lib/tooltipDirective';
 
 /**
  * icon, name, start value, progress bar, percent, then current/target — the
@@ -25,6 +26,14 @@ const props = withDefaults(
     currentValue: number;
     targetValue: number;
     fraction: number;
+    // The same xp figures the fraction/fill were themselves computed from
+    // (skillGoalProgress, lib/goals.ts) — kept separate from
+    // startValue/currentValue/targetValue since those are in *level* terms
+    // for a level-type goal, where the progress bar's own hover tooltip
+    // (below) always wants xp regardless of the goal's own target type.
+    currentXp: number;
+    targetXp: number;
+    baseXp: number;
     canEdit: boolean;
     // Off only for the focus panel's own standalone-skill-goal row
     // (GoalFocusPanel.vue) — its header already names the one skill this
@@ -40,6 +49,20 @@ const emit = defineEmits<{ delete: [] }>();
 
 const complete = computed(() => Boolean(props.goal.completedAt));
 const percent = computed(() => Math.round((complete.value ? 1 : props.fraction) * 100));
+
+/** Gained scoped the same way the fill itself is (baseXp — a requirement's
+ * own startLevel threshold, or the goal's own startXp) rather than the
+ * player's whole xp total, so it reads as "how much of *this bar*" rather
+ * than double-counting xp banked before the goal even existed. */
+function trackTooltip() {
+  const xpGained = Math.max(0, props.currentXp - props.baseXp);
+  const xpRemaining = Math.max(0, props.targetXp - props.currentXp);
+  return () =>
+    tooltipContent(props.skill.name, [
+      ['Gained', `${formatNumber(xpGained)} xp`],
+      ['Remaining', `${formatNumber(xpRemaining)} xp`],
+    ]);
+}
 </script>
 
 <template>
@@ -48,7 +71,7 @@ const percent = computed(() => Math.round((complete.value ? 1 : props.fraction) 
     <span class="goal-subgoal-name">{{ skill.name }}</span>
   </template>
   <span class="goal-subgoal-start">{{ formatNumber(startValue) }}</span>
-  <div class="goal-subgoal-track" role="presentation">
+  <div class="goal-subgoal-track" role="presentation" v-tooltip="trackTooltip()">
     <span class="goal-subgoal-fill" :style="complete ? { width: '100%' } : progressFillStyle(fraction)" />
   </div>
   <span class="goal-subgoal-percent">{{ percent }}%</span>
