@@ -4768,9 +4768,25 @@ body::after {
    applies since both groups in a column are still direct siblings, just
    now scoped to whichever column they landed in. An empty column (no
    quest goals yet, say) collapses to nothing rather than leaving a blank
-   card-shaped gap. */
+   card-shaped gap.
+   Pinned to an explicit track by position (not just source order) —
+   :empty above takes an empty column out of grid placement entirely
+   (`display: none` removes a grid item from auto-placement, same as it
+   not existing), so without this the *other*, non-empty column would slide
+   into track 1 regardless of which one it actually is the moment either
+   side has nothing in it (a player with only quest goals and no standalone
+   skill ones, say) — quest goals rendering on the left, skill goals' own
+   empty space on the right. */
 .goals-column:empty {
   display: none;
+}
+
+.goals-column:nth-child(1) {
+  grid-column: 1;
+}
+
+.goals-column:nth-child(2) {
+  grid-column: 2;
 }
 
 /* Narrower than .player-row's own 720px mobile breakpoint (below) on
@@ -4780,6 +4796,15 @@ body::after {
 @media (max-width: 900px) {
   .goals-columns {
     grid-template-columns: 1fr;
+  }
+
+  /* Without this, the explicit track pins above (:nth-child(1)/(2)) would
+     still shove column 2 into an implicit second track beside column 1's
+     lone explicit one, defeating the single-column stack this media query
+     exists for. */
+  .goals-column:nth-child(1),
+  .goals-column:nth-child(2) {
+    grid-column: 1;
   }
 }
 
@@ -5240,6 +5265,22 @@ body::after {
   width: 1.1rem;
   height: 1.1rem;
   justify-content: center;
+}
+
+/* An active requirement row's own minimize button (GoalCard.vue — always
+   rendered now, not just v-if="child.completedAt") stays in the flex flow
+   invisibly rather than dropping out of it entirely: SkillProgressRow's own
+   .goal-subgoal-track is flex:1, so an active row missing this fixed-width
+   sibling used to have its track stretch further than a completed row's
+   own (shrunk by that extra button) — the two read as different widths
+   sitting right on top of each other in the same checklist. Reserving the
+   same space either way keeps every row's bar the same width regardless of
+   completion. pointer-events: none (on top of the button's own `disabled`)
+   so a click here still falls through to the row's own focusClick instead
+   of landing on dead space. */
+.goal-subgoal-row .goal-card-minimize.is-invisible {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Soaks up the gap between the name/current-level cluster on the left and

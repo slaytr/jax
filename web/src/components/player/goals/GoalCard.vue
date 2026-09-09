@@ -253,9 +253,12 @@ function focusClick(id: string, event: MouseEvent) {
           @delete="emit('delete', child.id)"
         />
         <button
-          v-if="child.completedAt"
           type="button"
           class="goal-card-minimize"
+          :class="{ 'is-invisible': !child.completedAt }"
+          :disabled="!child.completedAt"
+          :tabindex="child.completedAt ? 0 : -1"
+          :aria-hidden="!child.completedAt"
           :aria-expanded="collapsedItems.has(child.id) ? 'false' : 'true'"
           :title="collapsedItems.has(child.id) ? 'Expand this goal' : 'Minimize this goal'"
           @click="emit('toggleItem', child.id)"
