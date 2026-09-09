@@ -121,13 +121,11 @@ function computeAllGains() {
   };
 }
 
-/** The week's top gainer for one metric, skipping anyone already `claimed`.
- * Null when nobody unclaimed gained anything (a 0-value leader, e.g. a
- * brand-new group, isn't a real "winner" to crown either). `claimed`
- * defaults to empty — pass one only where a badge actually needs to exclude
- * another badge's winner (see computeHighlights). */
-function topWeeklyGainer(result, valueKey, claimed = new Set()) {
-  const top = result.rows.find((row) => row[valueKey] > 0 && !claimed.has(row.player.slug));
+/** The week's top gainer for one metric. Null when nobody gained anything
+ * (a 0-value leader, e.g. a brand-new group, isn't a real "winner" to
+ * crown either). */
+function topWeeklyGainer(result, valueKey) {
+  const top = result.rows.find((row) => row[valueKey] > 0);
   return top ? { player: top.player, value: top[valueKey] } : null;
 }
 
@@ -139,12 +137,10 @@ function topWeeklyGainer(result, valueKey, claimed = new Set()) {
  * single biggest total (topWeeklyGainer) — Ranker on levels gained, Grind
  * King on xp gained, Quest God on quest points gained.
  *
- * Ranker and Grind King are mutually exclusive — one player can't hold both
- * crowns, so whoever already won Ranker is skipped when picking Grind King
- * in favour of the next-best candidate. Quest God is independent of the
- * other two: its winner can also be the Ranker and/or Grind King, since
- * quest points measure a different kind of effort (breadth of quests done)
- * than the levels/XP grind the other two badges are about.
+ * All three badges are picked independently — the same player can hold
+ * any or all of them (e.g. Ranker and Grind King together) since each one
+ * measures a different kind of effort and there's no reason a single
+ * player's week can't lead on more than one axis.
  *
  * Each entry also carries its winner's last-7-days breakdown
  * (computeDailyBreakdown, against the raw snapshots rather than the
@@ -152,12 +148,8 @@ function topWeeklyGainer(result, valueKey, claimed = new Set()) {
  * days actually built that total.
  */
 function computeHighlights(gains) {
-  const claimed = new Set();
-
-  const level = topWeeklyGainer(gains.levels.week, 'total', claimed);
-  if (level) claimed.add(level.player.slug);
-
-  const xp = topWeeklyGainer(gains.xp.week, 'total', claimed);
+  const level = topWeeklyGainer(gains.levels.week, 'total');
+  const xp = topWeeklyGainer(gains.xp.week, 'total');
 
   const winners = {
     level,

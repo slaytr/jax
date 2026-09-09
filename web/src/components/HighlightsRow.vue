@@ -81,11 +81,11 @@ function activityTooltip(entry: (typeof activityFeed.value)[number]) {
 /**
  * Three superlative badges — whoever ended the *rolling week* with the
  * single biggest total, regardless of whatever period the Gains section
- * itself is showing. Ranker and Grind King are mutually exclusive — one
- * player can't hold both crowns, so whoever already won Ranker is skipped
- * when picking Grind King. Quest God is independent: its winner can also
- * hold the other two, since quest points measure a different kind of
- * effort. Ported from the old app.js's own computeHighlights/topWeeklyGainer.
+ * itself is showing. All three are picked independently — the same player
+ * can hold any or all of the crowns, since each badge measures a different
+ * kind of effort and there's no reason a single player's week can't lead
+ * on more than one axis. Ported from the old app.js's own
+ * computeHighlights/topWeeklyGainer.
  */
 const BADGES = [
   { key: 'level' as const, label: 'Ranker', formatValue: formatNumber, unit: '' },
@@ -93,17 +93,15 @@ const BADGES = [
   { key: 'quests' as const, label: 'Quest God', formatValue: formatNumber, unit: ' qp' },
 ];
 
-function topWeeklyGainer(rows: any[], valueKey: string, claimed: Set<string>) {
-  const top = rows.find((row) => row[valueKey] > 0 && !claimed.has(row.player.slug));
+function topWeeklyGainer(rows: any[], valueKey: string) {
+  const top = rows.find((row) => row[valueKey] > 0);
   return top ? { player: top.player, value: top[valueKey] } : null;
 }
 
 const highlights = computed(() => {
-  const claimed = new Set<string>();
-  const level = topWeeklyGainer(props.gains.levels.week.rows, 'total', claimed);
-  if (level) claimed.add(level.player.slug);
-  const xp = topWeeklyGainer(props.gains.xp.week.rows, 'total', claimed);
-  const quests = topWeeklyGainer(props.gains.quests.week.rows, 'gained', new Set());
+  const level = topWeeklyGainer(props.gains.levels.week.rows, 'total');
+  const xp = topWeeklyGainer(props.gains.xp.week.rows, 'total');
+  const quests = topWeeklyGainer(props.gains.quests.week.rows, 'gained');
 
   const winners: Record<string, { player: any; value: number } | null> = { level, xp, quests };
 
