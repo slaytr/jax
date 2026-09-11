@@ -152,6 +152,19 @@ export function leaderCounts(rows) {
   return counts;
 }
 
+/** How many skills each player has maxed at level 99, keyed by slug — same
+ * "99" threshold as the masthead's own countAtLeast(99) rather than each
+ * skill's individual cap, since a 120/150-cap skill sitting at 99 is still
+ * worth the same green star. Drives the Skill Leaderboard's green "maxed"
+ * badge (next to the gold leads star) and the activity feed's name badge. */
+export function maxedSkillCounts(players) {
+  const counts = Object.create(null);
+  for (const player of players) {
+    counts[player.slug] = TRACKED_SKILLS.filter((skill) => skillFor(player, skill.id).level >= 99).length;
+  }
+  return counts;
+}
+
 /**
  * Current quest points, ranked highest first — the static counterpart to
  * `standings`. Quest points live outside `total` (a separate feed, RuneMetrics

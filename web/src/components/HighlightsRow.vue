@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { buildMatrix, buildTotalsRow, computeDailyBreakdown, leaderCounts } from '@shared/compute.js';
+import { buildMatrix, buildTotalsRow, computeDailyBreakdown, leaderCounts, maxedSkillCounts } from '@shared/compute.js';
 import { el } from '@shared/dom.js';
 import { formatCompact, formatNumber, formatRelativeTime, formatWeekday } from '@shared/format.js';
 import { QUEST_POINTS_ICON, SKILLS, iconFor } from '@shared/config.js';
@@ -65,6 +65,11 @@ const activityFeed = computed(() =>
  * shown here too so a name in the feed carries that same context without
  * having to go check the table below. */
 const leads = computed(() => leaderCounts([...buildMatrix(props.players, 'level'), buildTotalsRow(props.players)]));
+
+/** Skills each player has maxed at level 99 — same green star as the Skill
+ * Leaderboard's own column header (SkillMatrix.vue's .player-maxed), shown
+ * here too so a name in the feed carries that same context. */
+const maxed = computed(() => maxedSkillCounts(props.players));
 
 function activityTooltip(entry: (typeof activityFeed.value)[number]) {
   return () =>
@@ -270,10 +275,17 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
           <span class="swatch" :style="{ '--swatch': entry.player.colour }" aria-hidden="true" />
           <span class="activity-feed-name-group">
             <span class="activity-feed-name">{{ entry.player.name }}</span>
-            <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
-              <span class="player-leads-star" aria-hidden="true">★</span>
-              <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
-              <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
+            <span class="player-badges">
+              <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
+                <span class="player-leads-star" aria-hidden="true">★</span>
+                <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
+                <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
+              </span>
+              <span v-if="(maxed[entry.player.slug] ?? 0) > 0" class="player-maxed has-maxed">
+                <span class="player-maxed-star" aria-hidden="true">★</span>
+                <span aria-hidden="true">{{ formatNumber(maxed[entry.player.slug]) }}</span>
+                <span class="visually-hidden">{{ formatNumber(maxed[entry.player.slug]) }} skills maxed at level 99</span>
+              </span>
             </span>
           </span>
           <span v-if="entry.levelUp" class="activity-feed-text activity-feed-levelup">

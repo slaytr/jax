@@ -1,6 +1,6 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatRank } from '../format.js';
-import { buildMatrix, buildTotalsRow, leaderCounts, TOTAL_MEASURE } from '../compute.js';
+import { buildMatrix, buildTotalsRow, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '../compute.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 import { xpForLevel } from '../xp-table.js';
@@ -66,6 +66,7 @@ function matrixCell(cell, skill, levelsGained) {
 }
 
 const LEADS_STAR = () => el('span', { class: 'player-leads-star', 'aria-hidden': 'true', text: '★' });
+const MAXED_STAR = () => el('span', { class: 'player-maxed-star', 'aria-hidden': 'true', text: '★' });
 
 /** Melooms alone gets the five-star consolation badge on a shutout — everyone
  * else's zero still reads as "★ 0". */
@@ -89,7 +90,7 @@ function leadsBadge(player, leads) {
  * Wording follows the invert toggle: "leads"/"best" flip to "trails"/"weakest"
  * so the header still describes what's actually highlighted.
  */
-function playerHead(player, leads, sortedBy, onSort, invertLeaders) {
+function playerHead(player, leads, maxed, sortedBy, onSort, invertLeaders) {
   const isSorted = sortedBy === player.slug;
   const verb = invertLeaders ? 'Trails' : 'Leads';
   const badge = leadsBadge(player, leads);
@@ -104,9 +105,20 @@ function playerHead(player, leads, sortedBy, onSort, invertLeaders) {
     },
     [
       el('span', { class: 'player-name' }, [swatch(player.colour), el('span', { class: 'player-name-text', text: player.name })]),
-      el('span', { class: `player-leads${badge.gold ? ' has-leads' : ''}` }, [
-        ...badge.nodes,
-        el('span', { class: 'visually-hidden', text: `${verb} ${formatNumber(leads)} rows` }),
+      el('span', { class: 'player-badges' }, [
+        el('span', { class: `player-leads${badge.gold ? ' has-leads' : ''}` }, [
+          ...badge.nodes,
+          el('span', { class: 'visually-hidden', text: `${verb} ${formatNumber(leads)} rows` }),
+        ]),
+        // No 99s at all — nothing to celebrate yet, so the badge is omitted
+        // rather than shown as a dim "★ 0" the way the leads badge is.
+        maxed > 0
+          ? el('span', { class: 'player-maxed has-maxed' }, [
+              MAXED_STAR(),
+              el('span', { 'aria-hidden': 'true', text: formatNumber(maxed) }),
+              el('span', { class: 'visually-hidden', text: `${formatNumber(maxed)} skills maxed at level 99` }),
+            ])
+          : null,
       ]),
       // No visual sort marker: the highlighted column carries it, and aria-sort
       // on the th announces it.
@@ -207,6 +219,7 @@ export function renderMatrix(state, levelGains, onSort, onToggleInvert) {
   const skillRows = buildMatrix(players, 'level', invertLeaders);
   const totalsData = buildTotalsRow(players, invertLeaders);
   const leads = leaderCounts([...skillRows, totalsData]);
+  const maxed = maxedSkillCounts(players);
   const ordered = sortedBy ? sortRowsFor(skillRows, sortedBy, invertLeaders) : skillRows;
 
   const gainFor = (slug, skillId) => levelGains.bySlug[slug]?.bySkill?.[skillId] ?? 0;
@@ -220,7 +233,9 @@ export function renderMatrix(state, levelGains, onSort, onToggleInvert) {
     el('thead', {}, [
       el('tr', {}, [
         el('th', { class: 'corner', scope: 'col' }, [el('span', { text: 'Skill' })]),
-        ...players.map((player) => playerHead(player, leads[player.slug] ?? 0, sortedBy, onSort, invertLeaders)),
+        ...players.map((player) =>
+          playerHead(player, leads[player.slug] ?? 0, maxed[player.slug] ?? 0, sortedBy, onSort, invertLeaders),
+        ),
       ]),
     ]),
     el('tbody', {}, [

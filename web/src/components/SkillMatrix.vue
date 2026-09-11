@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { CALENDAR_DAY, buildMatrix, buildTotalsRow, computeLevelGains, leaderCounts, TOTAL_MEASURE } from '@shared/compute.js';
+import { CALENDAR_DAY, buildMatrix, buildTotalsRow, computeLevelGains, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '@shared/compute.js';
 import { formatNumber, formatRank } from '@shared/format.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '@shared/config.js';
 import { xpForLevel } from '@shared/xp-table.js';
@@ -50,6 +50,7 @@ const totalLevelGainFor = (slug: string) => levelGains.value.bySlug[slug]?.total
 const skillRows = computed(() => buildMatrix(props.players, 'level', invertLeaders.value));
 const totalsData = computed(() => buildTotalsRow(props.players, invertLeaders.value));
 const leads = computed(() => leaderCounts([...skillRows.value, totalsData.value]));
+const maxed = computed(() => maxedSkillCounts(props.players));
 
 function sortRowsFor(rows: any[], slug: string) {
   const cellFor = (row: any) => row.cells.find((cell: any) => cell.player.slug === slug);
@@ -205,10 +206,17 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                   <span class="swatch" :style="{ '--swatch': player.colour }" aria-hidden="true" />
                   <span class="player-name-text">{{ player.name }}</span>
                 </span>
-                <span class="player-leads" :class="{ 'has-leads': leadsGold(leads[player.slug] ?? 0) }">
-                  <span v-for="n in leadsStars(player.slug, leads[player.slug] ?? 0)" :key="n" class="player-leads-star" aria-hidden="true">★</span>
-                  <span aria-hidden="true">{{ formatNumber(leads[player.slug] ?? 0) }}</span>
-                  <span class="visually-hidden">{{ invertLeaders ? 'Trails' : 'Leads' }} {{ formatNumber(leads[player.slug] ?? 0) }} rows</span>
+                <span class="player-badges">
+                  <span class="player-leads" :class="{ 'has-leads': leadsGold(leads[player.slug] ?? 0) }">
+                    <span v-for="n in leadsStars(player.slug, leads[player.slug] ?? 0)" :key="n" class="player-leads-star" aria-hidden="true">★</span>
+                    <span aria-hidden="true">{{ formatNumber(leads[player.slug] ?? 0) }}</span>
+                    <span class="visually-hidden">{{ invertLeaders ? 'Trails' : 'Leads' }} {{ formatNumber(leads[player.slug] ?? 0) }} rows</span>
+                  </span>
+                  <span v-if="(maxed[player.slug] ?? 0) > 0" class="player-maxed has-maxed">
+                    <span class="player-maxed-star" aria-hidden="true">★</span>
+                    <span aria-hidden="true">{{ formatNumber(maxed[player.slug]) }}</span>
+                    <span class="visually-hidden">{{ formatNumber(maxed[player.slug]) }} skills maxed at level 99</span>
+                  </span>
                 </span>
               </button>
               <span v-if="player.stale" class="visually-hidden">(cached data)</span>
