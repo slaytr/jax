@@ -2333,6 +2333,13 @@ body::after {
   color: var(--medal-gold);
 }
 
+/* Maxed at level 99 — same star glyph, its own colour (--gain, same green
+   as .player-maxed's header badge) so a leading *and* maxed cell shows two
+   differently-coloured stars rather than one ambiguous one. */
+.cell-star-maxed {
+  color: var(--gain);
+}
+
 /* -------------------------------------------------- player stats page */
 
 /* /stats/<slug>/ — a back link above the masthead's own .topbar (reused

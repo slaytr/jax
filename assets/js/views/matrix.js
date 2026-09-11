@@ -13,6 +13,16 @@ import { xpForLevel } from '../xp-table.js';
  */
 
 function matrixCell(cell, skill, levelsGained) {
+  // Total level (TOTAL_MEASURE, compute.js) has no xp curve of its own to
+  // read a "next level" threshold off — it's a sum across every skill's own
+  // level, not a level on any single curve — so only a real skill (a
+  // numeric id; TOTAL_MEASURE's is the string 'total') gets this row at all.
+  const isRealSkill = Number.isInteger(skill.id);
+  // Same "99" threshold as the Skill Leaderboard's own green header badge
+  // (maxedSkillCounts, compute.js) — only ever on a real skill row, since
+  // Total's own "max" is a sum across every skill, not a level to hit 99 on.
+  const isMaxed = isRealSkill && cell.level >= 99;
+
   const node = el(
     'td',
     {
@@ -25,6 +35,7 @@ function matrixCell(cell, skill, levelsGained) {
         el('span', { class: 'cell-level' }, [
           el('span', { class: 'cell-primary', text: formatNumber(cell.level) }),
           cell.isLeader ? el('span', { class: 'cell-star', 'aria-hidden': 'true', text: '★' }) : null,
+          isMaxed ? el('span', { class: 'cell-star cell-star-maxed', 'aria-hidden': 'true', text: '★' }) : null,
         ]),
         // Levels gained in the last day, pinned to the cell's far edge.
         levelsGained > 0
@@ -38,14 +49,10 @@ function matrixCell(cell, skill, levelsGained) {
         el('span', { class: 'cell-rule-fill', style: { width: `${(cell.share * 100).toFixed(1)}%` } }),
       ]),
       cell.isLeader ? el('span', { class: 'visually-hidden', text: ' — group leader' }) : null,
+      isMaxed ? el('span', { class: 'visually-hidden', text: ' — maxed at level 99' }) : null,
     ],
   );
 
-  // Total level (TOTAL_MEASURE, compute.js) has no xp curve of its own to
-  // read a "next level" threshold off — it's a sum across every skill's own
-  // level, not a level on any single curve — so only a real skill (a
-  // numeric id; TOTAL_MEASURE's is the string 'total') gets this row at all.
-  const isRealSkill = Number.isInteger(skill.id);
   const nextLevelXp = isRealSkill ? xpForLevel(skill, cell.level + 1) : undefined;
 
   return bindTooltip(node, () =>

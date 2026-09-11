@@ -241,6 +241,7 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-level">
                   <span class="cell-primary">{{ formatNumber(cell.level) }}</span>
                   <span v-if="cell.isLeader" class="cell-star" aria-hidden="true">★</span>
+                  <span v-if="cell.level >= 99" class="cell-star cell-star-maxed" aria-hidden="true">★</span>
                 </span>
                 <span v-if="gainFor(cell.player.slug, row.skill.id) > 0" class="chip-up cell-gain">
                   <span>+{{ gainFor(cell.player.slug, row.skill.id) }}</span>
@@ -251,6 +252,7 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-rule-fill" :style="{ width: `${(cell.share * 100).toFixed(1)}%` }" />
               </span>
               <span v-if="cell.isLeader" class="visually-hidden"> — group leader</span>
+              <span v-if="cell.level >= 99" class="visually-hidden"> — maxed at level 99</span>
             </td>
           </tr>
           <tr class="row-total">
