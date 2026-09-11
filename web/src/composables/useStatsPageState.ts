@@ -131,9 +131,19 @@ export function useStatsPageState() {
   watch(
     () => route.query,
     (query) => {
-      state.tab = oneOf(PAGE_TABS, query.tab, state.tab);
-      state.taskRegionSlug = queryString(query.region);
-      state.taskTier = queryString(query.tier);
+      const tab = oneOf(PAGE_TABS, query.tab, state.tab);
+      state.tab = tab;
+      // Only synced while actually on the Tasks tab: the state → route
+      // watcher below strips `?region=`/`?tier=` from the URL the moment
+      // `tab` isn't 'tasks', and without this guard that URL change would
+      // loop straight back here and null out the very selection a viewer
+      // just navigated away from — the region picked should still be there
+      // when they come back to the tab, not just when they come back via
+      // browser back/forward with the params still in the URL.
+      if (tab === 'tasks') {
+        state.taskRegionSlug = queryString(query.region);
+        state.taskTier = queryString(query.tier);
+      }
       state.lootBossSlug = queryString(query.boss);
       state.questSlug = queryString(query.quest);
       state.seriesName = queryString(query.series);
