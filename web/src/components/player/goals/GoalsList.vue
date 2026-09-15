@@ -9,6 +9,7 @@ import { useGoalOrder } from '@/composables/useGoalOrder';
 import GoalCard from '@/components/player/goals/GoalCard.vue';
 import GoalFocusPanel from '@/components/player/goals/GoalFocusPanel.vue';
 import GoalsGraph from '@/components/player/goals/GoalsGraph.vue';
+import GoalNotes from '@/components/player/goals/GoalNotes.vue';
 
 /**
  * The Goals tab's own list — every goal set for `player`, segmented into
@@ -246,6 +247,8 @@ watch(view, (value) => savePref({ goalsView: value }));
     <template v-else-if="view === 'list'">
       <div class="goals-columns">
         <div v-for="column in columns" :key="column.key" class="goals-column">
+          <GoalNotes v-if="column.key === 'skills'" :player="player" />
+
           <div
             v-for="section in column.sections"
             :key="sectionKey(section)"

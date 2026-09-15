@@ -4721,6 +4721,30 @@ body::after {
   font-size: 0.72rem;
 }
 
+/* A viewer's own free-text note on the Goals tab's list view (GoalNotes.vue)
+   — sat above the skill-goals column, its own left-hand .goals-column.
+   Auto-saved to localStorage (useGoalNote.ts), nothing server-backed. */
+.goal-notes-input {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.goal-notes-input:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+
 .goal-filters {
   margin-bottom: 0.7rem;
 }
@@ -5105,24 +5129,57 @@ body::after {
   background: var(--gain);
 }
 
-/* Between the bar and the current/target figures — its own fixed column so
-   it neither drifts with the bar nor crowds the numbers after it. */
+/* One tick per level threshold strictly between a row's own base and
+   target xp (SkillProgressRow.vue's own breakpoints, computed) — only
+   appears at all once a goal actually spans more than one level, so a
+   same-level xp goal's bar stays plain. Positioned by inline `left`
+   against the *track's* own full width (not the fill's), so a mark still
+   sits at the right spot regardless of how much of the bar is actually
+   filled in yet; `translateX(-50%)` centres each tick on its own exact
+   threshold instead of starting there. Painted after .goal-subgoal-fill in
+   the DOM so mix-blend-mode: difference has both the grey track and the
+   coloured fill to invert against — the one fixed colour that stays
+   legible whichever side of the fill boundary a given tick happens to
+   land on, without needing two differently-coloured tick variants.
+   2px (not 1px): a `left` percentage almost never lands on a whole device
+   pixel, so a hairline-width tick gets anti-aliased by a different amount
+   at each position — some crisp, some visibly blurrier/lighter than
+   others even though every one is the same CSS width. The extra pixel
+   makes that per-tick rounding error proportionally small enough that
+   they all read as the same thickness. */
+.goal-subgoal-breakpoint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.6);
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+/* Lives inside .goal-subgoal-current-box, next to .goal-subgoal-current —
+   shrink-to-fit like that one (no fixed width of its own) so the box's own
+   `gap` keeps them an even distance apart regardless of digit count.
+   Colour is normally set inline instead (see .goal-subgoal-current's own
+   doc comment below), --ink-muted here is just the unreachable fallback. */
 .goal-subgoal-percent {
   flex: none;
-  width: 2.2rem;
-  text-align: center;
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: 0.65rem;
   font-variant-numeric: tabular-nums;
 }
 
-/* Fixed width, same reasoning as .goal-subgoal-start — long enough for a
-   big xp goal's "128,157 / 13,034,431" without pushing the bar around;
-   overflow still falls back to an ellipsis for anything longer. */
+/* A collapsed completed quest child's own single figure (GoalCard.vue),
+   which has no separate goal/current split since it's not showing a live
+   progress row at all — same fixed-width reasoning as .goal-subgoal-start,
+   just enough for a big xp goal's own "13,034,431" (measured, not guessed:
+   ~3.9rem at this font/size) without pushing the bar around; overflow
+   falls back to an ellipsis for anything longer. */
 .goal-subgoal-figures {
   flex: none;
-  width: 8rem;
+  width: 4rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5133,7 +5190,57 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
+/* Target and current shrink to fit their own digits instead of each
+   claiming a wide fixed column, so the two sit right next to each other
+   rather than pinned to opposite ends of two mostly-empty boxes, which is
+   what a typical short level goal's "77" / "76" looked like before.
+   max-width still caps a rare huge xp goal at the same ~4rem
+   .goal-subgoal-figures uses, falling back to an ellipsis instead of
+   stretching the row or widening every other row's bar to match. Both
+   right-aligned so a genuinely-clipped one still trails off the same
+   direction as everything else here. */
+.goal-subgoal-target,
+.goal-subgoal-current {
+  flex: none;
+  width: auto;
+  max-width: 4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A light box around current+percent (SkillProgressRow.vue) — reads as
+   "where this goal stands right now", set visually apart from the plain
+   goal-level figure just before it rather than just the bare row gap
+   between them — margin-left adds a bit more room on top of that gap, so
+   the box itself doesn't crowd the goal level. gap matches the horizontal
+   padding exactly, so current and percent sit as evenly spaced from each
+   other as they are from the box's own left/right edges. */
+.goal-subgoal-current-box {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 0.35rem;
+  margin-left: 0.3rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+}
+
+/* .goal-subgoal-current's own colour is normally set inline instead
+   (SkillProgressRow.vue's progressEdgeColor, lib/goals.ts) — sampled live
+   off the progress bar's own gradient at its filled edge, so the figure
+   always matches whatever colour the bar itself is currently showing.
+   This is just the fallback for a goal type the bar doesn't apply to
+   (none today) and the base for .goal-subgoal-figures, which has no bar of
+   its own to sample from. */
 .goal-subgoal-row.is-complete .goal-subgoal-percent,
+.goal-subgoal-row.is-complete .goal-subgoal-current,
 .goal-subgoal-row.is-complete .goal-subgoal-figures {
   color: var(--gain);
 }

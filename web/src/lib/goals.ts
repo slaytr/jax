@@ -71,6 +71,36 @@ export function progressFillStyle(widthFraction: number, percentFraction = width
   };
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.trim().replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function mixRgb(a: [number, number, number], b: [number, number, number], t: number): string {
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)}, ${Math.round(a[1] + (b[1] - a[1]) * t)}, ${Math.round(a[2] + (b[2] - a[2]) * t)})`;
+}
+
+/** The exact colour PROGRESS_GRADIENT itself shows at the right-hand edge
+ * of a fill drawn at `percentFraction` (progressFillStyle's own scaling
+ * makes that edge always land on gradient position `percentFraction`
+ * itself, regardless of `widthFraction` — the background's absolute width
+ * cancels out to the *track's*, not the fill's, so more of one fixed
+ * gradient is simply revealed as the fill grows). Reads --ember/--warn/
+ * --gain live off :root so it tracks the light/dark theme the same way the
+ * gradient itself does — call it from a computed that also depends on
+ * useTheme()'s own ref, since a plain CSS variable read isn't reactive on
+ * its own. */
+export function progressEdgeColor(percentFraction: number): string {
+  const t = Math.min(1, Math.max(0, percentFraction));
+  const root = getComputedStyle(document.documentElement);
+  const ember = hexToRgb(root.getPropertyValue('--ember'));
+  const warn = hexToRgb(root.getPropertyValue('--warn'));
+  const gain = hexToRgb(root.getPropertyValue('--gain'));
+  if (t <= 0.35) return mixRgb(ember, warn, t / 0.35);
+  if (t <= 0.7) return mixRgb(warn, gain, (t - 0.35) / 0.35);
+  return `rgb(${gain.join(', ')})`;
+}
+
 /** Every distinct non-empty value of `field` across `goals`, alphabetised. */
 export function distinctValues(goals: any[], field: string): string[] {
   return [...new Set(goals.map((goal) => goal[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
