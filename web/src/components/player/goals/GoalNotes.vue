@@ -40,6 +40,7 @@ onBeforeUnmount(() => noteResizeObserver?.disconnect());
     aria-label="Notes"
     placeholder="Jot something down — saved automatically in this browser."
     rows="3"
+    spellcheck="false"
     :style="noteHeight ? { height: noteHeight } : undefined"
   />
 </template>
