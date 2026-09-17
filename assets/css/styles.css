@@ -5158,13 +5158,19 @@ body::after {
   pointer-events: none;
 }
 
-/* Lives inside .goal-subgoal-current-box, next to .goal-subgoal-current —
-   shrink-to-fit like that one (no fixed width of its own) so the box's own
-   `gap` keeps them an even distance apart regardless of digit count.
+/* Lives inside .goal-subgoal-current-box, next to .goal-subgoal-current.
+   Fixed width — 4ch, exactly "100%" (the longest this ever reads) — rather
+   than shrink-to-fit, so together with .goal-subgoal-current's own fixed
+   width below, .goal-subgoal-current-box comes out the same size regardless
+   of digit count — a maxed "✓ 120, 100%" row no longer reads wider than a
+   fresh "63, 7%" one. `ch` rather than rem: sized off the monospace font's
+   own digit width instead of a guessed rem figure.
    Colour is normally set inline instead (see .goal-subgoal-current's own
    doc comment below), --ink-muted here is just the unreachable fallback. */
 .goal-subgoal-percent {
   flex: none;
+  width: 4ch;
+  text-align: right;
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -5190,17 +5196,14 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
-/* Target and current shrink to fit their own digits instead of each
-   claiming a wide fixed column, so the two sit right next to each other
-   rather than pinned to opposite ends of two mostly-empty boxes, which is
-   what a typical short level goal's "77" / "76" looked like before.
-   max-width still caps a rare huge xp goal at the same ~4rem
-   .goal-subgoal-figures uses, falling back to an ellipsis instead of
-   stretching the row or widening every other row's bar to match. Both
-   right-aligned so a genuinely-clipped one still trails off the same
-   direction as everything else here. */
-.goal-subgoal-target,
-.goal-subgoal-current {
+/* Shrinks to fit its own digits instead of claiming a wide fixed column,
+   so a typical short level goal's target doesn't sit pinned to the far end
+   of a mostly-empty box. max-width still caps a rare huge xp goal at the
+   same ~4rem .goal-subgoal-figures uses, falling back to an ellipsis
+   instead of stretching the row or widening every other row's bar to
+   match. Right-aligned so a genuinely-clipped one still trails off the
+   same direction as everything else here. */
+.goal-subgoal-target {
   flex: none;
   width: auto;
   max-width: 4rem;
@@ -5208,6 +5211,32 @@ body::after {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Unlike .goal-subgoal-target, this one is a *fixed* width rather than
+   shrink-to-fit — it lives inside .goal-subgoal-current-box alongside
+   .goal-subgoal-percent (also now fixed-width, see its own comment above),
+   so together the two make .goal-subgoal-current-box a constant size no
+   matter how many digits either figure has. 4ch fits the widest thing this
+   ever shows for a level-type goal — "120" (a maxed elite skill) — 1ch more
+   than that content strictly needs so it isn't pressed right up against the
+   box's own edge. Left-aligned (unlike every other figure in this row) so
+   that edge — not the digits — is the one sitting next to .goal-subgoal-
+   percent, keeping the two readable as one "63, 7%" pair regardless of
+   either one's own digit count. A rare xp-type goal's much longer current
+   value (e.g. "13,034,431") still falls back to the same ellipsis it
+   always has, just sooner than the old ~4rem cap. */
+.goal-subgoal-current {
+  flex: none;
+  width: 4ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
   color: var(--ink-2);
   font-family: var(--font-mono);
   font-size: 0.65rem;

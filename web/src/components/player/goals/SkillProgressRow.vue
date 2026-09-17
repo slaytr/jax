@@ -121,7 +121,7 @@ function trackTooltip() {
   </div>
   <span class="goal-subgoal-target">{{ formatNumber(targetValue) }}</span>
   <span class="goal-subgoal-current-box">
-    <span class="goal-subgoal-current" :style="currentColor ? { color: currentColor } : undefined">{{ complete ? `✓ ${formatNumber(currentValue)}` : formatNumber(currentValue) }}</span>
+    <span class="goal-subgoal-current" :style="currentColor ? { color: currentColor } : undefined">{{ formatNumber(currentValue) }}</span>
     <span class="goal-subgoal-percent" :style="currentColor ? { color: currentColor } : undefined">{{ percent }}%</span>
   </span>
   <button v-if="canEdit" type="button" class="goal-card-delete" aria-label="Delete this goal" @click="emit('delete')">×</button>
