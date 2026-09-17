@@ -276,15 +276,15 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
           <span class="activity-feed-name-group">
             <span class="activity-feed-name">{{ entry.player.name }}</span>
             <span class="player-badges">
-              <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
-                <span class="player-leads-star" aria-hidden="true">★</span>
-                <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
-                <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
-              </span>
               <span v-if="(maxed[entry.player.slug] ?? 0) > 0" class="player-maxed has-maxed">
                 <span class="player-maxed-star" aria-hidden="true">★</span>
                 <span aria-hidden="true">{{ formatNumber(maxed[entry.player.slug]) }}</span>
                 <span class="visually-hidden">{{ formatNumber(maxed[entry.player.slug]) }} skills maxed at level 99</span>
+              </span>
+              <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
+                <span class="player-leads-star" aria-hidden="true">★</span>
+                <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
+                <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
               </span>
             </span>
           </span>
