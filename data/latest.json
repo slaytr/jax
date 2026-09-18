@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fetchedAt": "2026-09-18T14:00:49.133Z",
+  "fetchedAt": "2026-09-18T15:01:35.183Z",
   "trackingSince": "2026-08-23T00:50:21.000Z",
   "group": {
     "name": "Jax",
@@ -8,10 +8,10 @@
     "hiscoresUrl": "https://rs.runescape.com/hiscores/group-ironman/competitive/2?name=Jax"
   },
   "groupRank": {
-    "rank": 684,
+    "rank": 682,
     "name": "Jax",
-    "totalLevel": 8403,
-    "totalXp": 191144793,
+    "totalLevel": 8425,
+    "totalXp": 192134326,
     "size": 5,
     "founder": false,
     "id": 447161,
@@ -29,6 +29,15 @@
       },
       {
         "rank": 682,
+        "name": "Jax",
+        "totalLevel": 8425,
+        "totalXp": 192134326,
+        "size": 5,
+        "founder": false,
+        "isUs": true
+      },
+      {
+        "rank": 683,
         "name": "snorzars angels",
         "totalLevel": 8415,
         "totalXp": 1720675185,
@@ -37,22 +46,13 @@
         "isUs": false
       },
       {
-        "rank": 683,
+        "rank": 684,
         "name": "the mfers",
         "totalLevel": 8412,
         "totalXp": 159428174,
         "size": 5,
         "founder": true,
         "isUs": false
-      },
-      {
-        "rank": 684,
-        "name": "Jax",
-        "totalLevel": 8403,
-        "totalXp": 191144793,
-        "size": 5,
-        "founder": false,
-        "isUs": true
       },
       {
         "rank": 685,
@@ -62,30 +62,12 @@
         "size": 5,
         "founder": true,
         "isUs": false
-      },
-      {
-        "rank": 686,
-        "name": "iron+giants",
-        "totalLevel": 8387,
-        "totalXp": 303315111,
-        "size": 5,
-        "founder": false,
-        "isUs": false
-      },
-      {
-        "rank": 687,
-        "name": "pour decisions",
-        "totalLevel": 8384,
-        "totalXp": 392156629,
-        "size": 5,
-        "founder": false,
-        "isUs": false
       }
     ],
     "sourceUrl": "https://rs.runescape.com/hiscores/group-ironman/competitive/2?name=Jax",
     "stale": false,
     "error": null,
-    "checkedAt": "2026-09-18T14:00:54.915Z"
+    "checkedAt": "2026-09-18T15:01:41.545Z"
   },
   "players": [
     {
@@ -95,9 +77,9 @@
       "stale": false,
       "error": null,
       "total": {
-        "level": 2157,
-        "xp": 63450806,
-        "rank": 324446
+        "level": 2160,
+        "xp": 63879870,
+        "rank": 323632
       },
       "questPoints": 258,
       "questsComplete": 169,
@@ -282,165 +264,165 @@
       "skills": [
         {
           "id": 0,
-          "level": 2157,
-          "xp": 63450806,
-          "rank": 324446
+          "level": 2160,
+          "xp": 63879870,
+          "rank": 323632
         },
         {
           "id": 1,
           "level": 80,
           "xp": 2181516,
-          "rank": 414672
+          "rank": 414685
         },
         {
           "id": 2,
           "level": 80,
           "xp": 2019789,
-          "rank": 436988
+          "rank": 437002
         },
         {
           "id": 3,
           "level": 80,
           "xp": 2060967,
-          "rank": 452933
+          "rank": 452952
         },
         {
           "id": 4,
           "level": 88,
           "xp": 4472711,
-          "rank": 398744
+          "rank": 398754
         },
         {
           "id": 5,
           "level": 91,
           "xp": 6036189,
-          "rank": 299247
+          "rank": 299256
         },
         {
           "id": 6,
           "level": 67,
           "xp": 581967,
-          "rank": 454256
+          "rank": 454272
         },
         {
           "id": 7,
           "level": 78,
-          "xp": 1692930,
+          "xp": 1693291,
           "rank": 457164
         },
         {
           "id": 8,
           "level": 72,
           "xp": 938563,
-          "rank": 445462
+          "rank": 445475
         },
         {
           "id": 9,
           "level": 77,
           "xp": 1548227,
-          "rank": 464653
+          "rank": 464668
         },
         {
           "id": 10,
           "level": 87,
           "xp": 3995652,
-          "rank": 304321
+          "rank": 304328
         },
         {
           "id": 11,
           "level": 62,
           "xp": 347054,
-          "rank": 575248
+          "rank": 575272
         },
         {
           "id": 12,
           "level": 76,
           "xp": 1358233,
-          "rank": 411949
+          "rank": 411962
         },
         {
           "id": 13,
           "level": 74,
           "xp": 1112431,
-          "rank": 430486
+          "rank": 430505
         },
         {
           "id": 14,
           "level": 71,
-          "xp": 879731,
-          "rank": 463453
+          "xp": 880261,
+          "rank": 463394
         },
         {
           "id": 15,
           "level": 78,
-          "xp": 1774623,
-          "rank": 383595
+          "xp": 1780943,
+          "rank": 383331
         },
         {
           "id": 16,
           "level": 80,
           "xp": 2046756,
-          "rank": 343847
+          "rank": 343856
         },
         {
           "id": 17,
           "level": 71,
           "xp": 887682,
-          "rank": 379382
+          "rank": 379392
         },
         {
           "id": 18,
           "level": 94,
-          "xp": 7946189,
-          "rank": 226743
+          "xp": 8236713,
+          "rank": 225663
         },
         {
           "id": 19,
           "level": 81,
           "xp": 2213344,
-          "rank": 336426
+          "rank": 336434
         },
         {
           "id": 20,
           "level": 77,
-          "xp": 1543759,
-          "rank": 286871
+          "xp": 1576253,
+          "rank": 285854
         },
         {
           "id": 21,
           "level": 64,
           "xp": 448722,
-          "rank": 376479
+          "rank": 376491
         },
         {
           "id": 22,
           "level": 76,
           "xp": 1427818,
-          "rank": 300139
+          "rank": 300146
         },
         {
           "id": 23,
           "level": 81,
           "xp": 2404801,
-          "rank": 280363
+          "rank": 280369
         },
         {
           "id": 24,
-          "level": 63,
-          "xp": 400107,
-          "rank": 397333
+          "level": 66,
+          "xp": 498942,
+          "rank": 389613
         },
         {
           "id": 25,
           "level": 94,
           "xp": 8475386,
-          "rank": 214400
+          "rank": 214407
         },
         {
           "id": 26,
           "level": 86,
           "xp": 3704082,
-          "rank": 245463
+          "rank": 245467
         },
         {
           "id": 27,
@@ -452,30 +434,30 @@
           "id": 28,
           "level": 60,
           "xp": 299357,
-          "rank": 280060
+          "rank": 280070
         },
         {
           "id": 29,
           "level": 68,
           "xp": 652220,
-          "rank": 225837
+          "rank": 225848
         }
       ],
       "activities": [
         {
           "name": "CFP: 5 game average",
           "score": 50,
-          "rank": 59534
+          "rank": 59537
         },
         {
           "name": "RuneScore",
           "score": 5110,
-          "rank": 226451
+          "rank": 226459
         },
         {
           "name": "Clue Scrolls (easy)",
           "score": 3,
-          "rank": 169400
+          "rank": 169404
         }
       ]
     },
@@ -488,7 +470,7 @@
       "total": {
         "level": 1204,
         "xp": 13362181,
-        "rank": 624199
+        "rank": 624225
       },
       "questPoints": 130,
       "questsComplete": 84,
@@ -589,127 +571,127 @@
           "id": 0,
           "level": 1204,
           "xp": 13362181,
-          "rank": 624199
+          "rank": 624225
         },
         {
           "id": 1,
           "level": 54,
           "xp": 153202,
-          "rank": 767735
+          "rank": 767773
         },
         {
           "id": 2,
           "level": 59,
           "xp": 267090,
-          "rank": 711129
+          "rank": 711162
         },
         {
           "id": 3,
           "level": 54,
           "xp": 162087,
-          "rank": 793021
+          "rank": 793058
         },
         {
           "id": 4,
           "level": 56,
           "xp": 195914,
-          "rank": 800008
+          "rank": 800045
         },
         {
           "id": 5,
           "level": 37,
           "xp": 29623,
-          "rank": 846215
+          "rank": 846255
         },
         {
           "id": 6,
           "level": 34,
           "xp": 22030,
-          "rank": 851304
+          "rank": 851365
         },
         {
           "id": 7,
           "level": 25,
           "xp": 8458,
-          "rank": 1076169
+          "rank": 1076236
         },
         {
           "id": 8,
           "level": 55,
           "xp": 172982,
-          "rank": 681935
+          "rank": 681965
         },
         {
           "id": 9,
           "level": 92,
           "xp": 7011886,
-          "rank": 268810
+          "rank": 268817
         },
         {
           "id": 10,
           "level": 29,
           "xp": 12976,
-          "rank": 794024
+          "rank": 794085
         },
         {
           "id": 11,
           "level": 53,
           "xp": 138109,
-          "rank": 722104
+          "rank": 722146
         },
         {
           "id": 12,
           "level": 83,
           "xp": 2866905,
-          "rank": 336932
+          "rank": 336943
         },
         {
           "id": 13,
           "level": 44,
           "xp": 58448,
-          "rank": 763291
+          "rank": 763347
         },
         {
           "id": 14,
           "level": 35,
           "xp": 22820,
-          "rank": 975879
+          "rank": 975927
         },
         {
           "id": 15,
           "level": 53,
           "xp": 146452,
-          "rank": 763452
+          "rank": 763490
         },
         {
           "id": 16,
           "level": 25,
           "xp": 8681,
-          "rank": 682714
+          "rank": 682743
         },
         {
           "id": 17,
           "level": 36,
           "xp": 27375,
-          "rank": 669051
+          "rank": 669080
         },
         {
           "id": 18,
           "level": 61,
           "xp": 303270,
-          "rank": 435394
+          "rank": 435408
         },
         {
           "id": 19,
           "level": 34,
           "xp": 20879,
-          "rank": 659062
+          "rank": 659087
         },
         {
           "id": 20,
           "level": 37,
           "xp": 30404,
-          "rank": 521357
+          "rank": 521391
         },
         {
           "id": 21,
@@ -727,7 +709,7 @@
           "id": 23,
           "level": 72,
           "xp": 912810,
-          "rank": 371544
+          "rank": 371555
         },
         {
           "id": 24,
@@ -739,7 +721,7 @@
           "id": 25,
           "level": 68,
           "xp": 633162,
-          "rank": 397895
+          "rank": 397912
         },
         {
           "id": 26,
@@ -757,20 +739,20 @@
           "id": 28,
           "level": 26,
           "xp": 9002,
-          "rank": 399775
+          "rank": 399789
         },
         {
           "id": 29,
           "level": 53,
           "xp": 143949,
-          "rank": 256290
+          "rank": 256300
         }
       ],
       "activities": [
         {
           "name": "RuneScore",
           "score": 1510,
-          "rank": 526038
+          "rank": 526063
         }
       ]
     },
@@ -783,7 +765,7 @@
       "total": {
         "level": 1610,
         "xp": 43548536,
-        "rank": 481203
+        "rank": 481220
       },
       "questPoints": 71,
       "questsComplete": 44,
@@ -842,145 +824,145 @@
           "id": 0,
           "level": 1610,
           "xp": 43548536,
-          "rank": 481203
+          "rank": 481220
         },
         {
           "id": 1,
           "level": 74,
           "xp": 1107450,
-          "rank": 522754
+          "rank": 522777
         },
         {
           "id": 2,
           "level": 70,
           "xp": 740704,
-          "rank": 583110
+          "rank": 583137
         },
         {
           "id": 3,
           "level": 70,
           "xp": 741864,
-          "rank": 598136
+          "rank": 598166
         },
         {
           "id": 4,
           "level": 71,
           "xp": 848633,
-          "rank": 599692
+          "rank": 599722
         },
         {
           "id": 5,
           "level": 33,
           "xp": 18692,
-          "rank": 885976
+          "rank": 886016
         },
         {
           "id": 6,
           "level": 51,
           "xp": 122928,
-          "rank": 604845
+          "rank": 604869
         },
         {
           "id": 7,
           "level": 35,
           "xp": 23620,
-          "rank": 953388
+          "rank": 953454
         },
         {
           "id": 8,
           "level": 27,
           "xp": 10035,
-          "rank": 1060797
+          "rank": 1060848
         },
         {
           "id": 9,
           "level": 76,
           "xp": 1368175,
-          "rank": 486841
+          "rank": 486859
         },
         {
           "id": 10,
           "level": 73,
           "xp": 1038927,
-          "rank": 444545
+          "rank": 444561
         },
         {
           "id": 11,
           "level": 79,
           "xp": 1869397,
-          "rank": 358178
+          "rank": 358188
         },
         {
           "id": 12,
           "level": 68,
           "xp": 668037,
-          "rank": 491713
+          "rank": 491730
         },
         {
           "id": 13,
           "level": 80,
           "xp": 2056186,
-          "rank": 369576
+          "rank": 369590
         },
         {
           "id": 14,
           "level": 90,
           "xp": 5404326,
-          "rank": 283971
+          "rank": 283975
         },
         {
           "id": 15,
           "level": 95,
           "xp": 9563428,
-          "rank": 241829
+          "rank": 241834
         },
         {
           "id": 16,
           "level": 25,
           "xp": 8646,
-          "rank": 682953
+          "rank": 682982
         },
         {
           "id": 17,
           "level": 50,
           "xp": 109547,
-          "rank": 547350
+          "rank": 547367
         },
         {
           "id": 18,
           "level": 50,
           "xp": 106924,
-          "rank": 554774
+          "rank": 554796
         },
         {
           "id": 19,
           "level": 62,
           "xp": 341389,
-          "rank": 463501
+          "rank": 463514
         },
         {
           "id": 20,
           "level": 18,
           "xp": 3804,
-          "rank": 640306
+          "rank": 640348
         },
         {
           "id": 21,
           "level": 17,
           "xp": 3242,
-          "rank": 871778
+          "rank": 871837
         },
         {
           "id": 22,
           "level": 36,
           "xp": 24954,
-          "rank": 571268
+          "rank": 571289
         },
         {
           "id": 23,
           "level": 74,
           "xp": 1169570,
-          "rank": 356744
+          "rank": 356754
         },
         {
           "id": 24,
@@ -992,25 +974,25 @@
           "id": 25,
           "level": 90,
           "xp": 5390264,
-          "rank": 242855
+          "rank": 242860
         },
         {
           "id": 26,
           "level": 89,
           "xp": 4947827,
-          "rank": 231255
+          "rank": 231259
         },
         {
           "id": 27,
           "level": 64,
           "xp": 5853090,
-          "rank": 244033
+          "rank": 244043
         },
         {
           "id": 28,
           "level": 15,
           "xp": 2522,
-          "rank": 509788
+          "rank": 509819
         },
         {
           "id": 29,
@@ -1023,7 +1005,7 @@
         {
           "name": "RuneScore",
           "score": 2100,
-          "rank": 427625
+          "rank": 427641
         }
       ]
     },
@@ -1034,9 +1016,9 @@
       "stale": false,
       "error": null,
       "total": {
-        "level": 1504,
-        "xp": 7288465,
-        "rank": 516298
+        "level": 1523,
+        "xp": 7848934,
+        "rank": 509956
       },
       "questPoints": 171,
       "questsComplete": 105,
@@ -1165,165 +1147,165 @@
       "skills": [
         {
           "id": 0,
-          "level": 1504,
-          "xp": 7288465,
-          "rank": 516298
+          "level": 1523,
+          "xp": 7848934,
+          "rank": 509956
         },
         {
           "id": 1,
           "level": 50,
           "xp": 109162,
-          "rank": 816468
+          "rank": 816511
         },
         {
           "id": 2,
-          "level": 61,
-          "xp": 317719,
-          "rank": 661182
+          "level": 63,
+          "xp": 375019,
+          "rank": 641475
         },
         {
           "id": 3,
           "level": 46,
           "xp": 74976,
-          "rank": 903026
+          "rank": 903071
         },
         {
           "id": 4,
-          "level": 60,
-          "xp": 298975,
-          "rank": 739035
+          "level": 63,
+          "xp": 397567,
+          "rank": 698597
         },
         {
           "id": 5,
           "level": 46,
           "xp": 70704,
-          "rank": 741157
+          "rank": 741191
         },
         {
           "id": 6,
-          "level": 48,
-          "xp": 88747,
-          "rank": 647944
+          "level": 49,
+          "xp": 93751,
+          "rank": 641357
         },
         {
           "id": 7,
-          "level": 61,
-          "xp": 330896,
-          "rank": 630971
+          "level": 67,
+          "xp": 561499,
+          "rank": 571549
         },
         {
           "id": 8,
           "level": 56,
           "xp": 197795,
-          "rank": 660472
+          "rank": 660501
         },
         {
           "id": 9,
           "level": 64,
           "xp": 431454,
-          "rank": 646635
+          "rank": 646667
         },
         {
           "id": 10,
           "level": 33,
           "xp": 19104,
-          "rank": 764936
+          "rank": 764998
         },
         {
           "id": 11,
           "level": 54,
           "xp": 153088,
-          "rank": 702776
+          "rank": 702817
         },
         {
           "id": 12,
           "level": 50,
           "xp": 102679,
-          "rank": 748820
+          "rank": 748860
         },
         {
           "id": 13,
           "level": 55,
-          "xp": 177062,
-          "rank": 616799
+          "xp": 177827,
+          "rank": 616266
         },
         {
           "id": 14,
           "level": 64,
           "xp": 423594,
-          "rank": 541735
+          "rank": 541759
         },
         {
           "id": 15,
           "level": 67,
           "xp": 589389,
-          "rank": 529580
+          "rank": 529602
         },
         {
           "id": 16,
           "level": 48,
           "xp": 88975,
-          "rank": 525781
+          "rank": 525801
         },
         {
           "id": 17,
           "level": 50,
           "xp": 102266,
-          "rank": 555279
+          "rank": 555297
         },
         {
           "id": 18,
           "level": 69,
           "xp": 677278,
-          "rank": 364750
+          "rank": 364764
         },
         {
           "id": 19,
-          "level": 56,
-          "xp": 200736,
-          "rank": 500716
+          "level": 62,
+          "xp": 337058,
+          "rank": 464420
         },
         {
           "id": 20,
           "level": 54,
-          "xp": 157970,
-          "rank": 425413
+          "xp": 160519,
+          "rank": 424484
         },
         {
           "id": 21,
           "level": 50,
           "xp": 109079,
-          "rank": 541742
+          "rank": 541781
         },
         {
           "id": 22,
           "level": 29,
           "xp": 13343,
-          "rank": 604491
+          "rank": 604512
         },
         {
           "id": 23,
           "level": 70,
           "xp": 757662,
-          "rank": 390847
+          "rank": 390862
         },
         {
           "id": 24,
           "level": 28,
           "xp": 11194,
-          "rank": 557531
+          "rank": 557552
         },
         {
           "id": 25,
           "level": 75,
-          "xp": 1215321,
-          "rank": 367254
+          "xp": 1218321,
+          "rank": 366961
         },
         {
           "id": 26,
           "level": 43,
           "xp": 53865,
-          "rank": 464965
+          "rank": 465005
         },
         {
           "id": 27,
@@ -1335,13 +1317,13 @@
           "id": 28,
           "level": 54,
           "xp": 153545,
-          "rank": 302114
+          "rank": 302129
         },
         {
           "id": 29,
-          "level": 62,
-          "xp": 361887,
-          "rank": 237122
+          "level": 63,
+          "xp": 388221,
+          "rank": 235677
         }
       ],
       "activities": [
@@ -1352,8 +1334,8 @@
         },
         {
           "name": "RuneScore",
-          "score": 2615,
-          "rank": 368108
+          "score": 2635,
+          "rank": 366119
         }
       ]
     },
@@ -1366,7 +1348,7 @@
       "total": {
         "level": 1928,
         "xp": 63575014,
-        "rank": 386175
+        "rank": 386189
       },
       "questPoints": 183,
       "questsComplete": 115,
@@ -1500,157 +1482,157 @@
           "id": 0,
           "level": 1928,
           "xp": 63575014,
-          "rank": 386175
+          "rank": 386189
         },
         {
           "id": 1,
           "level": 80,
           "xp": 1992942,
-          "rank": 439975
+          "rank": 439991
         },
         {
           "id": 2,
           "level": 80,
           "xp": 2074163,
-          "rank": 429170
+          "rank": 429185
         },
         {
           "id": 3,
           "level": 80,
           "xp": 1994640,
-          "rank": 463555
+          "rank": 463575
         },
         {
           "id": 4,
           "level": 86,
           "xp": 3901566,
-          "rank": 412966
+          "rank": 412979
         },
         {
           "id": 5,
           "level": 71,
           "xp": 831411,
-          "rank": 496934
+          "rank": 496955
         },
         {
           "id": 6,
           "level": 75,
           "xp": 1212435,
-          "rank": 394703
+          "rank": 394715
         },
         {
           "id": 7,
           "level": 89,
           "xp": 5148403,
-          "rank": 352292
+          "rank": 352303
         },
         {
           "id": 8,
           "level": 82,
           "xp": 2501208,
-          "rank": 337485
+          "rank": 337494
         },
         {
           "id": 9,
           "level": 75,
           "xp": 1210739,
-          "rank": 512057
+          "rank": 512078
         },
         {
           "id": 10,
           "level": 66,
           "xp": 496889,
-          "rank": 517638
+          "rank": 517658
         },
         {
           "id": 11,
           "level": 78,
           "xp": 1682541,
-          "rank": 368514
+          "rank": 368529
         },
         {
           "id": 12,
           "level": 52,
           "xp": 129908,
-          "rank": 696061
+          "rank": 696105
         },
         {
           "id": 13,
           "level": 75,
           "xp": 1211773,
-          "rank": 426077
+          "rank": 426095
         },
         {
           "id": 14,
           "level": 66,
           "xp": 545321,
-          "rank": 515623
+          "rank": 515648
         },
         {
           "id": 15,
           "level": 75,
           "xp": 1218039,
-          "rank": 434423
+          "rank": 434442
         },
         {
           "id": 16,
           "level": 50,
           "xp": 103880,
-          "rank": 514643
+          "rank": 514664
         },
         {
           "id": 17,
           "level": 76,
           "xp": 1369509,
-          "rank": 345560
+          "rank": 345571
         },
         {
           "id": 18,
           "level": 107,
           "xp": 30706170,
-          "rank": 100571
+          "rank": 100575
         },
         {
           "id": 19,
           "level": 74,
           "xp": 1135934,
-          "rank": 380934
+          "rank": 380949
         },
         {
           "id": 20,
           "level": 63,
           "xp": 390774,
-          "rank": 371252
+          "rank": 371266
         },
         {
           "id": 21,
           "level": 52,
           "xp": 128450,
-          "rank": 513025
+          "rank": 513061
         },
         {
           "id": 22,
           "level": 55,
           "xp": 171465,
-          "rank": 460204
+          "rank": 460221
         },
         {
           "id": 23,
           "level": 71,
           "xp": 818910,
-          "rank": 380716
+          "rank": 380734
         },
         {
           "id": 24,
           "level": 74,
           "xp": 1114595,
-          "rank": 345850
+          "rank": 345861
         },
         {
           "id": 25,
           "level": 75,
           "xp": 1292858,
-          "rank": 358716
+          "rank": 358727
         },
         {
           "id": 26,
@@ -1668,20 +1650,20 @@
           "id": 28,
           "level": 45,
           "xp": 67185,
-          "rank": 333091
+          "rank": 333104
         },
         {
           "id": 29,
           "level": 51,
           "xp": 122920,
-          "rank": 260503
+          "rank": 260515
         }
       ],
       "activities": [
         {
           "name": "RuneScore",
           "score": 2865,
-          "rank": 345587
+          "rank": 345600
         }
       ]
     }
