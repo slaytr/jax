@@ -5159,58 +5159,31 @@ body::after {
   background: var(--gain);
 }
 
-/* One dot per level threshold strictly between a row's own base and
+/* One tick per level threshold strictly between a row's own base and
    target xp (SkillProgressRow.vue's own breakpoints, computed) — only
    appears at all once a goal actually spans more than one level, so a
    same-level xp goal's bar stays plain. Positioned by inline `left`
    against the *track's* own full width (not the fill's), so a mark still
    sits at the right spot regardless of how much of the bar is actually
-   filled in yet; `top: 50%` + `translate(-50%, -50%)` centres each dot on
+   filled in yet; `top: 50%` + `translate(-50%, -50%)` centres each tick on
    its own exact threshold both horizontally and vertically, rather than
    starting there. Painted after .goal-subgoal-fill in the DOM so
    mix-blend-mode: difference has both the grey track and the coloured fill
    to invert against — the one fixed colour that stays legible whichever
-   side of the fill boundary a given mark happens to land on, without
-   needing two differently-coloured variants.
-   6px against a 4px-tall track: a circle sized to exactly match the
-   track's own height would sit flush with its top/bottom edges and read
-   as part of the bar itself; a couple of px taller lets it stand slightly
-   proud on both sides instead, the same way a real milestone marker
-   overhangs the line it sits on rather than being inset into it. */
+   side of the fill boundary a given mark happens to land on, with no need
+   for a second passed/not-passed variant. Taller than the track itself
+   (20px against a 4px-tall track) so it reads as a ruler-style tick mark
+   overhanging the line it sits on, rather than a dot inset into it. */
 .goal-subgoal-breakpoint {
   position: absolute;
   top: 50%;
-  width: 6px;
-  height: 6px;
+  width: 2px;
+  height: 20px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: rgba(255, 255, 255, 0.6);
   mix-blend-mode: difference;
   pointer-events: none;
-}
-
-/* Once the fill has actually reached a mark (SkillProgressRow.vue compares
-   the mark's own fraction against the bar's current one), it's no longer
-   just "a threshold up ahead" but a level the player has already hit —
-   worth reading at a glance. A brighter *difference*-blended mark (an
-   earlier version of this rule) doesn't actually deliver that: difference
-   blend's result colour depends entirely on whatever it's sitting on top
-   of, and against the gradient's own --gain (green) stop, white diffs out
-   to a muddy red — a colour with no relation to anything else on this bar,
-   and an ugly one on its own terms. A fixed colour with normal blending
-   sidesteps that. The solid black ring (box-shadow, not a border — a
-   border would add to the tick's own layout width) is what actually earns
-   a plain, fully-saturated yellow the right to sit here at all: yellow is
-   the one hue on this bar closest to --warn's own amber, and a soft/
-   translucent ring wasn't enough to keep it from washing in — full black,
-   full opacity draws a crisp line around the tick against every stop in
-   the gradient alike. */
-.goal-subgoal-breakpoint.is-passed {
-  width: 7px;
-  height: 7px;
-  background: #ffd400;
-  mix-blend-mode: normal;
-  box-shadow: 0 0 0 1px #000;
 }
 
 /* Lives inside .goal-subgoal-current-box, next to .goal-subgoal-current.

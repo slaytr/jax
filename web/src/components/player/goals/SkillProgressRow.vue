@@ -117,13 +117,14 @@ function trackTooltip() {
   <span class="goal-subgoal-start">{{ formatNumber(startValue) }}</span>
   <div class="goal-subgoal-track" role="presentation" v-tooltip="trackTooltip()">
     <span class="goal-subgoal-fill" :style="complete ? { width: '100%' } : progressFillStyle(fraction)" />
-    <span
-      v-for="(bp, i) in breakpoints"
-      :key="i"
-      class="goal-subgoal-breakpoint"
-      :class="{ 'is-passed': complete || bp <= fraction }"
-      :style="{ left: `${(bp * 100).toFixed(2)}%` }"
-    />
+    <template v-if="!complete">
+      <span
+        v-for="(bp, i) in breakpoints"
+        :key="i"
+        class="goal-subgoal-breakpoint"
+        :style="{ left: `${(bp * 100).toFixed(2)}%` }"
+      />
+    </template>
   </div>
   <span class="goal-subgoal-target">{{ formatNumber(targetValue) }}</span>
   <span class="goal-subgoal-current-box">

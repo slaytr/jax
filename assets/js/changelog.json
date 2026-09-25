@@ -1,4 +1,5 @@
 [
+  { "date": "2026-09-25T11:52:01.547Z", "text": "Hid the graph view in the Goals tab." },
   { "date": "2026-09-25T11:18:25.473Z", "text": "Added a blue star for skills maxed at level 120, above the existing green star at 99 — shown in Skill Leaderboard cells, player headers, and the Activity feed.\nAdded GWD2 bosses to the Loot tab's drop tables and simulator.\nQuest goals missing a prerequisite are now nested under that quest." },
   { "date": "2026-09-17T02:54:55.422Z", "text": "Adjusted skill goal appearances." },
   { "date": "2026-09-15T05:54:13.857Z", "text": "Added breakpoints to skill goals, marking each level milestone along the progress bar." },
