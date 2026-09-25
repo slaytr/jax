@@ -1,6 +1,6 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatRank } from '../format.js';
-import { buildMatrix, buildTotalsRow, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '../compute.js';
+import { buildMatrix, buildTotalsRow, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '../compute.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 import { xpForLevel } from '../xp-table.js';
@@ -18,10 +18,12 @@ function matrixCell(cell, skill, levelsGained) {
   // level, not a level on any single curve — so only a real skill (a
   // numeric id; TOTAL_MEASURE's is the string 'total') gets this row at all.
   const isRealSkill = Number.isInteger(skill.id);
-  // Same "99" threshold as the Skill Leaderboard's own green header badge
-  // (maxedSkillCounts, compute.js) — only ever on a real skill row, since
-  // Total's own "max" is a sum across every skill, not a level to hit 99 on.
-  const isMaxed = isRealSkill && cell.level >= 99;
+  // Same "99"/"120" thresholds as the Skill Leaderboard's own green/blue
+  // header badges (maxedSkillCounts/eliteMaxedSkillCounts, compute.js) —
+  // only ever on a real skill row, since Total's own "max" is a sum across
+  // every skill, not a level to hit 99 or 120 on.
+  const isMaxed = isRealSkill && cell.level >= 99 && cell.level < 120;
+  const isElite = isRealSkill && cell.level >= 120;
 
   const node = el(
     'td',
@@ -36,6 +38,7 @@ function matrixCell(cell, skill, levelsGained) {
           el('span', { class: 'cell-primary', text: formatNumber(cell.level) }),
           cell.isLeader ? el('span', { class: 'cell-star', 'aria-hidden': 'true', text: '★' }) : null,
           isMaxed ? el('span', { class: 'cell-star cell-star-maxed', 'aria-hidden': 'true', text: '★' }) : null,
+          isElite ? el('span', { class: 'cell-star cell-star-elite', 'aria-hidden': 'true', text: '★' }) : null,
         ]),
         // Levels gained in the last day, pinned to the cell's far edge.
         levelsGained > 0
@@ -50,6 +53,7 @@ function matrixCell(cell, skill, levelsGained) {
       ]),
       cell.isLeader ? el('span', { class: 'visually-hidden', text: ' — group leader' }) : null,
       isMaxed ? el('span', { class: 'visually-hidden', text: ' — maxed at level 99' }) : null,
+      isElite ? el('span', { class: 'visually-hidden', text: ' — maxed at level 120' }) : null,
     ],
   );
 
@@ -74,6 +78,7 @@ function matrixCell(cell, skill, levelsGained) {
 
 const LEADS_STAR = () => el('span', { class: 'player-leads-star', 'aria-hidden': 'true', text: '★' });
 const MAXED_STAR = () => el('span', { class: 'player-maxed-star', 'aria-hidden': 'true', text: '★' });
+const ELITE_STAR = () => el('span', { class: 'player-elite-star', 'aria-hidden': 'true', text: '★' });
 
 /** Melooms alone gets the five-star consolation badge on a shutout — everyone
  * else's zero still reads as "★ 0". */
@@ -97,7 +102,7 @@ function leadsBadge(player, leads) {
  * Wording follows the invert toggle: "leads"/"best" flip to "trails"/"weakest"
  * so the header still describes what's actually highlighted.
  */
-function playerHead(player, leads, maxed, sortedBy, onSort, invertLeaders) {
+function playerHead(player, leads, maxed, elite, sortedBy, onSort, invertLeaders) {
   const isSorted = sortedBy === player.slug;
   const verb = invertLeaders ? 'Trails' : 'Leads';
   const badge = leadsBadge(player, leads);
@@ -124,6 +129,16 @@ function playerHead(player, leads, maxed, sortedBy, onSort, invertLeaders) {
               MAXED_STAR(),
               el('span', { 'aria-hidden': 'true', text: formatNumber(maxed) }),
               el('span', { class: 'visually-hidden', text: `${formatNumber(maxed)} skills maxed at level 99` }),
+            ])
+          : null,
+        // Its own badge rather than folded into the green one above, so a
+        // player who's pushed a skill to 120 gets to show that off as its
+        // own figure instead of just inflating the "maxed at 99" count.
+        elite > 0
+          ? el('span', { class: 'player-elite has-elite' }, [
+              ELITE_STAR(),
+              el('span', { 'aria-hidden': 'true', text: formatNumber(elite) }),
+              el('span', { class: 'visually-hidden', text: `${formatNumber(elite)} skills maxed at level 120` }),
             ])
           : null,
       ]),
@@ -227,6 +242,7 @@ export function renderMatrix(state, levelGains, onSort, onToggleInvert) {
   const totalsData = buildTotalsRow(players, invertLeaders);
   const leads = leaderCounts([...skillRows, totalsData]);
   const maxed = maxedSkillCounts(players);
+  const elite = eliteMaxedSkillCounts(players);
   const ordered = sortedBy ? sortRowsFor(skillRows, sortedBy, invertLeaders) : skillRows;
 
   const gainFor = (slug, skillId) => levelGains.bySlug[slug]?.bySkill?.[skillId] ?? 0;
@@ -241,7 +257,15 @@ export function renderMatrix(state, levelGains, onSort, onToggleInvert) {
       el('tr', {}, [
         el('th', { class: 'corner', scope: 'col' }, [el('span', { text: 'Skill' })]),
         ...players.map((player) =>
-          playerHead(player, leads[player.slug] ?? 0, maxed[player.slug] ?? 0, sortedBy, onSort, invertLeaders),
+          playerHead(
+            player,
+            leads[player.slug] ?? 0,
+            maxed[player.slug] ?? 0,
+            elite[player.slug] ?? 0,
+            sortedBy,
+            onSort,
+            invertLeaders,
+          ),
         ),
       ]),
     ]),

@@ -152,15 +152,34 @@ export function leaderCounts(rows) {
   return counts;
 }
 
-/** How many skills each player has maxed at level 99, keyed by slug — same
- * "99" threshold as the masthead's own countAtLeast(99) rather than each
- * skill's individual cap, since a 120/150-cap skill sitting at 99 is still
- * worth the same green star. Drives the Skill Leaderboard's green "maxed"
- * badge (next to the gold leads star) and the activity feed's name badge. */
+/** How many skills each player has maxed at level 99 (but short of 120),
+ * keyed by slug — same "99" threshold as the masthead's own
+ * countAtLeast(99) rather than each skill's individual cap, since a
+ * 120/150-cap skill sitting at 99 is still worth the same green star. The
+ * upper bound keeps this exclusive of eliteMaxedSkillCounts below, so a
+ * player's green and blue badge counts never double up the same skill.
+ * Drives the Skill Leaderboard's green "maxed" badge (next to the gold
+ * leads star) and the activity feed's name badge. */
 export function maxedSkillCounts(players) {
   const counts = Object.create(null);
   for (const player of players) {
-    counts[player.slug] = TRACKED_SKILLS.filter((skill) => skillFor(player, skill.id).level >= 99).length;
+    counts[player.slug] = TRACKED_SKILLS.filter((skill) => {
+      const level = skillFor(player, skill.id).level;
+      return level >= 99 && level < 120;
+    }).length;
+  }
+  return counts;
+}
+
+/** How many skills each player has pushed to level 120, keyed by slug — the
+ * blue-star tier above maxedSkillCounts' green one, for accounts that have
+ * kept training an already-99 skill (or one with a native 120 cap, like
+ * Invention or Dungeoneering) rather than stopping at 99. Drives the same
+ * two spots as maxedSkillCounts, as a second badge alongside it. */
+export function eliteMaxedSkillCounts(players) {
+  const counts = Object.create(null);
+  for (const player of players) {
+    counts[player.slug] = TRACKED_SKILLS.filter((skill) => skillFor(player, skill.id).level >= 120).length;
   }
   return counts;
 }

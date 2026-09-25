@@ -2213,6 +2213,28 @@ body::after {
   top: -0.1em;
 }
 
+/* Skills pushed to level 120 — the tier above .player-maxed, same shape
+   again but --temper's blue so it reads as a step up from the green badge
+   rather than a duplicate of it. Also only ever rendered with a positive
+   count, same reasoning as .player-maxed above. */
+.player-elite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--temper);
+}
+
+.player-elite-star {
+  font-size: 1.75em;
+  line-height: 1;
+  position: relative;
+  top: -0.1em;
+}
+
 /* The lone summary row (quest points now live in Account Standings instead):
    a brass top border still marks it apart from the skill rows above, and no
    bottom border since it's also the table's last row. */
@@ -2338,6 +2360,14 @@ body::after {
    differently-coloured stars rather than one ambiguous one. */
 .cell-star-maxed {
   color: var(--gain);
+}
+
+/* Maxed at level 120 — same star glyph again, --temper's blue to match
+   .player-elite's header badge. cell.level's own >=99/<120 vs >=120 split
+   (SkillMatrix.vue/matrix.js) keeps this mutually exclusive with
+   .cell-star-maxed above, so a cell never shows both. */
+.cell-star-elite {
+  color: var(--temper);
 }
 
 /* -------------------------------------------------- player stats page */
@@ -5129,33 +5159,58 @@ body::after {
   background: var(--gain);
 }
 
-/* One tick per level threshold strictly between a row's own base and
+/* One dot per level threshold strictly between a row's own base and
    target xp (SkillProgressRow.vue's own breakpoints, computed) — only
    appears at all once a goal actually spans more than one level, so a
    same-level xp goal's bar stays plain. Positioned by inline `left`
    against the *track's* own full width (not the fill's), so a mark still
    sits at the right spot regardless of how much of the bar is actually
-   filled in yet; `translateX(-50%)` centres each tick on its own exact
-   threshold instead of starting there. Painted after .goal-subgoal-fill in
-   the DOM so mix-blend-mode: difference has both the grey track and the
-   coloured fill to invert against — the one fixed colour that stays
-   legible whichever side of the fill boundary a given tick happens to
-   land on, without needing two differently-coloured tick variants.
-   2px (not 1px): a `left` percentage almost never lands on a whole device
-   pixel, so a hairline-width tick gets anti-aliased by a different amount
-   at each position — some crisp, some visibly blurrier/lighter than
-   others even though every one is the same CSS width. The extra pixel
-   makes that per-tick rounding error proportionally small enough that
-   they all read as the same thickness. */
+   filled in yet; `top: 50%` + `translate(-50%, -50%)` centres each dot on
+   its own exact threshold both horizontally and vertically, rather than
+   starting there. Painted after .goal-subgoal-fill in the DOM so
+   mix-blend-mode: difference has both the grey track and the coloured fill
+   to invert against — the one fixed colour that stays legible whichever
+   side of the fill boundary a given mark happens to land on, without
+   needing two differently-coloured variants.
+   6px against a 4px-tall track: a circle sized to exactly match the
+   track's own height would sit flush with its top/bottom edges and read
+   as part of the bar itself; a couple of px taller lets it stand slightly
+   proud on both sides instead, the same way a real milestone marker
+   overhangs the line it sits on rather than being inset into it. */
 .goal-subgoal-breakpoint {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  transform: translateX(-50%);
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(255, 255, 255, 0.6);
   mix-blend-mode: difference;
   pointer-events: none;
+}
+
+/* Once the fill has actually reached a mark (SkillProgressRow.vue compares
+   the mark's own fraction against the bar's current one), it's no longer
+   just "a threshold up ahead" but a level the player has already hit —
+   worth reading at a glance. A brighter *difference*-blended mark (an
+   earlier version of this rule) doesn't actually deliver that: difference
+   blend's result colour depends entirely on whatever it's sitting on top
+   of, and against the gradient's own --gain (green) stop, white diffs out
+   to a muddy red — a colour with no relation to anything else on this bar,
+   and an ugly one on its own terms. A fixed colour with normal blending
+   sidesteps that. The solid black ring (box-shadow, not a border — a
+   border would add to the tick's own layout width) is what actually earns
+   a plain, fully-saturated yellow the right to sit here at all: yellow is
+   the one hue on this bar closest to --warn's own amber, and a soft/
+   translucent ring wasn't enough to keep it from washing in — full black,
+   full opacity draws a crisp line around the tick against every stop in
+   the gradient alike. */
+.goal-subgoal-breakpoint.is-passed {
+  width: 7px;
+  height: 7px;
+  background: #ffd400;
+  mix-blend-mode: normal;
+  box-shadow: 0 0 0 1px #000;
 }
 
 /* Lives inside .goal-subgoal-current-box, next to .goal-subgoal-current.
@@ -5278,6 +5333,45 @@ body::after {
   width: 1.1rem;
   height: 1.1rem;
   font-size: 0.85rem;
+}
+
+/* A quest goal's own prerequisite *quests* (requiredQuestsFor, lib/goals.ts)
+   — distinct from .goal-subgoal-row above, which is a nested skill
+   requirement. Shares .goal-subgoals for the dashed-divider container but
+   gets its own row: no progress bar, just a name and a live status ticked
+   off (green, struck through) the moment RuneMetrics reports it done. */
+.goal-required-quest-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0.3rem;
+  margin: -0.1rem -0.3rem;
+}
+
+.goal-required-quest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  color: var(--ink-2);
+}
+
+.goal-required-quest-row.is-complete .goal-required-quest-name {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+}
+
+.goal-required-quest-status {
+  flex: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.goal-required-quest-row.is-complete .goal-required-quest-status {
+  color: var(--gain);
 }
 
 .goal-card-head {
@@ -8246,7 +8340,8 @@ body[data-ready] .loading {
   }
 
   .player-leads,
-  .player-maxed {
+  .player-maxed,
+  .player-elite {
     font-size: 0.55rem;
   }
 

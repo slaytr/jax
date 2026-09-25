@@ -63,6 +63,47 @@
  * - Warpriest of <god> (helm/cuirass/greaves/gauntlets/boots/cape): 1/768
  *   per piece (Template:DropsLineWarpriest) — flat across every GWD1
  *   boss, not a range; the six pieces just repeat the same rate.
+ *
+ * God Wars Dungeon 2 (the Heart of Gielinor)'s four "general" bosses were
+ * added on 2026-09-25, scraped the same way — each boss's own wiki page's
+ * `action=raw` wikitext, `{{DropsLine...}}` calls read from source, normal
+ * mode only (each of these four also has its own separate hard-mode drop
+ * table on the same page, left out for the same reason GWD1's hard-mode
+ * reworks are — same items/structure, different quantities/rates):
+ * - https://runescape.wiki/w/Helwyr
+ * - https://runescape.wiki/w/Gregorovic
+ * - https://runescape.wiki/w/The_Twin_Furies (Nymora, the Vengeful and
+ *   Avaryss, the Unceasing's own pages, e.g.
+ *   https://runescape.wiki/w/Nymora,_the_Vengeful, each carry no drop
+ *   table of their own — just a `{{Main|The Twin Furies#Drops}}` pointer —
+ *   confirming the pair shares ONE drop table, looted once per kill of the
+ *   pair together rather than once per NPC. Kept here as a single entry
+ *   rather than two, unlike GWD1's five separate bosses.)
+ * - https://runescape.wiki/w/Vindicta_%26_Gorvek (similarly, Vindicta's and
+ *   Gorvek's own pages — https://runescape.wiki/w/Vindicta,
+ *   https://runescape.wiki/w/Gorvek — each just point back to
+ *   `{{Main|Vindicta & Gorvek#Drops}}` with no table of their own; same
+ *   one-shared-table reasoning as the Twin Furies above, so this is one
+ *   entry too, not two)
+ *
+ * None of these four pages' wikitext uses DropsLineEffigy, DropsLineMimic,
+ * DropsLineSpiritGems, DropsLineWarpriest, or a CharmDropTable/
+ * CharmDataTable call — Heart of Gielinor's generals drop no starved
+ * ancient effigies, mimic kill tokens, spirit gems, Warpriest armour, or
+ * charms at all, unlike GWD1's five. Their own "Main drop" section (the
+ * dormant anima core armour pieces, that god's own crest, that boss's
+ * signature weapon, and an "essence" reagent) is this era's equivalent of
+ * GWD1's Unique section — named "Main drop (n/d chance to roll)" here the
+ * same way Nex's own equivalent section already is in this file, which is
+ * what LootTab.vue's own isUniqueSection() keys its purple border off
+ * (section name `'Unique'` or starting with `'Main drop'`) — each item's
+ * own listed rarity (e.g. `1/256`) is already the wiki's own absolute
+ * per-kill rate for that item, not a rate conditional on the pre-roll
+ * described in the section's own name, same treatment as every other
+ * flat-rarity item in this file. Nor does any of the four have a generic
+ * "Gem drop table" trigger row like GWD1 — their two uncut-gem drops
+ * (diamond, dragonstone) are already itemised directly rather than routed
+ * through that shared table.
  */
 
 export const BOSS_LOOT_TABLES = [
@@ -568,6 +609,337 @@ export const BOSS_LOOT_TABLES = [
           { name: 'Green charm', quantity: '20', rarity: '13.437/1,000' },
           { name: 'Crimson charm', quantity: '20', rarity: '48.372/1,000' },
           { name: 'Blue charm', quantity: '20', rarity: '239.176/1,000' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Helwyr',
+    slug: 'helwyr',
+    wikiUrl: 'https://runescape.wiki/w/Helwyr',
+    image: 'Helwyr.png',
+    category: 'Boss',
+    combatLevel: 1000,
+    location: "Seren's Encampment, God Wars Dungeon 2",
+    sections: [
+      {
+        name: 'Guaranteed',
+        items: [
+          { name: 'Bones', quantity: '1', rarity: 'Always' },
+          { name: 'Seal of the Cywir', quantity: '1-2', rarity: 'Always', note: "Only if the player doesn't have maximum reputation with the Sliskean, Zamorakian, and Zarosian factions." },
+          { name: 'Sigil piece (Seren)', quantity: '1', rarity: 'Always', note: 'Drops for the player who dealt the most damage. Drops in practice mode.' },
+          { name: 'Unpowered necromantic seal of the Cywir', quantity: '1-2', rarity: 'Always', note: "Only while carrying at least 25 greater necroplasm during the Kili's Knowledge VII task and not already owning 10 combined seals of the Cywir. Replaces the normal seal." },
+        ],
+      },
+      {
+        name: 'Main drop (3/128 chance to roll)',
+        items: [
+          { name: 'Dormant anima core helm', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core body', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core legs', quantity: '1', rarity: '1/256' },
+          { name: 'Crest of Seren', quantity: '1', rarity: '1/256' },
+          { name: 'Wand of the Cywir elders', quantity: '1', rarity: '1/256' },
+          { name: 'Orb of the Cywir elders', quantity: '1', rarity: '1/256' },
+          { name: 'Serenic essence', quantity: '1', rarity: '1/64', note: 'Rolled if the main drop roll above fails.' },
+        ],
+      },
+      {
+        name: 'Seeds',
+        items: [
+          { name: 'Lantadyme seed', quantity: '8-11', rarity: '8/64', wikiFile: 'Lantadyme seed 5' },
+          { name: 'Dwarf weed seed', quantity: '3-5', rarity: '5/64', wikiFile: 'Dwarf weed seed 5' },
+        ],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Drakolith stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Orichalcite stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Necrite stone spirit', quantity: '15-25', rarity: '3/64' },
+          { name: 'Phasmatite stone spirit', quantity: '15-25', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Gems',
+        items: [
+          { name: 'Uncut diamond', quantity: '18-22 (noted)', rarity: '7/64' },
+          { name: 'Uncut dragonstone', quantity: '8-12 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Furniture plans',
+        items: [
+          { name: 'Furniture plans: Seren rug', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Seren rug', noIcon: true },
+          { name: 'Furniture plans: Seren altar', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Seren altar', noIcon: true },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Raw shark', quantity: '45-55 (noted)', rarity: '7/64' },
+          { name: 'Coins', quantity: '60,000-80,000', rarity: '6/64', wikiFile: 'Coins 10000' },
+          { name: 'Magic logs', quantity: '150-250 (noted)', rarity: '5/64' },
+          { name: 'Crystal key', quantity: '2-4 (noted)', rarity: '6/64' },
+          { name: 'Large bladed rune salvage', quantity: '9-15 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Rare drop table',
+        items: [{ name: 'Rare drop table', quantity: '', rarity: '1/64', note: "Rolls from RS3's shared rare drop table.", wikiUrl: 'https://runescape.wiki/w/Rare_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Shark', quantity: '1-3', rarity: '6/64' },
+          { name: 'Twisted antler', quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: "Helwyr's head", quantity: '1', rarity: '1/500' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Gregorovic',
+    slug: 'gregorovic',
+    wikiUrl: 'https://runescape.wiki/w/Gregorovic',
+    image: 'Gregorovic.png',
+    category: 'Boss',
+    combatLevel: 1000,
+    location: "Sliske's Necropolis, God Wars Dungeon 2",
+    sections: [
+      {
+        name: 'Guaranteed',
+        items: [
+          { name: 'Bones', quantity: '1', rarity: 'Always' },
+          { name: 'Seal of the Faceless', quantity: '1-2', rarity: 'Always', note: 'No longer dropped once the player has maximum reputation with the Serenist, Zamorakian and Zarosian factions.' },
+          { name: 'Sigil piece (Sliske)', quantity: '1', rarity: 'Always', note: 'Drops for the player who dealt the most damage. Drops in practice mode.' },
+          { name: 'Unpowered necromantic seal of the Faceless', quantity: '1-2', rarity: 'Always', note: "Only while carrying at least 25 greater necroplasm during the Kili's Knowledge VII task and not already owning 10 combined seals of the Faceless. Replaces the normal seal." },
+        ],
+      },
+      {
+        name: 'Main drop (3/128 chance to roll)',
+        items: [
+          { name: 'Dormant anima core helm', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core body', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core legs', quantity: '1', rarity: '1/256' },
+          { name: 'Crest of Sliske', quantity: '1', rarity: '1/256' },
+          { name: 'Shadow glaive', quantity: '1', rarity: '1/256' },
+          { name: 'Off-hand shadow glaive', quantity: '1', rarity: '1/256' },
+          { name: 'Sliskean essence', quantity: '1', rarity: '1/64', note: 'Rolled if the main drop roll above fails.' },
+        ],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Drakolith stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Orichalcite stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Necrite stone spirit', quantity: '15-25', rarity: '3/64' },
+          { name: 'Phasmatite stone spirit', quantity: '15-25', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Gems',
+        items: [
+          { name: 'Uncut diamond', quantity: '18-22 (noted)', rarity: '7/64' },
+          { name: 'Uncut dragonstone', quantity: '8-12 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Salvage',
+        items: [
+          { name: 'Medium plated rune salvage', quantity: '5-10 (noted)', rarity: '6/64' },
+          { name: 'Large plated rune salvage', quantity: '5-10 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Raw shark', quantity: '45-55 (noted)', rarity: '7/64' },
+          { name: 'Coins', quantity: '60,000-80,000', rarity: '6/64', wikiFile: 'Coins 10000' },
+          { name: 'Dwarf weed seed', quantity: '3-5', rarity: '5/64', wikiFile: 'Dwarf weed seed 5' },
+          { name: 'Magic logs', quantity: '150-250 (noted)', rarity: '5/64' },
+          { name: 'Battlestaff', quantity: '50-60 (noted)', rarity: '8/64' },
+        ],
+      },
+      {
+        name: 'Rare drop table',
+        items: [{ name: 'Rare drop table', quantity: '', rarity: '1/64', note: "Rolls from RS3's shared rare drop table.", wikiUrl: 'https://runescape.wiki/w/Rare_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Shark', quantity: '1-3', rarity: '6/64' },
+          { name: 'Faceless mask', quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: "Gregorovic's head", quantity: '1', rarity: '1/500' },
+        ],
+      },
+    ],
+  },
+  // Nymora, the Vengeful and Avaryss, the Unceasing — Zamorak's generals,
+  // fought together as one encounter ("the Twin Furies"). Their own pages
+  // (Nymora, the Vengeful; Avaryss, the Unceasing) carry no drop table of
+  // their own, just a `{{Main|The Twin Furies#Drops}}` pointer back to
+  // this shared page — one loot entry for the pair, not two, matching how
+  // the game itself drops loot once per kill of the encounter rather than
+  // once per NPC.
+  {
+    name: 'The Twin Furies',
+    slug: 'the-twin-furies',
+    wikiUrl: 'https://runescape.wiki/w/The_Twin_Furies',
+    image: 'Nymora, the Vengeful.png',
+    category: 'Boss',
+    combatLevel: 1000,
+    location: "Zamorak's Rampart, God Wars Dungeon 2",
+    sections: [
+      {
+        name: 'Guaranteed',
+        items: [
+          { name: 'Seal of the Furies', quantity: '1-2', rarity: 'Always', note: "Only if the player doesn't have maximum reputation with the Serenist, Sliskean and Zarosian factions." },
+          { name: 'Sigil piece (Zamorak)', quantity: '1', rarity: 'Always', note: 'Drops for the player who dealt the most damage. Drops in practice mode.' },
+          { name: 'Unpowered necromantic seal of the Furies', quantity: '1-2', rarity: 'Always', note: "Only while carrying at least 25 greater necroplasm during the Kili's Knowledge VII task and not already owning 10 combined seals of the Furies. Replaces the normal seal." },
+        ],
+      },
+      {
+        name: 'Main drop (3/128 chance to roll)',
+        items: [
+          { name: 'Dormant anima core helm', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core body', quantity: '1', rarity: '1/256' },
+          { name: 'Dormant anima core legs', quantity: '1', rarity: '1/256' },
+          { name: 'Crest of Zamorak', quantity: '1', rarity: '1/256' },
+          { name: 'Blade of Avaryss', quantity: '1', rarity: '1/256' },
+          { name: 'Blade of Nymora', quantity: '1', rarity: '1/256' },
+          { name: 'Zamorakian essence', quantity: '1', rarity: '1/64', note: 'Rolled if the main drop roll above fails.' },
+        ],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Drakolith stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Orichalcite stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Necrite stone spirit', quantity: '15-25', rarity: '3/64' },
+          { name: 'Phasmatite stone spirit', quantity: '15-25', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Gems',
+        items: [
+          { name: 'Uncut diamond', quantity: '18-22 (noted)', rarity: '7/64' },
+          { name: 'Uncut dragonstone', quantity: '8-12 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Furniture plans',
+        items: [
+          { name: 'Furniture plans: Zamorak rug', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Zamorak rug', noIcon: true },
+          { name: 'Furniture plans: Zamorak altar', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Zamorak altar', noIcon: true },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Raw shark', quantity: '45-55 (noted)', rarity: '7/64' },
+          { name: 'Coins', quantity: '60,000-80,000', rarity: '6/64', wikiFile: 'Coins 10000' },
+          { name: 'Dwarf weed seed', quantity: '3-5', rarity: '5/64', wikiFile: 'Dwarf weed seed 5' },
+          { name: 'Magic logs', quantity: '150-250 (noted)', rarity: '5/64' },
+          { name: 'Wine of Zamorak', quantity: '18-22 (noted)', rarity: '8/64' },
+          { name: 'Infernal ashes', quantity: '150-250 (noted)', rarity: '6/64' },
+          { name: 'Large bladed rune salvage', quantity: '5-10 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Rare drop table',
+        items: [{ name: 'Rare drop table', quantity: '', rarity: '1/64', note: "Rolls from RS3's shared rare drop table.", wikiUrl: 'https://runescape.wiki/w/Rare_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Shark', quantity: '1-3', rarity: '6/64' },
+          { name: "Avaryss' braid", quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: "Nymora's braid", quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: 'Wings of the Twin Furies', quantity: '1', rarity: '1/500' },
+        ],
+      },
+    ],
+  },
+  // Vindicta and Gorvek — Zaros's generals, fought together as one
+  // encounter. Same reasoning as the Twin Furies above: Vindicta's and
+  // Gorvek's own pages each carry no drop table of their own, just a
+  // `{{Main|Vindicta & Gorvek#Drops}}` pointer back to their shared
+  // "Vindicta & Gorvek" encounter page — one loot entry for the pair.
+  {
+    name: 'Vindicta and Gorvek',
+    slug: 'vindicta-and-gorvek',
+    wikiUrl: 'https://runescape.wiki/w/Vindicta_%26_Gorvek',
+    image: 'Gorvek and Vindicta.png',
+    category: 'Boss',
+    combatLevel: 1000,
+    location: "Zaros's Bastion, God Wars Dungeon 2",
+    sections: [
+      {
+        name: 'Guaranteed',
+        items: [
+          { name: 'Dragon bones', quantity: '1', rarity: 'Always' },
+          { name: 'Seal of the Dragon riders', quantity: '1-2', rarity: 'Always', note: "Only if the player doesn't have maximum reputation with the Serenist, Sliskean and Zamorakian factions. Seals drop to all players who contributed to the kill." },
+          { name: 'Sigil piece (Zaros)', quantity: '1', rarity: 'Always', note: 'Drops for the player who dealt the most damage. Drops in practice mode.' },
+          { name: 'Unpowered necromantic seal of the Dragon Riders', quantity: '1-2', rarity: 'Always', note: "Only while carrying at least 25 greater necroplasm during the Kili's Knowledge VII task and not already owning 10 combined seals of the Dragon Riders. Replaces the normal seal." },
+        ],
+      },
+      {
+        name: 'Main drop (1/51 chance to roll)',
+        items: [
+          { name: 'Dormant anima core helm', quantity: '1', rarity: '1/255' },
+          { name: 'Dormant anima core body', quantity: '1', rarity: '1/255' },
+          { name: 'Dormant anima core legs', quantity: '1', rarity: '1/255' },
+          { name: 'Crest of Zaros', quantity: '1', rarity: '1/255' },
+          { name: 'Dragon Rider lance', quantity: '1', rarity: '1/255' },
+          { name: 'Zarosian essence', quantity: '1', rarity: '1/64', note: 'Rolled if the main drop roll above fails.' },
+        ],
+      },
+      {
+        name: 'Stone spirits',
+        items: [
+          { name: 'Drakolith stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Orichalcite stone spirit', quantity: '15-25', rarity: '4/64' },
+          { name: 'Necrite stone spirit', quantity: '15-25', rarity: '3/64' },
+          { name: 'Phasmatite stone spirit', quantity: '15-25', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Gems',
+        items: [
+          { name: 'Uncut diamond', quantity: '18-22 (noted)', rarity: '7/64' },
+          { name: 'Uncut dragonstone', quantity: '8-12 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Furniture plans',
+        items: [
+          { name: 'Furniture plans: Zaros rug', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Zaros rug', noIcon: true },
+          { name: 'Furniture plans: Zaros altar', quantity: '1', rarity: 'Unknown', wikiFile: 'Furniture plans- Zaros altar', noIcon: true },
+        ],
+      },
+      {
+        name: 'Other',
+        items: [
+          { name: 'Raw shark', quantity: '45-55 (noted)', rarity: '7/64' },
+          { name: 'Coins', quantity: '60,000-80,000', rarity: '6/64', wikiFile: 'Coins 10000' },
+          { name: 'Dwarf weed seed', quantity: '3-5', rarity: '5/64', wikiFile: 'Dwarf weed seed 5' },
+          { name: 'Magic logs', quantity: '150-250 (noted)', rarity: '5/64' },
+          { name: 'Dragon bones', quantity: '150-250 (noted)', rarity: '8/64' },
+          { name: 'Black dragonhide', quantity: '25-35 (noted)', rarity: '6/64' },
+          { name: 'Large plated rune salvage', quantity: '8-12 (noted)', rarity: '3/64' },
+        ],
+      },
+      {
+        name: 'Rare drop table',
+        items: [{ name: 'Rare drop table', quantity: '', rarity: '1/64', note: "Rolls from RS3's shared rare drop table.", wikiUrl: 'https://runescape.wiki/w/Rare_drop_table', noIcon: true }],
+      },
+      {
+        name: 'Tertiary',
+        items: [
+          { name: 'Shark', quantity: '1-3', rarity: '6/64' },
+          { name: 'Imbued blade slice', quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: 'Glimmering scale', quantity: '1', rarity: '1/2,000', note: 'Boss pet drop.' },
+          { name: "Gorvek's head", quantity: '1', rarity: '1/500' },
         ],
       },
     ],

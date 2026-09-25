@@ -1,4 +1,6 @@
 import { xpForLevel } from '@shared/xp-table.js';
+import { requirementsOf } from '@shared/quest-graph.js';
+import { statusOf } from '@shared/quest-status.js';
 
 /**
  * Pure logic behind the Goals tab's cards, sections, and progress bars —
@@ -245,4 +247,30 @@ export function completedSkillStats(goal: any): CompletedSkillStats {
   const xpGained = (goal.completedXp ?? goal.startXp) - goal.startXp;
   const days = Math.max((completedMs - startedMs) / 86400000, 1 / 24);
   return { startedMs, completedMs, levelsGained, xpGained, ratePerDay: xpGained / days };
+}
+
+export interface RequiredQuest {
+  name: string;
+  status: 'completed' | 'in-progress' | 'not-started';
+}
+
+/** A quest goal's own direct prerequisite quests (quest-graph.js's own
+ * requirementsOf, not the nested skill-requirement children it already gets
+ * from buildQuestGoalDrafts) — each resolved against the player's own
+ * RuneMetrics completed/started lists (statusOf, same matching the Quests
+ * tab already uses) so the quest goal's card can nest what's still blocking
+ * it and tick each one off as the player finishes it in-game. Null before
+ * `quests` (the full quest-data catalog) has loaded, once `goal` can't be
+ * resolved against it, or once `goal` itself is already complete — nothing
+ * left to block at that point. */
+export function requiredQuestsFor(goal: any, quests: any[] | null, player: any): RequiredQuest[] | null {
+  if (!quests || goal.completedAt) return null;
+  const byName = new Map(quests.map((quest) => [quest.name, quest]));
+  const quest = byName.get(goal.questName);
+  if (!quest) return null;
+
+  const completedSet = new Set(player.completedQuests ?? []);
+  const startedSet = new Set(player.startedQuests ?? []);
+
+  return requirementsOf(quest, byName).map((req) => ({ name: req.name, status: statusOf({ name: req.name }, completedSet, startedSet) }));
 }

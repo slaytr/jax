@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { buildMatrix, buildTotalsRow, computeDailyBreakdown, leaderCounts, maxedSkillCounts } from '@shared/compute.js';
+import { buildMatrix, buildTotalsRow, computeDailyBreakdown, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts } from '@shared/compute.js';
 import { el } from '@shared/dom.js';
 import { formatCompact, formatNumber, formatRelativeTime, formatWeekday } from '@shared/format.js';
 import { QUEST_POINTS_ICON, SKILLS, iconFor } from '@shared/config.js';
@@ -70,6 +70,10 @@ const leads = computed(() => leaderCounts([...buildMatrix(props.players, 'level'
  * Leaderboard's own column header (SkillMatrix.vue's .player-maxed), shown
  * here too so a name in the feed carries that same context. */
 const maxed = computed(() => maxedSkillCounts(props.players));
+
+/** Skills each player has pushed to level 120 — the blue-star tier above
+ * `maxed`, shown as its own badge (SkillMatrix.vue's `.player-elite`). */
+const elite = computed(() => eliteMaxedSkillCounts(props.players));
 
 function activityTooltip(entry: (typeof activityFeed.value)[number]) {
   return () =>
@@ -280,6 +284,11 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
                 <span class="player-maxed-star" aria-hidden="true">★</span>
                 <span aria-hidden="true">{{ formatNumber(maxed[entry.player.slug]) }}</span>
                 <span class="visually-hidden">{{ formatNumber(maxed[entry.player.slug]) }} skills maxed at level 99</span>
+              </span>
+              <span v-if="(elite[entry.player.slug] ?? 0) > 0" class="player-elite has-elite">
+                <span class="player-elite-star" aria-hidden="true">★</span>
+                <span aria-hidden="true">{{ formatNumber(elite[entry.player.slug]) }}</span>
+                <span class="visually-hidden">{{ formatNumber(elite[entry.player.slug]) }} skills maxed at level 120</span>
               </span>
               <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
                 <span class="player-leads-star" aria-hidden="true">★</span>

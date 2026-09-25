@@ -5,7 +5,16 @@ import { formatNumber, formatCompact, formatSpan, formatRelativeTime } from '@sh
 import { iconFor, QUEST_POINTS_ICON, WIKI_ICON } from '@shared/config.js';
 import { statusOf } from '@shared/quest-status.js';
 import { questWikiUrl } from '@shared/quest-goal.js';
-import { completedSkillStats, DEFAULT_LABEL_COLOUR, goalTargetLabel, orderByStatus, skillGoalProgress, startValueOf, type MetaPart } from '@/lib/goals';
+import {
+  completedSkillStats,
+  DEFAULT_LABEL_COLOUR,
+  goalTargetLabel,
+  orderByStatus,
+  requiredQuestsFor,
+  skillGoalProgress,
+  startValueOf,
+  type MetaPart,
+} from '@/lib/goals';
 import SkillProgressRow from '@/components/player/goals/SkillProgressRow.vue';
 
 /**
@@ -63,6 +72,18 @@ const questStatus = computed(() => {
 });
 
 const skillProgress = computed(() => (isQuest.value ? null : skillGoalProgress(props.goal, skill.value, props.player, false)));
+
+/** The quest goal's own direct prerequisite quests, each with its live
+ * completion status (distinct from orderedChildren above, which is its
+ * skill-requirement goals) — null while `quests` hasn't loaded yet or once
+ * the goal itself is complete. */
+const requiredQuests = computed(() => (isQuest.value ? requiredQuestsFor(props.goal, props.quests, props.player) : null));
+
+const REQUIRED_QUEST_STATUS_LABEL: Record<string, string> = {
+  completed: '✓ Done',
+  'in-progress': 'In progress',
+  'not-started': 'Not started',
+};
 
 /** The slug the Quests tab's dependency map/guide keys off of (QuestsTab.vue,
  * QuestDependencyGraph.vue) — resolved by name since a quest goal only ever
@@ -223,6 +244,20 @@ function focusClick(id: string, event: MouseEvent) {
         <template v-for="(part, i) in metaParts" :key="i"><span v-if="i > 0" aria-hidden="true"> · </span><span :class="{ 'goal-card-meta-stat': part.stat }">{{ part.text }}</span></template>
       </p>
     </template>
+
+    <ul v-if="isQuest && requiredQuests && requiredQuests.length" class="goal-subgoals goal-required-quests">
+      <li
+        v-for="req in requiredQuests"
+        :key="req.name"
+        class="goal-required-quest-row"
+        :class="{ 'is-complete': req.status === 'completed' }"
+      >
+        <img class="goal-subgoal-icon" :src="QUEST_POINTS_ICON" alt="" width="16" height="16" decoding="async" />
+        <span class="goal-required-quest-name">{{ req.name }}</span>
+        <span class="goal-card-head-spacer" />
+        <span class="goal-required-quest-status">{{ REQUIRED_QUEST_STATUS_LABEL[req.status] }}</span>
+      </li>
+    </ul>
 
     <ul v-if="isQuest && orderedChildren.length" class="goal-subgoals">
       <li

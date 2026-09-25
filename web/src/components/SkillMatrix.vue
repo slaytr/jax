@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { CALENDAR_DAY, buildMatrix, buildTotalsRow, computeLevelGains, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '@shared/compute.js';
+import {
+  CALENDAR_DAY,
+  buildMatrix,
+  buildTotalsRow,
+  computeLevelGains,
+  eliteMaxedSkillCounts,
+  leaderCounts,
+  maxedSkillCounts,
+  TOTAL_MEASURE,
+} from '@shared/compute.js';
 import { formatNumber, formatRank } from '@shared/format.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '@shared/config.js';
 import { xpForLevel } from '@shared/xp-table.js';
@@ -51,6 +60,7 @@ const skillRows = computed(() => buildMatrix(props.players, 'level', invertLeade
 const totalsData = computed(() => buildTotalsRow(props.players, invertLeaders.value));
 const leads = computed(() => leaderCounts([...skillRows.value, totalsData.value]));
 const maxed = computed(() => maxedSkillCounts(props.players));
+const elite = computed(() => eliteMaxedSkillCounts(props.players));
 
 function sortRowsFor(rows: any[], slug: string) {
   const cellFor = (row: any) => row.cells.find((cell: any) => cell.player.slug === slug);
@@ -217,6 +227,11 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                     <span aria-hidden="true">{{ formatNumber(maxed[player.slug]) }}</span>
                     <span class="visually-hidden">{{ formatNumber(maxed[player.slug]) }} skills maxed at level 99</span>
                   </span>
+                  <span v-if="(elite[player.slug] ?? 0) > 0" class="player-elite has-elite">
+                    <span class="player-elite-star" aria-hidden="true">★</span>
+                    <span aria-hidden="true">{{ formatNumber(elite[player.slug]) }}</span>
+                    <span class="visually-hidden">{{ formatNumber(elite[player.slug]) }} skills maxed at level 120</span>
+                  </span>
                 </span>
               </button>
               <span v-if="player.stale" class="visually-hidden">(cached data)</span>
@@ -241,7 +256,8 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-level">
                   <span class="cell-primary">{{ formatNumber(cell.level) }}</span>
                   <span v-if="cell.isLeader" class="cell-star" aria-hidden="true">★</span>
-                  <span v-if="cell.level >= 99" class="cell-star cell-star-maxed" aria-hidden="true">★</span>
+                  <span v-if="cell.level >= 99 && cell.level < 120" class="cell-star cell-star-maxed" aria-hidden="true">★</span>
+                  <span v-if="cell.level >= 120" class="cell-star cell-star-elite" aria-hidden="true">★</span>
                 </span>
                 <span v-if="gainFor(cell.player.slug, row.skill.id) > 0" class="chip-up cell-gain">
                   <span>+{{ gainFor(cell.player.slug, row.skill.id) }}</span>
@@ -252,7 +268,8 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-rule-fill" :style="{ width: `${(cell.share * 100).toFixed(1)}%` }" />
               </span>
               <span v-if="cell.isLeader" class="visually-hidden"> — group leader</span>
-              <span v-if="cell.level >= 99" class="visually-hidden"> — maxed at level 99</span>
+              <span v-if="cell.level >= 99 && cell.level < 120" class="visually-hidden"> — maxed at level 99</span>
+              <span v-if="cell.level >= 120" class="visually-hidden"> — maxed at level 120</span>
             </td>
           </tr>
           <tr class="row-total">
