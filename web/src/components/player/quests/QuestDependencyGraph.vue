@@ -17,9 +17,10 @@ import {
   highlightSetFor,
   isExpandable,
   layoutOf,
+  nodeBackgroundTitle,
   nodeHeight,
+  nodeNameTitle,
   nodeStatus,
-  nodeTitle,
   NODE_WIDTH,
   targetNamesFor,
   visibleSkillRequirements,
@@ -31,15 +32,22 @@ import {
  * quest (or whole questline) is currently selected beside it, built up by
  * expanding one quest at a time. Ported from views/quest-dependency-graph.js.
  *
- * Two separate click targets share each node: the small "+"/"–" button
- * (toggleExpand) reveals or hides that quest's own direct requirements; the
- * rest of the node (highlightNode) selects it for highlighting instead —
- * every node feeding into it stays at full opacity while everything else
- * dims. The two are fully independent state, both owned by the parent
- * (QuestsTab.vue). Every node also carries a wiki-quick-guide link (the same
- * questWikiUrl/WIKI_ICON pairing a goal card's own link uses — GoalCard.vue),
- * stopped from bubbling into either of those so opening the guide never
- * expands or highlights the node underneath it.
+ * Three separate click targets share each node: the small "+"/"–" button
+ * (toggleExpand) reveals or hides that quest's own direct requirements; its
+ * own name (onNodeNameClick) jumps straight to that quest's quick guide; and
+ * the rest of the node's own background (its plain click handler below)
+ * highlights it instead — every node feeding into it stays at full opacity
+ * while everything else dims. Deliberately two different actions rather than
+ * one doing both: a viewer skimming a questline's map to read guides
+ * shouldn't have every click also reshuffle which branch is dimmed, and one
+ * highlighting a branch to trace it shouldn't be yanked into the guide view
+ * just for clicking the node itself. highlightNode is state owned by the
+ * parent (QuestsTab.vue); the guide pick (pickedGuideQuest below) is owned
+ * entirely here instead — see its own doc comment for why. Every node also
+ * carries a wiki-quick-guide link (the same questWikiUrl/WIKI_ICON pairing a
+ * goal card's own link uses — GoalCard.vue), stopped from bubbling into any
+ * of those so opening the guide never expands, highlights, or reopens the
+ * quick guide for the node underneath it.
  *
  * Fullscreen uses a real `<Teleport to="body">` rather than the old
  * hand-rolled body-level portal (views/quest-dependency-graph.js's
@@ -51,14 +59,13 @@ import {
  * graph" shape as the Goals tab's own toggle (GoalsList.vue), including
  * persisting the choice the same way (usePrefs). Only a single quest has a
  * guide to show (QuestQuickGuide.vue), so `guideQuest` below prefers
- * whichever node is currently highlighted in the map (clicking a node's
- * own name — the same highlightNode emit that dims the rest of the graph)
- * over the plain selection: that's what lets clicking around a whole
- * questline's map pick out one member's guide, not just whatever single
- * quest the map happened to be anchored on. That same click (onNodeClick
- * below) also switches `view` to 'guide' itself, so clicking a quest in
- * the map jumps straight to its guide rather than just quietly queuing it
- * up for whenever the viewer next flips the toggle by hand. useQuestGuides.ts's own
+ * whichever node a name click most recently picked (pickedGuideQuest) over
+ * the plain selection: that's what lets clicking around a whole questline's
+ * map pick out one member's guide, not just whatever single quest the map
+ * happened to be anchored on. That same click (onNodeNameClick below) also
+ * switches `view` to 'guide' itself, so clicking a quest's name in the map
+ * jumps straight to its guide rather than just quietly queuing it up for
+ * whenever the viewer next flips the toggle by hand. useQuestGuides.ts's own
  * quest-guides.json is only ever requested once a viewer actually switches
  * to this view — not just from opening the Quests tab, same lazy-load
  * reasoning as useQuests.ts's own quest list fetch. Which quest's guide
@@ -91,6 +98,21 @@ const { prefs, savePref } = usePrefs();
 const view = ref<'map' | 'guide'>(prefs.questGraphView === 'guide' ? 'guide' : 'map');
 watch(view, (value) => savePref({ questGraphView: value }));
 
+/** Picking a whole questline (a QuestSeriesLinks chip, via QuestsTab.vue's
+ * own onSelectSeries) drops back to the map the moment the guide view is
+ * open — a single quest's own quick guide doesn't mean anything for a whole
+ * series, so staying on it would just keep showing whichever one quest's
+ * guide was up before, with nothing on screen suggesting the questline pick
+ * actually did anything. Guarded by `!immediate` (the default) so this only
+ * reacts to an actual click, not the initial selection a fresh mount seeds
+ * from the URL/prefs. */
+watch(
+  () => props.selection,
+  (selection) => {
+    if (selection?.kind === 'series' && view.value === 'guide') view.value = 'map';
+  },
+);
+
 const { guides, status: guidesStatus, ensureLoaded: ensureGuidesLoaded } = useQuestGuides();
 watch(
   view,
@@ -106,21 +128,39 @@ watch(
  * this ref plus the watcher underneath it are what keep it live. */
 const lastGuideQuestSlug = ref<string | null>(prefs.lastQuestGuideSlug ? String(prefs.lastQuestGuideSlug) : null);
 
-/** Which quest the guide view is actually showing — a highlighted node
- * (clicking a node's own name in the map, same highlightNode emit that
- * dims everything else) wins over the plain selection, so clicking around
+/** Which quest a name click in the map most recently picked to view the
+ * guide for — deliberately its own piece of state rather than reusing
+ * `highlightedName` (the parent-owned prop a *background* click sets, see
+ * the component's own top doc comment): the two clicks now do two unrelated
+ * things, so the guide pick can't be derived from the highlight any more
+ * without reintroducing the exact coupling this was split apart to remove.
+ * Reset the moment `selection` itself changes (a fresh quest/series pick
+ * from the list or questline row) — same "a new pick invalidates whatever
+ * was highlighted before" reset QuestsTab.vue's own onSelectQuest/
+ * onSelectSeries already does for highlightedName, mirrored here so a stale
+ * guide pick from a previous questline doesn't keep winning over a new
+ * selection below. */
+const pickedGuideQuest = ref<any | null>(null);
+watch(
+  () => props.selection,
+  () => {
+    pickedGuideQuest.value = null;
+  },
+);
+
+/** Which quest the guide view is actually showing — an explicit name-click
+ * pick (pickedGuideQuest) wins over the plain selection, so clicking around
  * the map updates the guide view right along with it, not just the one
  * quest/questline the map itself is anchored on. Falls back to the anchor
  * selection itself when it's a single quest (not a whole questline) and
- * nothing's highlighted, then to whichever quest's guide was last shown
+ * nothing's been picked, then to whichever quest's guide was last shown
  * (lastGuideQuestSlug) when neither of those resolves to one either — a
- * fresh page load with no `?quest=`/`?node=` of its own (a plain refresh
- * that happened to land with nothing selected, or opening the tab fresh in
- * a new visit) still reopens on the last guide a viewer was actually
- * looking at, rather than the empty prompt. */
+ * fresh page load with no `?quest=` of its own (a plain refresh that
+ * happened to land with nothing selected, or opening the tab fresh in a new
+ * visit) still reopens on the last guide a viewer was actually looking at,
+ * rather than the empty prompt. */
 const guideQuest = computed(() => {
-  const highlighted = props.highlightedName ? (props.quests?.find((quest) => quest.name === props.highlightedName) ?? null) : null;
-  if (highlighted) return highlighted;
+  if (pickedGuideQuest.value) return pickedGuideQuest.value;
   if (props.selection?.kind === 'quest') return props.selection.quest;
   return lastGuideQuestSlug.value ? (props.quests?.find((quest) => quest.slug === lastGuideQuestSlug.value) ?? null) : null;
 });
@@ -183,13 +223,13 @@ function position(name: string) {
   return layout.value!.positionByName.get(name)!;
 }
 
-/** A node's own name click — highlights it (unchanged) and also switches
- * this panel over to the quick guide, since guideQuest above already
- * resolves to whichever node was just highlighted; without this, clicking
- * a quest in the map only queued up its guide invisibly for whenever a
- * viewer next switched views by hand. */
-function onNodeClick(name: string) {
-  emit('highlightNode', name);
+/** A node's own name click — jumps straight to its quick guide, stopped
+ * (see the template) from also bubbling into the node's own background
+ * click and highlighting it besides; picking a guide and highlighting a
+ * branch are unrelated actions now, see pickedGuideQuest's own doc comment
+ * above for why this sets that instead of going through highlightNode. */
+function onNodeNameClick(node: any) {
+  pickedGuideQuest.value = node.quest;
   view.value = 'guide';
 }
 
@@ -309,6 +349,8 @@ const LEGEND_ITEMS: Array<[string, string]> = [
               :key="node.name"
               :class="nodeClasses(node)"
               :style="{ left: `${position(node.name).x}px`, top: `${position(node.name).y}px`, width: `${NODE_WIDTH}px`, height: `${nodeHeight(node)}px` }"
+              :title="nodeBackgroundTitle(node, statusOfNode(node), targetCount)"
+              @click="emit('highlightNode', node.name)"
             >
               <div class="quest-graph-node-header">
                 <button
@@ -322,7 +364,7 @@ const LEGEND_ITEMS: Array<[string, string]> = [
                 </button>
                 <span v-else class="quest-graph-node-expand-btn is-empty" aria-hidden="true" />
 
-                <button type="button" class="quest-graph-node-select" :title="nodeTitle(node, statusOfNode(node), targetCount)" @click="onNodeClick(node.name)">
+                <button type="button" class="quest-graph-node-select" :title="nodeNameTitle(node, statusOfNode(node), targetCount)" @click.stop="onNodeNameClick(node)">
                   <span v-if="STATUS_MARKER[statusOfNode(node)]" class="quest-graph-node-check" aria-hidden="true">{{ STATUS_MARKER[statusOfNode(node)] }}</span>
                   <span class="quest-graph-node-name">{{ node.name }}</span>
                 </button>

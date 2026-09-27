@@ -4412,13 +4412,13 @@ body::after {
 
 /* One prerequisite, absolutely positioned (and, once expanded with skill
    requirements to show, sized) by quest-dependency-graph.js's own layout
-   math. Always a plain <div> now, not itself a click target — it holds two
-   independent buttons instead (quest-graph-node-expand-btn,
-   quest-graph-node-select; see this node's own file's top doc comment for
-   why they're split rather than one button covering the whole node). A
-   column, not a single row, so an expanded node's skills block
-   (quest-graph-node-skills) sits under its header rather than fighting it
-   for width. */
+   math. A click target in its own right — its own background highlights it
+   (onHighlightNode) — alongside two further buttons nested inside
+   (quest-graph-node-expand-btn, quest-graph-node-select; see this node's
+   own file's top doc comment for why all three are split apart rather than
+   one click doing everything). A column, not a single row, so an expanded
+   node's skills block (quest-graph-node-skills) sits under its header
+   rather than fighting it for width. */
 .quest-graph-node {
   position: absolute;
   display: flex;
@@ -4433,7 +4433,14 @@ body::after {
   font-size: 0.68rem;
   color: inherit;
   text-align: left;
-  transition: opacity 0.16s var(--ease);
+  cursor: pointer;
+  transition:
+    opacity 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+
+.quest-graph-node:hover {
+  border-color: var(--brass);
 }
 
 .quest-graph-node-header {
@@ -4486,9 +4493,11 @@ body::after {
   color: var(--ink);
 }
 
-/* The rest of the node — status marker + name — selects it for
-   highlighting (onHighlightNode). flex:1 so its own hover/focus feedback
-   and hit target cover the whole remaining width, not just the name text. */
+/* The status marker + name — jumps to this quest's own quick guide
+   (onNodeNameClick), stopped from also bubbling into the node's own
+   background click underneath (which highlights it instead). flex:1 so its
+   own hover/focus feedback and hit target cover the whole remaining width,
+   not just the name text. */
 .quest-graph-node-select {
   display: flex;
   align-items: center;

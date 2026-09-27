@@ -99,12 +99,24 @@ export const isExpandable = (node: any) => node.hasRequirements || hasSkillRequi
  * just this one) picks the wording for a target node: "selected" reads
  * fine for the ordinary one-quest case, but a questline selection marks
  * every series member as a target at once, so "selected" for all of them
- * would overstate it. */
-export function nodeTitle(node: any, status: string, targetCount: number): string {
-  if (!node.quest) return `${node.name} — not tracked as a quest (e.g. a tutorial area)`;
+ * would overstate it. Shared by nodeNameTitle/nodeBackgroundTitle below,
+ * one per each of a node's own two click targets (QuestDependencyGraph.vue's
+ * own top doc comment) — same status line, different trailing hint for
+ * what that particular click actually does. */
+function nodeStatusLabel(node: any, status: string, targetCount: number): string {
   const statusLabel = status === 'in-progress' ? 'in progress' : status;
   const targetSuffix = node.isTarget ? (targetCount > 1 ? ' — in this questline' : ' — selected') : '';
-  return `${node.name} — ${statusLabel}${targetSuffix} — click to highlight its branch`;
+  return `${node.name} — ${statusLabel}${targetSuffix}`;
+}
+
+export function nodeNameTitle(node: any, status: string, targetCount: number): string {
+  if (!node.quest) return `${node.name} — not tracked as a quest (e.g. a tutorial area)`;
+  return `${nodeStatusLabel(node, status, targetCount)} — click for its quick guide`;
+}
+
+export function nodeBackgroundTitle(node: any, status: string, targetCount: number): string {
+  if (!node.quest) return `${node.name} — not tracked as a quest (e.g. a tutorial area)`;
+  return `${nodeStatusLabel(node, status, targetCount)} — click to highlight its branch`;
 }
 
 export const expandButtonTitle = (node: any) => (node.isExpanded ? 'Collapse' : 'Expand');
