@@ -6,7 +6,6 @@ import { distinctLabelNames, goalSections, itemsFor, orderSectionsByStatus, sect
 import { applyCustomOrder } from '@/lib/goalOrder';
 import { useGoalOrder } from '@/composables/useGoalOrder';
 import GoalCard from '@/components/player/goals/GoalCard.vue';
-import GoalFocusPanel from '@/components/player/goals/GoalFocusPanel.vue';
 import GoalNotes from '@/components/player/goals/GoalNotes.vue';
 
 /**
@@ -26,7 +25,6 @@ const props = defineProps<{
   // viewer has minimized (GoalCard.vue's own per-item toggle) — orthogonal
   // to collapsedGroups, which only ever hides/shows a whole section.
   collapsedItems: Set<string>;
-  focusGoalId: string | null;
   canEdit: boolean;
   // The full quest-data list, for GoalCard.vue's own prerequisite-quest
   // list on a quest goal — same lazily-loaded prop GoalsTab.vue already
@@ -39,15 +37,12 @@ const emit = defineEmits<{
   'update:labelFilter': [value: string];
   toggleGroup: [title: string];
   toggleItem: [id: string];
-  focus: [id: string | null];
   delete: [id: string];
   openGuide: [slug: string];
 }>();
 
 const bySkillId = new Map(SKILLS.map((skill: any) => [skill.id, skill]));
 const labelsByName = computed(() => new Map(props.labels.map((label) => [label.name, label.colour])));
-
-const focusedGoal = computed(() => props.goals.find((goal) => goal.id === props.focusGoalId) ?? null);
 
 const usedLabelNames = computed(() => distinctLabelNames(props.goals));
 const effectiveFilter = computed(() => (usedLabelNames.value.includes(props.labelFilter) ? props.labelFilter : 'all'));
@@ -104,10 +99,6 @@ const sections = computed(() => {
  * to run for every other section too. */
 function orderedItemsFor(section: GoalSection) {
   return applyCustomOrder(itemsFor(section, props.collapsedItems), goalOrder.order.items, (item) => item.quest.id);
-}
-
-function toggleFocus(id: string) {
-  emit('focus', props.focusGoalId === id ? null : id);
 }
 
 /** Drag-and-drop reordering for the list view — plain HTML5 DnD, no
@@ -172,19 +163,6 @@ function onItemDrop(event: DragEvent, section: GoalSection, targetId: string) {
 
     <p v-if="readOnlyHint" class="goals-readonly-hint">{{ readOnlyHint }}</p>
 
-    <GoalFocusPanel
-      v-if="focusedGoal"
-      :goal="focusedGoal"
-      :goals="goals"
-      :by-skill-id="bySkillId"
-      :player="player"
-      :can-edit="canEdit"
-      :focused-id="focusGoalId"
-      @focus="toggleFocus"
-      @delete="(id) => emit('delete', id)"
-      @clear="emit('focus', null)"
-    />
-
     <div v-if="usedLabelNames.length > 0" class="goal-filters">
       <label class="goal-filter">
         <span class="visually-hidden">Filter goals by label</span>
@@ -241,7 +219,6 @@ function onItemDrop(event: DragEvent, section: GoalSection, targetId: string) {
                 :player="player"
                 :labels-by-name="labelsByName"
                 :can-edit="canEdit"
-                :focused-id="focusGoalId"
                 :quests="quests"
                 :collapsed-items="collapsedItems"
                 :draggable="canEdit"
@@ -249,7 +226,6 @@ function onItemDrop(event: DragEvent, section: GoalSection, targetId: string) {
                 @dragstart="onItemDragStart($event, item.quest.id)"
                 @dragover.prevent.stop
                 @drop="onItemDrop($event, section, item.quest.id)"
-                @focus="toggleFocus"
                 @delete="(id) => emit('delete', id)"
                 @open-guide="(slug) => emit('openGuide', slug)"
                 @toggle-item="(id) => emit('toggleItem', id)"

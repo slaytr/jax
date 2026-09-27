@@ -52,8 +52,11 @@ export function useGoals(slug: string) {
     labels.value = readList(labelsKey(slug));
   }
 
+  /** Prepends so a newly set goal shows up first in its own bucket
+   * (GoalsList.vue's orderByStatus keeps active goals in this array's own
+   * order) rather than buried below whatever was already there. */
   function create(drafts: any[]) {
-    goals.value = [...goals.value, ...drafts];
+    goals.value = [...drafts, ...goals.value];
     writeList(goalsKey(slug), goals.value);
   }
 

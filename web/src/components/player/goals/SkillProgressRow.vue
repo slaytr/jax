@@ -11,12 +11,11 @@ import { useTheme } from '@/composables/useTheme';
 /**
  * icon, name, start value, progress bar, goal level, current level,
  * percent — the single-line anatomy every skill goal renders as, whether
- * it's nested under a quest, standing on its own, or shown in the focus
- * panel. A content-only component (no wrapping row element) — the caller
- * supplies that (a card's own `<li>`, a nested `<li class="goal-subgoal-row">`,
- * or the focus panel's `<div>`), same shape as the legacy view's own
- * skillProgressRowContent, which returned a bare array of children for the
- * same reason.
+ * it's nested under a quest or standing on its own. A content-only
+ * component (no wrapping row element) — the caller supplies that (a card's
+ * own `<li>`, or a nested `<li class="goal-subgoal-row">`), same shape as
+ * the legacy view's own skillProgressRowContent, which returned a bare
+ * array of children for the same reason.
  *
  * `showLabel` drops the icon+name — see its own doc comment on the prop.
  */
@@ -37,14 +36,20 @@ const props = withDefaults(
     targetXp: number;
     baseXp: number;
     canEdit: boolean;
-    // Off only for the focus panel's own standalone-skill-goal row
-    // (GoalFocusPanel.vue) — its header already names the one skill this
-    // row is for, so repeating the icon+name right underneath is pure
-    // duplication there. Every other caller (a quest's own list of *distinct*
-    // skill requirements) still wants this on, hence the default.
+    // Off only for a standalone skill goal's own row (GoalCard.vue) — its
+    // card head already names the one skill this row is for, so repeating
+    // the icon+name right underneath is pure duplication there. Every other
+    // caller (a quest's own list of *distinct* skill requirements) still
+    // wants this on, hence the default.
     showLabel?: boolean;
+    // Off only for a quest goal's own nested skill-requirement rows
+    // (GoalCard.vue's orderedChildren) — those mirror the quest's own
+    // requirements rather than a goal the viewer set for themselves, so
+    // there's nothing for a one-off delete to sanely do there. Every other
+    // caller (a standalone skill goal) still wants it.
+    showDelete?: boolean;
   }>(),
-  { showLabel: true },
+  { showLabel: true, showDelete: true },
 );
 
 const emit = defineEmits<{ delete: [] }>();
@@ -131,5 +136,5 @@ function trackTooltip() {
     <span class="goal-subgoal-current" :style="currentColor ? { color: currentColor } : undefined">{{ formatNumber(currentValue) }}</span>
     <span class="goal-subgoal-percent" :style="currentColor ? { color: currentColor } : undefined">{{ percent }}%</span>
   </span>
-  <button v-if="canEdit" type="button" class="goal-card-delete" aria-label="Delete this goal" @click="emit('delete')">×</button>
+  <button v-if="canEdit && showDelete" type="button" class="goal-card-delete" aria-label="Delete this goal" @click="emit('delete')">×</button>
 </template>

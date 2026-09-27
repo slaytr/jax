@@ -35,7 +35,6 @@ export interface StatsPageState {
   // the goal sits standalone in the ungrouped "Skills" bucket or nested as
   // one requirement inside a quest goal's own checklist.
   collapsedGoalItems: string[];
-  focusGoalId: string | null;
   taskSearch: string;
   // Which region/tier the Tasks tab is showing — like questSlug/seriesName
   // below, round-tripped through `?region=`/`?tier=` (not localStorage
@@ -112,7 +111,6 @@ export function useStatsPageState() {
     goalLabelFilter: typeof persisted.goalLabelFilter === 'string' ? persisted.goalLabelFilter : '',
     collapsedGoalGroups: Array.isArray(persisted.collapsedGoalGroups) ? persisted.collapsedGoalGroups : [],
     collapsedGoalItems: Array.isArray(persisted.collapsedGoalItems) ? persisted.collapsedGoalItems : [],
-    focusGoalId: typeof persisted.focusGoalId === 'string' ? persisted.focusGoalId : null,
     taskSearch: typeof persisted.taskSearch === 'string' ? persisted.taskSearch : '',
     taskRegionSlug: queryString(route.query.region),
     taskTier: queryString(route.query.tier),

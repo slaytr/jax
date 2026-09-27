@@ -108,7 +108,8 @@ export function distinctValues(goals: any[], field: string): string[] {
   return [...new Set(goals.map((goal) => goal[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-/** Active ones first (creation order), completed ones shuffled to the
+/** Active ones first (newest-created first — useGoals.ts's own create
+ * prepends), completed ones shuffled to the
  * bottom (most recently finished first) — and, among those, one further
  * split: a completed goal the viewer has minimized (`collapsedIds`, keyed
  * by goal id — GoalCard.vue's own per-item toggle) sinks below every
@@ -218,12 +219,11 @@ export function skillGoalProgress(goal: any, skill: any, player: any, requiremen
   return { currentValue, currentXp, targetXp, baseXp, fraction };
 }
 
-/** One segment of a goal card/focus panel's own " · "-joined meta line
- * (GoalCard.vue's metaParts, GoalFocusPanel.vue's detailParts) — `stat`
- * marks the figures actually worth a glance (xp/levels gained, rate,
- * remaining, ETA) so the template can render those with more visual weight
- * than the plain scheduling context (Started/Completed/Took) sitting next
- * to them in the same line. */
+/** One segment of a goal card's own " · "-joined meta line (GoalCard.vue's
+ * metaParts) — `stat` marks the figures actually worth a glance (xp/levels
+ * gained, rate, remaining, ETA) so the template can render those with more
+ * visual weight than the plain scheduling context (Started/Completed/Took)
+ * sitting next to them in the same line. */
 export interface MetaPart {
   text: string;
   stat?: boolean;

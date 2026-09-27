@@ -65,7 +65,10 @@ function handleGoalSkillSelect(skillId: number) {
 // caches it either way so switching tabs never re-fetches.
 const goalQuestSearch = ref('');
 const goalQuestSort = ref('name');
-const goalQuestStatusFilter = ref('all');
+// Defaults to hiding what's already done — a quest worth "setting as a
+// goal" here is almost always one still outstanding, so starting on the
+// full unfiltered list would bury those under every already-completed quest.
+const goalQuestStatusFilter = ref('not-completed');
 const goalQuestSkillReq = ref('all');
 const newGoalQuest = ref<any | null>(null);
 function handleGoalQuestSelect(quest: any) {

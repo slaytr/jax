@@ -33,30 +33,26 @@ const props = defineProps<{
   player: any;
   labelsByName: Map<string, string>;
   canEdit: boolean;
-  focusedId: string | null;
   // The full quest-data list, just to resolve a quest goal's own slug for
   // its title's link to the Quests tab's quick guide (openGuide, below) —
   // same lazily-loaded prop GoalsList.vue already threads through for
   // GoalsGraph.vue's edges, null until the Goals tab has actually
   // requested it.
   quests: any[] | null;
-  // Completed goal ids the viewer has minimized — this card's own id (a
-  // standalone skill goal) and/or any of its nested requirement children's
-  // ids may be in here. See the minimize toggle below and orderByStatus's
-  // own collapsedIds param (lib/goals.ts), which is what actually sinks a
-  // minimized one below its still-expanded completed siblings.
+  // Completed *standalone* skill goal ids the viewer has minimized — this
+  // card's own id, never one of its nested requirement children (those have
+  // no minimize toggle of their own). See isMinimized below.
   collapsedItems: Set<string>;
 }>();
 
-const emit = defineEmits<{ focus: [id: string]; delete: [id: string]; openGuide: [slug: string]; toggleItem: [id: string] }>();
+const emit = defineEmits<{ delete: [id: string]; openGuide: [slug: string]; toggleItem: [id: string] }>();
 
 const COMPLETED_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const isQuest = computed(() => props.goal.kind === 'quest');
 const skill = computed(() => (isQuest.value ? null : props.bySkillId.get(props.goal.skillId)));
 const complete = computed(() => Boolean(props.goal.completedAt));
-const isFocused = computed(() => props.goal.id === props.focusedId);
-const orderedChildren = computed(() => orderByStatus(props.childGoals ?? [], props.collapsedItems));
+const orderedChildren = computed(() => orderByStatus(props.childGoals ?? []));
 
 // Minimizing only ever applies to a *completed* skill goal — an active one
 // has nothing worth hiding yet, and a quest goal's own card stays as-is
@@ -73,14 +69,17 @@ const questStatus = computed(() => {
 
 const skillProgress = computed(() => (isQuest.value ? null : skillGoalProgress(props.goal, skill.value, props.player, false)));
 
-/** The quest goal's own direct prerequisite quests, each with its live
- * completion status (distinct from orderedChildren above, which is its
- * skill-requirement goals) — null while `quests` hasn't loaded yet or once
- * the goal itself is complete. */
-const requiredQuests = computed(() => (isQuest.value ? requiredQuestsFor(props.goal, props.quests, props.player) : null));
+/** The quest goal's own direct prerequisite quests still outstanding
+ * (requiredQuestsFor, distinct from orderedChildren above, which is its
+ * skill-requirement goals), each with its live completion status — a
+ * finished one is dropped, since it has nothing left to act on. Null while
+ * `quests` hasn't loaded yet or once the goal itself is complete. */
+const outstandingRequiredQuests = computed(() => {
+  if (!isQuest.value) return null;
+  return requiredQuestsFor(props.goal, props.quests, props.player)?.filter((req) => req.status !== 'completed') ?? null;
+});
 
 const REQUIRED_QUEST_STATUS_LABEL: Record<string, string> = {
-  completed: '✓ Done',
   'in-progress': 'In progress',
   'not-started': 'Not started',
 };
@@ -120,21 +119,10 @@ const metaParts = computed<MetaPart[] | null>(() => {
 function childProgress(child: any) {
   return skillGoalProgress(child, props.bySkillId.get(child.skillId), props.player, true);
 }
-
-/** A nested requirement row still sets itself as the tab's one focus goal
- * on click — except a click that actually landed on its own delete button,
- * which handles itself. A top-level card no longer does this (see
- * .goal-card-focus below); only a requirement row nested inside one still
- * uses this. */
-function focusClick(id: string, event: MouseEvent) {
-  if ((event.target as HTMLElement).closest('button, a')) return;
-  event.stopPropagation();
-  emit('focus', id);
-}
 </script>
 
 <template>
-  <li class="goal-card" :class="{ 'is-complete': complete, 'is-focused': isFocused, 'is-minimized': isMinimized }">
+  <li class="goal-card" :class="{ 'is-complete': complete, 'is-minimized': isMinimized }">
     <template v-if="isQuest">
       <div class="goal-card-head">
         <img class="goal-card-icon" :src="QUEST_POINTS_ICON" alt="" width="18" height="18" decoding="async" />
@@ -146,21 +134,6 @@ function focusClick(id: string, event: MouseEvent) {
           @click="emit('openGuide', questSlug)"
         >{{ goal.questName }}</button>
         <span v-else class="goal-card-name">{{ goal.questName }}</span>
-        <button
-          type="button"
-          class="goal-card-focus"
-          :class="{ 'is-focused': isFocused }"
-          :aria-pressed="isFocused"
-          :title="isFocused ? 'Unfocus this goal' : 'Focus this goal'"
-          @click="emit('focus', goal.id)"
-        >
-          <svg class="goal-card-focus-icon" viewBox="0 0 384 512" aria-hidden="true" focusable="false">
-            <path
-              d="M32 32C32 14.3 46.3 0 64 0L320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-29.5 0 11.4 148.2c36.7 19.9 65.7 53.2 79.5 94.7l1 3c3.3 9.8 1.6 20.5-4.4 28.8s-15.7 13.3-26 13.3L32 352c-10.3 0-19.9-4.9-26-13.3s-7.7-19.1-4.4-28.8l1-3c13.8-41.5 42.8-74.8 79.5-94.7L93.5 64 64 64C46.3 64 32 49.7 32 32zM160 384l64 0 0 96c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-96z"
-            />
-          </svg>
-          <span class="visually-hidden">{{ isFocused ? 'Unfocus' : 'Focus' }} this goal</span>
-        </button>
         <a
           class="goal-card-wiki-link"
           :href="questWikiUrl(goal.questName)"
@@ -191,7 +164,7 @@ function focusClick(id: string, event: MouseEvent) {
     </template>
 
     <template v-else-if="!complete">
-      <div class="goal-subgoal-row is-static">
+      <div class="goal-subgoal-row">
         <img class="goal-subgoal-icon" :src="iconFor(skill)" alt="" width="16" height="16" decoding="async" />
         <span class="goal-subgoal-name">{{ skill!.name }}</span>
         <SkillProgressRow
@@ -222,6 +195,7 @@ function focusClick(id: string, event: MouseEvent) {
         <img class="goal-card-icon" :src="iconFor(skill)" alt="" width="18" height="18" decoding="async" />
         <span class="goal-card-name">{{ skill!.name }}</span>
         <span class="goal-card-target">✓ {{ goalTargetLabel(goal) }}</span>
+        <span class="goal-card-head-spacer" />
         <button
           type="button"
           class="goal-card-minimize"
@@ -245,17 +219,27 @@ function focusClick(id: string, event: MouseEvent) {
       </p>
     </template>
 
-    <ul v-if="isQuest && requiredQuests && requiredQuests.length" class="goal-subgoals goal-required-quests">
+    <ul v-if="isQuest && outstandingRequiredQuests && outstandingRequiredQuests.length" class="goal-subgoals goal-required-quests">
       <li
-        v-for="req in requiredQuests"
+        v-for="req in outstandingRequiredQuests"
         :key="req.name"
         class="goal-required-quest-row"
-        :class="{ 'is-complete': req.status === 'completed' }"
       >
         <img class="goal-subgoal-icon" :src="QUEST_POINTS_ICON" alt="" width="16" height="16" decoding="async" />
         <span class="goal-required-quest-name">{{ req.name }}</span>
         <span class="goal-card-head-spacer" />
         <span class="goal-required-quest-status">{{ REQUIRED_QUEST_STATUS_LABEL[req.status] }}</span>
+        <a
+          class="goal-card-wiki-link"
+          :href="questWikiUrl(req.name)"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-label="`Open ${req.name} quick guide on the wiki`"
+          title="Quick guide (wiki)"
+          @click.stop
+        >
+          <img :src="WIKI_ICON" alt="" width="14" height="14" decoding="async" />
+        </a>
       </li>
     </ul>
 
@@ -264,17 +248,9 @@ function focusClick(id: string, event: MouseEvent) {
         v-for="child in orderedChildren"
         :key="child.id"
         class="goal-subgoal-row"
-        :class="{ 'is-complete': child.completedAt, 'is-focused': child.id === focusedId, 'is-minimized': collapsedItems.has(child.id) }"
-        @click="focusClick(child.id, $event)"
+        :class="{ 'is-complete': child.completedAt }"
       >
-        <template v-if="child.completedAt && collapsedItems.has(child.id)">
-          <img class="goal-subgoal-icon" :src="iconFor(bySkillId.get(child.skillId))" alt="" width="16" height="16" decoding="async" />
-          <span class="goal-subgoal-name">{{ bySkillId.get(child.skillId)?.name }}</span>
-          <span class="goal-card-head-spacer" />
-          <span class="goal-subgoal-figures">✓ {{ formatNumber(child.targetValue) }}</span>
-        </template>
         <SkillProgressRow
-          v-else
           :goal="child"
           :skill="bySkillId.get(child.skillId)"
           :start-value="startValueOf(child)"
@@ -285,22 +261,8 @@ function focusClick(id: string, event: MouseEvent) {
           :target-xp="childProgress(child).targetXp"
           :base-xp="childProgress(child).baseXp"
           :can-edit="canEdit"
-          @delete="emit('delete', child.id)"
+          :show-delete="false"
         />
-        <button
-          type="button"
-          class="goal-card-minimize"
-          :class="{ 'is-invisible': !child.completedAt }"
-          :disabled="!child.completedAt"
-          :tabindex="child.completedAt ? 0 : -1"
-          :aria-hidden="!child.completedAt"
-          :aria-expanded="collapsedItems.has(child.id) ? 'false' : 'true'"
-          :title="collapsedItems.has(child.id) ? 'Expand this goal' : 'Minimize this goal'"
-          @click="emit('toggleItem', child.id)"
-        >
-          <span class="goal-card-minimize-chevron" aria-hidden="true" />
-          <span class="visually-hidden">{{ collapsedItems.has(child.id) ? 'Expand' : 'Minimize' }} this goal</span>
-        </button>
       </li>
     </ul>
   </li>

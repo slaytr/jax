@@ -78,10 +78,6 @@ function toggleItem(id: string) {
   props.statsState.collapsedGoalItems = [...next];
 }
 
-function focusGoal(id: string | null) {
-  props.statsState.focusGoalId = id;
-}
-
 const deleteTargetId = ref<string | null>(null);
 const deleteTarget = computed(() => goals.value.find((goal) => goal.id === deleteTargetId.value) ?? null);
 const deleteTargetSkill = computed(() => (deleteTarget.value && deleteTarget.value.kind !== 'quest' ? bySkillId.get(deleteTarget.value.skillId) ?? null : null));
@@ -91,7 +87,6 @@ function requestDelete(id: string) {
 }
 function confirmDelete() {
   if (!deleteTarget.value) return;
-  if (props.statsState.focusGoalId === deleteTarget.value.id) props.statsState.focusGoalId = null;
   remove(deleteTarget.value.id);
 }
 
@@ -144,13 +139,11 @@ function handleConfirmQuestGoal(drafts: any[]) {
     :label-filter="statsState.goalLabelFilter"
     :collapsed-groups="collapsedGroupsSet"
     :collapsed-items="collapsedItemsSet"
-    :focus-goal-id="statsState.focusGoalId"
     :can-edit="canEdit"
     :quests="quests"
     @update:label-filter="(v) => (statsState.goalLabelFilter = v)"
     @toggle-group="toggleGroup"
     @toggle-item="toggleItem"
-    @focus="focusGoal"
     @delete="requestDelete"
     @open-guide="(slug) => emit('openGuide', slug)"
   />

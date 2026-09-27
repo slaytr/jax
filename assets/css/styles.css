@@ -2688,10 +2688,9 @@ body::after {
    CC BY 4.0 — https://fontawesome.com/license/free), reused verbatim
    rather than freehanded: a hand-drawn attempt at this exact silhouette
    kept reading as a stray loop-and-slash at these sizes, where a settled,
-   professionally-drawn glyph just reads correctly. Same icon at all three
-   pin spots on this page (.quest-series-link-pin, .goal-card-focus-icon),
-   each at its own size — 384:512 is a 3:4 ratio, so width is always 0.75×
-   height. */
+   professionally-drawn glyph just reads correctly. Same icon at every pin
+   spot on this page (.quest-series-link-pin among them), each at its own
+   size — 384:512 is a 3:4 ratio, so width is always 0.75× height. */
 .pin-mode-icon {
   width: 9px;
   height: 12px;
@@ -4796,55 +4795,6 @@ body::after {
   outline-offset: -2px;
 }
 
-/* The one goal a click anywhere in the list below has picked out
-   (renderFocusGoal, player-goals.js) — its own block above the label
-   filter and the list itself. A brass border (the site's existing
-   highlight colour, not a new one) marks it as distinct from an ordinary
-   .goal-card rather than just another entry in the list. */
-.goal-focus {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--brass);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-
-.goal-focus.is-complete {
-  border-color: var(--gain-bg);
-}
-
-.goal-focus-head {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.goal-focus-eyebrow {
-  flex: none;
-  color: var(--medal-gold);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-/* "Requirement for <Quest>" — only shown for a nested requirement's own
-   focus panel, so a viewer who focused it straight from a quest's
-   checklist still knows which quest it belongs to. */
-.goal-focus-context {
-  flex: none;
-  max-width: 40%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-muted);
-  font-size: 0.68rem;
-}
-
 /* The list view's own two columns (GoalsList.vue's `columns`) — standalone
    skill goals on the left, every quest (with its own nested requirement
    checklist) on the right. minmax(0, 1fr), not 1fr alone, so a long quest
@@ -5005,9 +4955,7 @@ body::after {
 }
 
 /* Draggable, to reorder it within its own list (GoalsList.vue's own
-   onItemDragStart) — :active swaps to a grabbing cursor for that. Setting
-   it as the toolbar's one focus goal (renderFocusGoal, .goal-focus below)
-   is the pin button's job now (.goal-card-focus), not a whole-card click. */
+   onItemDragStart) — :active swaps to a grabbing cursor for that. */
 .goal-card:active {
   cursor: grabbing;
 }
@@ -5031,11 +4979,6 @@ body::after {
   border-color: var(--gain-bg);
 }
 
-.goal-card.is-focused {
-  border-color: var(--brass);
-  background: var(--surface-2);
-}
-
 /* A quest goal's own skill-requirement goals (buildQuestGoalDrafts,
    quest-goal.js), nested inside its <li> rather than listed as flat
    siblings — set off under a dashed divider so the checklist reads as
@@ -5055,7 +4998,8 @@ body::after {
 /* One requirement per line — icon, name, and its own progress bar together,
    target/✓ and delete trailing — dense on purpose, unlike a full goal-card's
    separate head/progress/meta rows (compactSkillGoalRow, player-goals.js).
-   Clickable, same as .goal-card — see toggleFocus. */
+   Also doubles as a top-level active-skill-goal card's own single row
+   (GoalCard.vue), just for the layout (icon/name/bar alignment). */
 .goal-subgoal-row {
   display: flex;
   align-items: center;
@@ -5063,30 +5007,6 @@ body::after {
   padding: 0.1rem 0.3rem;
   margin: -0.1rem -0.3rem;
   border-radius: var(--radius);
-  cursor: pointer;
-  transition: background-color 0.14s var(--ease);
-}
-
-.goal-subgoal-row:hover {
-  background: var(--surface-2);
-}
-
-/* A top-level active-skill-goal card renders its one row with this same
-   class for the layout (icon/name/bar alignment), but — unlike a nested
-   requirement row — nothing here is click-to-focus any more (the pin
-   button is), so it shouldn't invite a click the way its cursor/hover
-   would otherwise suggest. */
-.goal-subgoal-row.is-static {
-  cursor: default;
-}
-
-.goal-subgoal-row.is-static:hover {
-  background: none;
-}
-
-.goal-subgoal-row.is-focused {
-  background: var(--surface-2);
-  box-shadow: inset 2px 0 0 var(--brass);
 }
 
 .goal-subgoal-icon {
@@ -5205,32 +5125,12 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
-/* A collapsed completed quest child's own single figure (GoalCard.vue),
-   which has no separate goal/current split since it's not showing a live
-   progress row at all — same fixed-width reasoning as .goal-subgoal-start,
-   just enough for a big xp goal's own "13,034,431" (measured, not guessed:
-   ~3.9rem at this font/size) without pushing the bar around; overflow
-   falls back to an ellipsis for anything longer. */
-.goal-subgoal-figures {
-  flex: none;
-  width: 4rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-  color: var(--ink-2);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Shrinks to fit its own digits instead of claiming a wide fixed column,
    so a typical short level goal's target doesn't sit pinned to the far end
-   of a mostly-empty box. max-width still caps a rare huge xp goal at the
-   same ~4rem .goal-subgoal-figures uses, falling back to an ellipsis
-   instead of stretching the row or widening every other row's bar to
-   match. Right-aligned so a genuinely-clipped one still trails off the
-   same direction as everything else here. */
+   of a mostly-empty box. max-width caps a rare huge xp goal at ~4rem,
+   falling back to an ellipsis instead of stretching the row or widening
+   every other row's bar to match. Right-aligned so a genuinely-clipped one
+   still trails off the same direction as everything else here. */
 .goal-subgoal-target {
   flex: none;
   width: auto;
@@ -5294,11 +5194,9 @@ body::after {
    off the progress bar's own gradient at its filled edge, so the figure
    always matches whatever colour the bar itself is currently showing.
    This is just the fallback for a goal type the bar doesn't apply to
-   (none today) and the base for .goal-subgoal-figures, which has no bar of
-   its own to sample from. */
+   (none today). */
 .goal-subgoal-row.is-complete .goal-subgoal-percent,
-.goal-subgoal-row.is-complete .goal-subgoal-current,
-.goal-subgoal-row.is-complete .goal-subgoal-figures {
+.goal-subgoal-row.is-complete .goal-subgoal-current {
   color: var(--gain);
 }
 
@@ -5308,11 +5206,12 @@ body::after {
   font-size: 0.85rem;
 }
 
-/* A quest goal's own prerequisite *quests* (requiredQuestsFor, lib/goals.ts)
-   — distinct from .goal-subgoal-row above, which is a nested skill
-   requirement. Shares .goal-subgoals for the dashed-divider container but
-   gets its own row: no progress bar, just a name and a live status ticked
-   off (green, struck through) the moment RuneMetrics reports it done. */
+/* A quest goal's own outstanding prerequisite *quests* (requiredQuestsFor,
+   lib/goals.ts) — distinct from .goal-subgoal-row above, which is a nested
+   skill requirement. Shares .goal-subgoals for the dashed-divider container
+   but gets its own row: no progress bar, just a name, a live status, and a
+   wiki link — a requirement drops off this list entirely once done, rather
+   than sticking around ticked off. */
 .goal-required-quest-row {
   display: flex;
   align-items: center;
@@ -5331,20 +5230,11 @@ body::after {
   color: var(--ink-2);
 }
 
-.goal-required-quest-row.is-complete .goal-required-quest-name {
-  color: var(--ink-muted);
-  text-decoration: line-through;
-}
-
 .goal-required-quest-status {
   flex: none;
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: 0.66rem;
-}
-
-.goal-required-quest-row.is-complete .goal-required-quest-status {
-  color: var(--gain);
 }
 
 .goal-card-head {
@@ -5412,50 +5302,11 @@ body::after {
   outline-offset: 2px;
 }
 
-/* The pin-to-focus button that replaced whole-card-click focusing — sits
-   right after the name (GoalCard.vue), same quiet-until-hovered treatment
-   as .goal-card-wiki-link, but its own colour once actually pinned so the
-   currently-focused card's own icon reads as "on" at a glance among a list
-   of otherwise-identical grey pins. */
-.goal-card-focus {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--ink-muted);
-  opacity: 0.55;
-  cursor: pointer;
-}
-
-.goal-card-focus:hover,
-.goal-card-focus:focus-visible {
-  opacity: 1;
-}
-
-.goal-card-focus:focus-visible {
-  outline: 2px solid var(--ember);
-  outline-offset: 2px;
-}
-
-.goal-card-focus.is-focused {
-  opacity: 1;
-  color: var(--brass);
-}
-
-.goal-card-focus-icon {
-  width: 10px;
-  height: 13px;
-  fill: currentColor;
-}
-
-/* A completed goal's own minimize toggle (GoalCard.vue) — sits beside the
-   focus pin, same quiet-until-hovered treatment, collapsing the card (or,
-   nested under a quest, just that one requirement row) down to its bare
-   head line. Same disclosure-triangle language as .goal-group-chevron, just
-   scaled to sit inline among the other per-goal icon buttons rather than
-   leading a section heading. */
+/* A completed goal's own minimize toggle (GoalCard.vue) — same
+   quiet-until-hovered treatment as .goal-card-wiki-link, collapsing the
+   card down to its bare head line. Same disclosure-triangle language as
+   .goal-group-chevron, just scaled to sit inline among the other per-goal
+   icon buttons rather than leading a section heading. */
 .goal-card-minimize {
   display: inline-flex;
   flex: none;
@@ -5487,44 +5338,19 @@ body::after {
   transition: transform 0.14s var(--ease);
 }
 
-.goal-card.is-minimized .goal-card-minimize-chevron,
-.goal-subgoal-row.is-minimized .goal-card-minimize-chevron {
+.goal-card.is-minimized .goal-card-minimize-chevron {
   transform: rotate(0deg);
 }
 
-.goal-card:not(.is-minimized) .goal-card-minimize-chevron,
-.goal-subgoal-row:not(.is-minimized) .goal-card-minimize-chevron {
+.goal-card:not(.is-minimized) .goal-card-minimize-chevron {
   transform: rotate(90deg);
 }
 
-/* A minimized card/row reads as tucked away, same muted treatment a
-   collapsed .goal-group gets — its head line (name + ✓) still stays at full
+/* A minimized card reads as tucked away, same muted treatment a collapsed
+   .goal-group gets — its head line (name + ✓) still stays at full
    legibility, only the surrounding chrome dims. */
-.goal-card.is-minimized,
-.goal-subgoal-row.is-minimized {
+.goal-card.is-minimized {
   opacity: 0.7;
-}
-
-.goal-subgoal-row .goal-card-minimize {
-  width: 1.1rem;
-  height: 1.1rem;
-  justify-content: center;
-}
-
-/* An active requirement row's own minimize button (GoalCard.vue — always
-   rendered now, not just v-if="child.completedAt") stays in the flex flow
-   invisibly rather than dropping out of it entirely: SkillProgressRow's own
-   .goal-subgoal-track is flex:1, so an active row missing this fixed-width
-   sibling used to have its track stretch further than a completed row's
-   own (shrunk by that extra button) — the two read as different widths
-   sitting right on top of each other in the same checklist. Reserving the
-   same space either way keeps every row's bar the same width regardless of
-   completion. pointer-events: none (on top of the button's own `disabled`)
-   so a click here still falls through to the row's own focusClick instead
-   of landing on dead space. */
-.goal-subgoal-row .goal-card-minimize.is-invisible {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* Soaks up the gap between the name/current-level cluster on the left and
