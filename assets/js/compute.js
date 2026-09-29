@@ -291,6 +291,26 @@ function snapshotAtOrBefore(snapshots, cutoff) {
 }
 
 /**
+ * A single player's own value under `field` ('p'/'l'/'q'), from the newest
+ * snapshot at or before `atOrBeforeT` that actually carries it — not just
+ * whatever snapshot is group-wide newest. A manual single-player refresh
+ * (POST /api/players/:slug/refresh) inserts a snapshot containing only that
+ * one player, so the moment it becomes the newest snapshot overall, every
+ * other player would otherwise look like they vanished rather than simply
+ * being carried forward from their own last known reading. `undefined` when
+ * no snapshot at or before that time has this player's data at all.
+ */
+function fieldValueAtOrBefore(snapshots, field, slug, atOrBeforeT) {
+  for (let i = snapshots.length - 1; i >= 0; i -= 1) {
+    const snapshot = snapshots[i];
+    if (snapshot.t > atOrBeforeT) continue;
+    const value = snapshot[field]?.[slug];
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
  * XP gained per player over a window. Index 0 of a snapshot vector is Overall,
  * so it is the total; indices 1+ are the individual skills.
  *
@@ -307,7 +327,7 @@ export function computeGains(snapshots, players, window, { asOf } = {}) {
   const hasSpan = Boolean(current && baseline && current.t > baseline.t);
 
   const rows = players.map((player) => {
-    const now = current?.p?.[player.slug];
+    const now = current ? fieldValueAtOrBefore(snapshots, 'p', player.slug, current.t) : undefined;
     const then = baseline?.p?.[player.slug];
     const total = hasSpan && now && then ? Math.max(0, (now[0] ?? 0) - (then[0] ?? 0)) : 0;
 
@@ -357,7 +377,7 @@ export function computeQuestGains(snapshots, players, window, { asOf } = {}) {
   const spanSeconds = hasSpan ? current.t - baseline.t : 0;
 
   const rows = players.map((player) => {
-    const now = current?.q?.[player.slug];
+    const now = current ? fieldValueAtOrBefore(withQuests, 'q', player.slug, current.t) : undefined;
     const then = baseline?.q?.[player.slug];
     const gained = hasSpan && Number.isFinite(now) && Number.isFinite(then) ? Math.max(0, now - then) : 0;
     return { player, gained };
@@ -412,7 +432,7 @@ export function computeLevelGains(snapshots, players, window = 86400, { asOf } =
   if (baseline.t === current.t) return empty();
 
   const perPlayer = players.map((player) => {
-    const now = current.l[player.slug];
+    const now = fieldValueAtOrBefore(levelled, 'l', player.slug, current.t);
     const then = baseline.l[player.slug];
 
     const bySkill = {};
@@ -592,19 +612,19 @@ export function computeGainsSeries(snapshots, players, window, metric, { relativ
  * ignored for that metric.
  */
 export function computeDailyBreakdown(snapshots, slug, metric, days = 7, skillId = 0) {
-  const valueAt = (snapshot) => {
-    if (metric === 'xp') return snapshot?.p?.[slug]?.[skillId] ?? null;
-    if (metric === 'level') return snapshot?.l?.[slug]?.[skillId] ?? null;
-    if (metric === 'quests') return Number.isFinite(snapshot?.q?.[slug]) ? snapshot.q[slug] : null;
-    return null;
-  };
+  const field = metric === 'xp' ? 'p' : metric === 'level' ? 'l' : metric === 'quests' ? 'q' : null;
 
   const current = latestSnapshot(snapshots);
   if (!current) return [];
 
   const today = utcDayStart(current.t);
   const earliest = snapshots[0].t;
-  const valueAtOrBefore = (cutoff) => valueAt(snapshotAtOrBefore(snapshots, cutoff));
+  const valueAtOrBefore = (cutoff) => {
+    if (!field) return null;
+    const raw = fieldValueAtOrBefore(snapshots, field, slug, cutoff);
+    if (raw === undefined) return null;
+    return metric === 'quests' ? (Number.isFinite(raw) ? raw : null) : (raw?.[skillId] ?? null);
+  };
 
   const entries = [];
   for (let i = days - 1; i >= 0; i -= 1) {
