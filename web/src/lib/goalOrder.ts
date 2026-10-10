@@ -10,12 +10,13 @@
 
 /** Sorts `items` by their position in `order` — anything `order` doesn't
  * name (a goal created since the viewer last reordered, say) keeps its own
- * original relative position, sorting after everything `order` does know
- * about. A stable sort (guaranteed since ES2019), so two items neither one
- * names never swap relative to each other just from calling this. */
+ * original relative position, sorting before everything `order` does know
+ * about (so a newly added goal lands at the top). A stable sort (guaranteed
+ * since ES2019), so two items neither one names never swap relative to each
+ * other just from calling this. */
 export function applyCustomOrder<T>(items: T[], order: string[], idOf: (item: T) => string): T[] {
   const indexOf = new Map(order.map((id, i) => [id, i]));
-  const rank = (item: T) => indexOf.get(idOf(item)) ?? Infinity;
+  const rank = (item: T) => indexOf.get(idOf(item)) ?? -1;
   return [...items].sort((a, b) => rank(a) - rank(b));
 }
 

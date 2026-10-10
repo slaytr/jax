@@ -8,9 +8,9 @@ describe('applyCustomOrder', () => {
     expect(applyCustomOrder(items, ['c', 'a', 'b'], (i) => i.id).map((i) => i.id)).toEqual(['c', 'a', 'b']);
   });
 
-  it('leaves an unnamed item after every named one, in its own original relative order', () => {
+  it('puts an unnamed item before every named one, in its own original relative order', () => {
     const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
-    expect(applyCustomOrder(items, ['b'], (i) => i.id).map((i) => i.id)).toEqual(['b', 'a', 'c']);
+    expect(applyCustomOrder(items, ['b'], (i) => i.id).map((i) => i.id)).toEqual(['a', 'c', 'b']);
   });
 
   it('is a no-op for an empty order', () => {
