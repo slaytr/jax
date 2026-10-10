@@ -4,7 +4,7 @@ import { nextTick, ref, watch } from 'vue';
 import type { GainsPeriod } from '@/lib/gains';
 
 /**
- * Day/Week/Month — the active tab's highlight is a separate sliding block
+ * Day/Week/Month/Year — the active tab's highlight is a separate sliding block
  * rather than a background painted on each button, so switching periods
  * animates as a slide instead of an instant recolour. Ported from the old
  * leaderboards.js's periodToggle, including its two-rAF trick: the browser
@@ -18,6 +18,7 @@ const PERIODS: Array<[GainsPeriod, string]> = [
   ['day', 'Day'],
   ['week', 'Week'],
   ['month', 'Month'],
+  ['year', 'Year'],
 ];
 const periodIndex = (value: GainsPeriod) => PERIODS.findIndex(([v]) => v === value);
 
@@ -37,7 +38,7 @@ watch(period, async (value, previous) => {
 </script>
 
 <template>
-  <div class="tabs" role="tablist" aria-label="Gains period">
+  <div class="tabs tabs-4up" role="tablist" aria-label="Gains period">
     <span class="tabs-indicator" aria-hidden="true" :style="{ transform: `translateX(${indicatorIndex * 100}%)` }" />
     <button
       v-for="[value, label] in PERIODS"

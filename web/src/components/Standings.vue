@@ -14,7 +14,7 @@ import { usePrefs } from '@/composables/usePrefs';
 const props = defineProps<{ players: any[]; gains: AllGains; period: GainsPeriod }>();
 const view = defineModel<GainsView>('view', { required: true });
 
-const PERIOD_LABEL: Record<GainsPeriod, string> = { day: 'today', week: 'this week', month: 'this month' };
+const PERIOD_LABEL: Record<GainsPeriod, string> = { day: 'today', week: 'this week', month: 'this month', year: 'this year' };
 
 // The line view draws in only when it's newly appearing (switching from
 // the grid), not on every re-render — same reasoning as GainsSection's own

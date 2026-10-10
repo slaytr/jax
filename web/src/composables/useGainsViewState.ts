@@ -3,7 +3,8 @@ import { computed, ref, watch } from 'vue';
 import type { GainsPeriod, GainsView } from '@/lib/gains';
 import { usePrefs } from '@/composables/usePrefs';
 
-const isPeriod = (value: unknown): value is GainsPeriod => value === 'day' || value === 'week' || value === 'month';
+const isPeriod = (value: unknown): value is GainsPeriod =>
+  value === 'day' || value === 'week' || value === 'month' || value === 'year';
 const isGainsView = (value: unknown): value is GainsView => value === 'grid' || value === 'line' || value === 'split';
 
 // Same 720px breakpoint PlayerGains.vue's own isMobileViewport reads, and

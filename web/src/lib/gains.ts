@@ -1,11 +1,12 @@
 import { CALENDAR_DAY, computeGains, computeGainsSeries, computeLevelGains, computeQuestGains, utcDayStart } from '@shared/compute.js';
 
-export type GainsPeriod = 'day' | 'week' | 'month';
+export type GainsPeriod = 'day' | 'week' | 'month' | 'year';
 export type GainsView = 'grid' | 'line' | 'split';
 
 const WEEK_SECONDS = 7 * 86400;
 const MONTH_SECONDS = 30 * 86400;
-const PERIOD_WINDOWS: Record<GainsPeriod, any> = { day: CALENDAR_DAY, week: WEEK_SECONDS, month: MONTH_SECONDS };
+const YEAR_SECONDS = 365 * 86400;
+const PERIOD_WINDOWS: Record<GainsPeriod, any> = { day: CALENDAR_DAY, week: WEEK_SECONDS, month: MONTH_SECONDS, year: YEAR_SECONDS };
 
 // The day picker (GainsSection.vue) only ever offers the last 7 calendar
 // days — today (0) through six days ago — same footprint as
@@ -54,7 +55,7 @@ const computeGainsSeriesAsOf = (s: any[], p: any[], metric: string, asOf: number
  * Whichever player currently leads a Gains band (levels/xp/quests), if
  * their own current-period total beats their own total over the
  * immediately preceding period of the same length — yesterday for Day,
- * last week for Week, last month for Month. The Gains grid's own "Hot"
+ * last week for Week, last month for Month, last year for Year. The Gains grid's own "Hot"
  * ribbon (GainsGrid.vue) marks that one entry, red-orange like every other
  * .lb-ribbon that carries no podium/Slacker/Trying colour of its own (see
  * that class' own doc comment in styles.css).
@@ -114,6 +115,7 @@ export function computeAllGains(snapshots: any[], players: any[], dayOffset = 0)
     day: compute(snapshots, players, CALENDAR_DAY),
     week: compute(snapshots, players, WEEK_SECONDS),
     month: compute(snapshots, players, MONTH_SECONDS),
+    year: compute(snapshots, players, YEAR_SECONDS),
   });
 
   const levels = forEachPeriod(computeLevelGains);
@@ -131,6 +133,7 @@ export function computeAllGains(snapshots: any[], players: any[], dayOffset = 0)
     day: hotSlugFor(perPeriod.day, snapshots, players, PERIOD_WINDOWS.day, valueKey, compute),
     week: hotSlugFor(perPeriod.week, snapshots, players, PERIOD_WINDOWS.week, valueKey, compute),
     month: hotSlugFor(perPeriod.month, snapshots, players, PERIOD_WINDOWS.month, valueKey, compute),
+    year: hotSlugFor(perPeriod.year, snapshots, players, PERIOD_WINDOWS.year, valueKey, compute),
   });
 
   const series = {
