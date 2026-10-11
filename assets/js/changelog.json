@@ -1,4 +1,5 @@
 [
+  { "date": "2026-10-11T20:41:38.474Z", "text": "Green and blue stars are now only awarded to the first player to reach level 99 and level 120 in each skill. Thanks Mike!\nAdded silver and bronze star tracking in a new podium feed." },
   { "date": "2026-09-29T00:58:40.782Z", "text": "Fixed daily gains being measured from the first snapshot taken after 0:00 UTC instead of exactly 0:00 UTC to 0:00 UTC. Thanks Sarah for finding the bug!" },
   { "date": "2026-09-27T21:51:24.474Z", "text": "Removed the focus goal feature from the Goals tab.\nThe \"Set Quest Goals\" filter now defaults to \"Not completed\" instead of \"All quests\".\nVarious other quality-of-life updates to the Goals tab." },
   { "date": "2026-09-25T11:52:01.547Z", "text": "Hid the graph view in the Goals tab." },

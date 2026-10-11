@@ -6,9 +6,8 @@ import {
   buildMatrix,
   buildTotalsRow,
   computeLevelGains,
-  eliteMaxedSkillCounts,
   leaderCounts,
-  maxedSkillCounts,
+  holdsMilestone,
   TOTAL_MEASURE,
 } from '@shared/compute.js';
 import { formatNumber, formatRank } from '@shared/format.js';
@@ -59,28 +58,54 @@ const totalLevelGainFor = (slug: string) => levelGains.value.bySlug[slug]?.total
 const skillRows = computed(() => buildMatrix(props.players, 'level', invertLeaders.value));
 const totalsData = computed(() => buildTotalsRow(props.players, invertLeaders.value));
 const leads = computed(() => leaderCounts([...skillRows.value, totalsData.value]));
-const maxed = computed(() => maxedSkillCounts(props.players));
-const elite = computed(() => eliteMaxedSkillCounts(props.players));
 
-function sortRowsFor(rows: any[], slug: string) {
+/** Clicking a player's column steps through these, then clears: that
+ * medal's rows first, then every other row by level. */
+const SORT_MODES = [
+  { key: 'gold', label: 'gold stars', place: 1 },
+  { key: 'silver', label: 'silver stars', place: 2 },
+  { key: 'bronze', label: 'bronze stars', place: 3 },
+] as const;
+type SortMode = (typeof SORT_MODES)[number];
+
+// An index, not the mode object itself: a ref wraps objects in a reactive
+// proxy, so indexOf(sortMode.value) against SORT_MODES would never match.
+const sortModeIndex = ref(0);
+const sortMode = computed<SortMode>(() => SORT_MODES[sortModeIndex.value]);
+
+function sortRowsFor(rows: any[], slug: string, mode: SortMode) {
   const cellFor = (row: any) => row.cells.find((cell: any) => cell.player.slug === slug);
   const direction = invertLeaders.value ? -1 : 1;
+  // Only the chosen medal's rows jump the queue; every other row ties here
+  // and falls through to level order.
+  const rankOf = (cell: any) => (cell.place === mode.place ? 0 : 1);
   return [...rows].sort((a, b) => {
     const left = cellFor(a);
     const right = cellFor(b);
     if (!left || !right) return 0;
     return (
-      Number(right.isLeader) - Number(left.isLeader) ||
+      rankOf(left) - rankOf(right) ||
       direction * (right.level - left.level) ||
       direction * (right.xp - left.xp)
     );
   });
 }
 
-const orderedRows = computed(() => (sortedBy.value ? sortRowsFor(skillRows.value, sortedBy.value) : skillRows.value));
+const orderedRows = computed(() =>
+  sortedBy.value ? sortRowsFor(skillRows.value, sortedBy.value, sortMode.value) : skillRows.value,
+);
+
+/** What the next click on the sorted column does, for its hint text. */
+const nextSortLabel = computed(() => SORT_MODES[sortModeIndex.value + 1]?.label ?? 'no sorting');
 
 function toggleSort(slug: string) {
-  sortedBy.value = sortedBy.value === slug ? null : slug;
+  if (sortedBy.value !== slug) {
+    sortedBy.value = slug;
+    sortModeIndex.value = 0;
+    return;
+  }
+  if (sortModeIndex.value + 1 < SORT_MODES.length) sortModeIndex.value += 1;
+  else sortedBy.value = null;
 }
 
 /** One star + count, or five stars for the CONSOLATION_STARS_SLUG shutout. */
@@ -167,7 +192,8 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
       <p class="matrix-note">
         <template v-if="view !== 'table'">Click a skill in any grid to highlight it across every player.</template>
         <template v-else-if="sortedBy">
-          Sorted by {{ players.find((p) => p.slug === sortedBy)?.name }} — click the column again to reset.
+          Sorted by {{ players.find((p) => p.slug === sortedBy)?.name }}'s {{ sortMode.label }} — click the column again
+          for {{ nextSortLabel }}.
         </template>
         <template v-else>
           Click a player column to sort by their {{ invertLeaders ? 'weakest' : 'best' }} skills. Hover a cell for
@@ -209,7 +235,7 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
               <button
                 type="button"
                 class="player-sort"
-                :title="sortedBy === player.slug ? 'Clear sorting' : `Sort by ${player.name}'s ${invertLeaders ? 'weakest' : 'best'} skills`"
+                :title="sortedBy === player.slug ? `Sorted by ${sortMode.label} — click for ${nextSortLabel}` : `Sort by ${player.name}'s ${invertLeaders ? 'weakest' : 'best'} skills`"
                 @click="toggleSort(player.slug)"
               >
                 <span class="player-name">
@@ -221,16 +247,6 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                     <span v-for="n in leadsStars(player.slug, leads[player.slug] ?? 0)" :key="n" class="player-leads-star" aria-hidden="true">★</span>
                     <span aria-hidden="true">{{ formatNumber(leads[player.slug] ?? 0) }}</span>
                     <span class="visually-hidden">{{ invertLeaders ? 'Trails' : 'Leads' }} {{ formatNumber(leads[player.slug] ?? 0) }} rows</span>
-                  </span>
-                  <span v-if="(maxed[player.slug] ?? 0) > 0" class="player-maxed has-maxed">
-                    <span class="player-maxed-star" aria-hidden="true">★</span>
-                    <span aria-hidden="true">{{ formatNumber(maxed[player.slug]) }}</span>
-                    <span class="visually-hidden">{{ formatNumber(maxed[player.slug]) }} skills maxed at level 99</span>
-                  </span>
-                  <span v-if="(elite[player.slug] ?? 0) > 0" class="player-elite has-elite">
-                    <span class="player-elite-star" aria-hidden="true">★</span>
-                    <span aria-hidden="true">{{ formatNumber(elite[player.slug]) }}</span>
-                    <span class="visually-hidden">{{ formatNumber(elite[player.slug]) }} skills maxed at level 120</span>
                   </span>
                 </span>
               </button>
@@ -256,8 +272,10 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-level">
                   <span class="cell-primary">{{ formatNumber(cell.level) }}</span>
                   <span v-if="cell.isLeader" class="cell-star" aria-hidden="true">★</span>
-                  <span v-if="cell.level >= 99 && cell.level < 120" class="cell-star cell-star-maxed" aria-hidden="true">★</span>
-                  <span v-if="cell.level >= 120" class="cell-star cell-star-elite" aria-hidden="true">★</span>
+                  <span v-else-if="cell.place === 2" class="cell-star cell-star-silver" aria-hidden="true">★</span>
+                  <span v-else-if="cell.place === 3" class="cell-star cell-star-bronze" aria-hidden="true">★</span>
+                  <span v-if="holdsMilestone(cell.player, row.skill.id, 99)" class="cell-star cell-star-maxed" aria-hidden="true">★</span>
+                  <span v-if="holdsMilestone(cell.player, row.skill.id, 120)" class="cell-star cell-star-elite" aria-hidden="true">★</span>
                 </span>
                 <span v-if="gainFor(cell.player.slug, row.skill.id) > 0" class="chip-up cell-gain">
                   <span>+{{ gainFor(cell.player.slug, row.skill.id) }}</span>
@@ -268,8 +286,10 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-rule-fill" :style="{ width: `${(cell.share * 100).toFixed(1)}%` }" />
               </span>
               <span v-if="cell.isLeader" class="visually-hidden"> — group leader</span>
-              <span v-if="cell.level >= 99 && cell.level < 120" class="visually-hidden"> — maxed at level 99</span>
-              <span v-if="cell.level >= 120" class="visually-hidden"> — maxed at level 120</span>
+              <span v-else-if="cell.place === 2" class="visually-hidden"> — second place</span>
+              <span v-else-if="cell.place === 3" class="visually-hidden"> — third place</span>
+              <span v-if="holdsMilestone(cell.player, row.skill.id, 99)" class="visually-hidden"> — first in the group to level 99</span>
+              <span v-if="holdsMilestone(cell.player, row.skill.id, 120)" class="visually-hidden"> — first in the group to level 120</span>
             </td>
           </tr>
           <tr class="row-total">
@@ -289,6 +309,8 @@ function cellTooltip(cell: any, skill: any, levelsGained: number) {
                 <span class="cell-level">
                   <span class="cell-primary">{{ formatNumber(cell.level) }}</span>
                   <span v-if="cell.isLeader" class="cell-star" aria-hidden="true">★</span>
+                  <span v-else-if="cell.place === 2" class="cell-star cell-star-silver" aria-hidden="true">★</span>
+                  <span v-else-if="cell.place === 3" class="cell-star cell-star-bronze" aria-hidden="true">★</span>
                 </span>
                 <span v-if="totalLevelGainFor(cell.player.slug) > 0" class="chip-up cell-gain">
                   <span>+{{ totalLevelGainFor(cell.player.slug) }}</span>

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { buildMatrix, buildTotalsRow, computeDailyBreakdown, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts } from '@shared/compute.js';
+import {
+  buildMatrix,
+  buildTotalsRow,
+  computeDailyBreakdown,
+  leaderCounts,
+  podiumCounts,
+} from '@shared/compute.js';
 import { el } from '@shared/dom.js';
 import { formatCompact, formatNumber, formatRelativeTime, formatWeekday } from '@shared/format.js';
 import { QUEST_POINTS_ICON, SKILLS, iconFor } from '@shared/config.js';
@@ -66,15 +72,6 @@ const activityFeed = computed(() =>
  * shown here too so a name in the feed carries that same context without
  * having to go check the table below. */
 const leads = computed(() => leaderCounts([...buildMatrix(props.players, 'level'), buildTotalsRow(props.players)]));
-
-/** Skills each player has maxed at level 99 — same green star as the Skill
- * Leaderboard's own column header (SkillMatrix.vue's .player-maxed), shown
- * here too so a name in the feed carries that same context. */
-const maxed = computed(() => maxedSkillCounts(props.players));
-
-/** Skills each player has pushed to level 120 — the blue-star tier above
- * `maxed`, shown as its own badge (SkillMatrix.vue's `.player-elite`). */
-const elite = computed(() => eliteMaxedSkillCounts(props.players));
 
 function activityTooltip(entry: (typeof activityFeed.value)[number]) {
   return () =>
@@ -223,16 +220,59 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
 }
 
 /**
- * The two right-hand columns rotate between two slides: the activity feed
- * and changelog side by side, then the players' sprite cards across the
- * full double width. Auto-advances on a
+ * The Podium: gold / silver / bronze finishes (1st / 2nd / 3rd by level in a
+ * skill row, Total row included) per player. One card per medal, naming the
+ * player with the most of that medal — every card still shows that player's
+ * full gold / silver / bronze line, with the card's own medal drawn larger.
+ * Ties on the featured medal fall to gold, then silver, then bronze counts,
+ * then roster order.
+ */
+const PODIUM_MEDALS = [
+  { key: 'gold' as const, label: 'Gold', place: '1st' },
+  { key: 'silver' as const, label: 'Silver', place: '2nd' },
+  { key: 'bronze' as const, label: 'Bronze', place: '3rd' },
+];
+
+const podiumCards = computed(() => {
+  const counts = podiumCounts([...buildMatrix(props.players, 'level'), buildTotalsRow(props.players)]);
+  const countsFor = (slug: string) => counts[slug] ?? { gold: 0, silver: 0, bronze: 0 };
+
+  return PODIUM_MEDALS.map((medal) => {
+    const ranked = props.players
+      .filter((player) => countsFor(player.slug)[medal.key] > 0)
+      .sort((a, b) => {
+        const left = countsFor(a.slug);
+        const right = countsFor(b.slug);
+        return right[medal.key] - left[medal.key] || right.gold - left.gold || right.silver - left.silver || right.bronze - left.bronze;
+      });
+    const player = ranked[0] ?? null;
+    return { ...medal, player, counts: player ? countsFor(player.slug) : null };
+  });
+});
+
+function podiumTooltip(card: (typeof podiumCards.value)[number]) {
+  return () => {
+    if (!card.player || !card.counts) return null;
+    const { counts } = card;
+    return tooltipContent(
+      card.player.name,
+      PODIUM_MEDALS.map((medal) => [`${medal.label} finishes`, formatNumber(counts[medal.key])] as [string, string]),
+      card.player.colour,
+    );
+  };
+}
+
+/**
+ * The columns rotate between two slides. Slide one: Weekly leaders, then the
+ * activity feed and changelog side by side. Slide two: the Podium, then the
+ * players' sprite cards across the full double width. Auto-advances on a
  * timer, pausing while hovered/focused (so a tooltip or a click isn't
  * yanked away) and never auto-advancing under prefers-reduced-motion — the
  * dots still work by hand.
  */
 const SLIDES = [
-  { key: 'feed', label: 'Activity feed and changelog' },
-  { key: 'players', label: 'Players' },
+  { key: 'feed', label: 'Weekly leaders, activity feed and changelog' },
+  { key: 'players', label: 'Podium and players' },
 ] as const;
 const ROTATE_MS = 9000;
 const slide = ref(0);
@@ -250,7 +290,7 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
 
 <template>
   <div class="highlights-split">
-    <section class="lb highlights">
+    <section v-if="slide === 0" class="lb highlights">
       <div class="lb-head">
         <h2>
           <svg class="lb-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
@@ -286,6 +326,49 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
       </div>
     </section>
 
+    <!-- Podium: shares the carousel's slide with the sprite cards, taking
+         Weekly leaders' column. Gold/silver/bronze are skill-row finishes —
+         see podiumCounts (compute.js). -->
+    <section v-else class="lb podium">
+      <div class="lb-head">
+        <h2>
+          <svg class="lb-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <rect x="6.5" y="3" width="5" height="14" />
+            <rect x="1" y="8" width="5" height="9" />
+            <rect x="12" y="11" width="5" height="6" />
+          </svg>
+          <span>Podium</span>
+        </h2>
+      </div>
+
+      <div class="highlights-row">
+        <div
+          v-for="card in podiumCards"
+          :key="card.key"
+          class="highlight-badge podium-card"
+          :class="[`podium-${card.key}`, { 'is-empty': !card.player }]"
+          :style="card.player ? { '--accent': card.player.colour } : {}"
+          :tabindex="card.player ? 0 : undefined"
+          v-tooltip="podiumTooltip(card)"
+        >
+          <div class="highlight-medal podium-medal">
+            <span class="podium-medal-star" aria-hidden="true">★</span>
+          </div>
+          <p class="highlight-label podium-label">{{ card.place }}<span class="visually-hidden"> ({{ card.label }})</span></p>
+          <p v-if="card.player" class="highlight-answer">
+            <span class="swatch" :style="{ '--swatch': card.player.colour }" aria-hidden="true" />
+            <span class="highlight-name">{{ card.player.name }}</span>
+          </p>
+          <p v-else class="highlight-answer">
+            <span class="highlight-name">Nobody yet</span>
+          </p>
+          <p v-if="card.counts" class="highlight-value podium-value">
+            <span class="podium-value-star" aria-hidden="true">★</span>{{ formatNumber(card.counts[card.key]) }}
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- RuneMetrics' own per-player activity feed (scripts/activity.mjs),
          one entry per player — captured by every update cycle, cron and
          REFRESH NOW alike, so this is always as fresh as the rest of the
@@ -314,16 +397,6 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
           <span class="activity-feed-name-group">
             <span class="activity-feed-name">{{ entry.player.name }}</span>
             <span class="player-badges">
-              <span v-if="(maxed[entry.player.slug] ?? 0) > 0" class="player-maxed has-maxed">
-                <span class="player-maxed-star" aria-hidden="true">★</span>
-                <span aria-hidden="true">{{ formatNumber(maxed[entry.player.slug]) }}</span>
-                <span class="visually-hidden">{{ formatNumber(maxed[entry.player.slug]) }} skills maxed at level 99</span>
-              </span>
-              <span v-if="(elite[entry.player.slug] ?? 0) > 0" class="player-elite has-elite">
-                <span class="player-elite-star" aria-hidden="true">★</span>
-                <span aria-hidden="true">{{ formatNumber(elite[entry.player.slug]) }}</span>
-                <span class="visually-hidden">{{ formatNumber(elite[entry.player.slug]) }} skills maxed at level 120</span>
-              </span>
               <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
                 <span class="player-leads-star" aria-hidden="true">★</span>
                 <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
@@ -389,6 +462,10 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
       <PlayerSpriteCards :snapshots="snapshots" :players="players" />
     </section>
 
+    </div>
+
+    <!-- Centred under the whole row (not just the carousel's right two
+         columns), since the Weekly leaders / Podium column swaps too. -->
     <div class="carousel-dots" role="tablist" aria-label="Home panels">
       <button
         v-for="(entry, i) in SLIDES"
@@ -401,7 +478,6 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
         :aria-label="entry.label"
         @click="slide = i"
       />
-    </div>
     </div>
   </div>
 

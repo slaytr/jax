@@ -55,6 +55,21 @@ function isBetter(metric, candidate, incumbent, invert = false) {
 }
 
 /**
+ * 1-based finishing place per player slug, best first under the same
+ * ordering as the row leader (so place 1 is always the leader), for the
+ * entries `isActive` accepts — a row nobody has trained has no places.
+ * Entries that tie completely keep their input order.
+ */
+function placesBySlug(entries, metric, invert, valueOf, isActive) {
+  const ranked = entries.filter(isActive).sort((a, b) => {
+    const aBeatsB = isBetter(metric, valueOf(a), valueOf(b), invert);
+    const bBeatsA = isBetter(metric, valueOf(b), valueOf(a), invert);
+    return aBeatsB && !bBeatsA ? -1 : bBeatsA && !aBeatsB ? 1 : 0;
+  });
+  return new Map(ranked.map((entry, index) => [entry.player.slug, index + 1]));
+}
+
+/**
  * One row per skill, one cell per player, with the row leader marked.
  * `share` scales the in-cell progress rule: for `metric === 'level'`, how far
  * into the *current* level's own xp a player sits (xpProgress, xp-table.js —
@@ -80,6 +95,8 @@ export function buildMatrix(players, metric, invert = false) {
     // else at the untrained floor.
     const anyTrained = entries.some((entry) => entry.value.xp > 0);
 
+    const places = placesBySlug(entries, metric, invert, (entry) => entry.value, (entry) => entry.value.xp > 0);
+
     const cells = entries.map(({ player, value }) => {
       const share =
         metric === 'level'
@@ -97,6 +114,7 @@ export function buildMatrix(players, metric, invert = false) {
         rank: value.rank,
         share: Number.isFinite(share) ? Math.max(0, share) : 0,
         isLeader: player.slug === best.player.slug && anyTrained,
+        place: places.get(player.slug) ?? null,
       };
     });
 
@@ -128,6 +146,8 @@ export function buildTotalsRow(players, invert = false) {
   // meaningful leader.
   const anyLeveled = entries.some((entry) => entry.level > 0);
 
+  const places = placesBySlug(entries, 'level', invert, (entry) => entry, (entry) => entry.level > 0);
+
   return {
     skill: TOTAL_MEASURE,
     cells: entries.map((entry) => ({
@@ -137,6 +157,7 @@ export function buildTotalsRow(players, invert = false) {
       rank: entry.rank,
       share: Math.min(1, entry.level / maxLevel),
       isLeader: entry.player.slug === best.player.slug && anyLeveled,
+      place: places.get(entry.player.slug) ?? null,
     })),
   };
 }
@@ -152,36 +173,82 @@ export function leaderCounts(rows) {
   return counts;
 }
 
-/** How many skills each player has maxed at level 99 (but short of 120),
- * keyed by slug — same "99" threshold as the masthead's own
- * countAtLeast(99) rather than each skill's individual cap, since a
- * 120/150-cap skill sitting at 99 is still worth the same green star. The
- * upper bound keeps this exclusive of eliteMaxedSkillCounts below, so a
- * player's green and blue badge counts never double up the same skill.
- * Drives the Skill Leaderboard's green "maxed" badge (next to the gold
- * leads star) and the activity feed's name badge. */
-export function maxedSkillCounts(players) {
+/** Whether this player holds the milestone star for a skill: true if they
+ * were the group's first to reach `tier` (99 = green, 120 = blue) in it.
+ * Each tier is independent, so a player first to both 99 and 120 in one
+ * skill holds both stars. `player.milestones` is the server's
+ * `skill_milestones` rows for them ({skillId, tier}) — being merely *at* 99
+ * or 120 earns nothing. */
+export function holdsMilestone(player, skillId, tier) {
+  return (player.milestones ?? []).some((milestone) => milestone.skillId === skillId && milestone.tier === tier);
+}
+
+function milestoneCounts(players, tier) {
   const counts = Object.create(null);
   for (const player of players) {
-    counts[player.slug] = TRACKED_SKILLS.filter((skill) => {
-      const level = skillFor(player, skill.id).level;
-      return level >= 99 && level < 120;
-    }).length;
+    counts[player.slug] = TRACKED_SKILLS.filter((skill) => holdsMilestone(player, skill.id, tier)).length;
   }
   return counts;
 }
 
-/** How many skills each player has pushed to level 120, keyed by slug — the
- * blue-star tier above maxedSkillCounts' green one, for accounts that have
- * kept training an already-99 skill (or one with a native 120 cap, like
- * Invention or Dungeoneering) rather than stopping at 99. Drives the same
- * two spots as maxedSkillCounts, as a second badge alongside it. */
+/** Skills each player was the group's first to take to level 99, keyed by
+ * slug — the green star. */
+export function maxedSkillCounts(players) {
+  return milestoneCounts(players, 99);
+}
+
+/** Skills each player was the group's first to take to level 120, keyed by
+ * slug — the blue star. */
 export function eliteMaxedSkillCounts(players) {
+  return milestoneCounts(players, 120);
+}
+
+/**
+ * Gold / silver / bronze finishes per player across the given rows (skill
+ * rows plus the totals row, as for leaderCounts): 1st, 2nd and 3rd by level,
+ * then xp, among players who have trained the row at all. Gold equals
+ * leaderCounts for the same rows. Always ranks highest-first — the "weakest
+ * account" toggle doesn't apply to the podium.
+ */
+export function podiumCounts(rows) {
   const counts = Object.create(null);
-  for (const player of players) {
-    counts[player.slug] = TRACKED_SKILLS.filter((skill) => skillFor(player, skill.id).level >= 120).length;
+  const MEDALS = ['gold', 'silver', 'bronze'];
+  for (const row of rows) {
+    for (const cell of row.cells) {
+      counts[cell.player.slug] ??= { gold: 0, silver: 0, bronze: 0 };
+    }
+    const ranked = row.cells
+      .filter((cell) => cell.xp > 0)
+      .sort((a, b) => b.level - a.level || b.xp - a.xp);
+    ranked.slice(0, MEDALS.length).forEach((cell, index) => {
+      counts[cell.player.slug][MEDALS[index]] += 1;
+    });
   }
   return counts;
+}
+
+/**
+ * Every star kind per player, keyed by slug: gold / silver / bronze finishes
+ * (see podiumCounts, Total row included) plus green (first to 99) and blue
+ * (first to 120) milestones. Always ranked highest-first, regardless of the
+ * matrix's "lowest level" toggle.
+ */
+export function starTotals(players) {
+  const podium = podiumCounts([...buildMatrix(players, 'level'), buildTotalsRow(players)]);
+  const green = maxedSkillCounts(players);
+  const blue = eliteMaxedSkillCounts(players);
+  return Object.fromEntries(
+    players.map((player) => [
+      player.slug,
+      {
+        gold: podium[player.slug]?.gold ?? 0,
+        silver: podium[player.slug]?.silver ?? 0,
+        bronze: podium[player.slug]?.bronze ?? 0,
+        green: green[player.slug] ?? 0,
+        blue: blue[player.slug] ?? 0,
+      },
+    ]),
+  );
 }
 
 /**

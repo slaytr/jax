@@ -25,6 +25,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { pool, withTransaction, closePool } from '../api/db.mjs';
+import { rebuildMilestones } from '../api/store/milestones.mjs';
 
 /**
  * Every table worth mirroring, in FK-safe insertion order. Deliberately
@@ -129,6 +130,12 @@ async function restore(payload) {
     }
 
     await resyncSerialSequences(client);
+
+    // Not a synced table (production may not have it yet), and the cascade
+    // truncate above just emptied it — re-derive it from the history that
+    // was just loaded.
+    await rebuildMilestones(client);
+    console.log('  skill_milestones: rebuilt from snapshot history');
   });
 }
 

@@ -92,7 +92,20 @@ describe('projectPlayerState', () => {
       skills: [{ id: 0, level: 1911, xp: 27148605, rank: 392817 }],
       activities: [{ name: 'RuneScore', score: 3500, rank: 301240 }],
       latestActivity: { text: 'Levelled up Mining.', details: 'I levelled my Mining skill, I am now level 76.', date: '2026-09-02T10:36:00.000Z' },
+      milestones: [],
     });
+  });
+
+  it('projects skill_milestones rows into {skillId, tier} pairs', () => {
+    const row = {
+      slug: 'x',
+      name: 'X',
+      hiscore_table: 'main',
+      total_level: 1,
+      total_xp: '0',
+      milestones: [{ skill_id: 3, tier: 99, player_slug: 'x', reached_at: new Date() }],
+    };
+    assert.deepEqual(projectPlayerState(row).milestones, [{ skillId: 3, tier: 99 }]);
   });
 
   it('projects a null latest_activity as null, not undefined', () => {

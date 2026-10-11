@@ -14,6 +14,7 @@
  */
 
 import { SKILL_COUNT } from '../../scripts/hiscores.mjs';
+import { recordMilestones } from './milestones.mjs';
 
 export async function upsertRoster(client, roster) {
   const group = roster.group ?? { name: 'Group', tagline: '' };
@@ -165,6 +166,8 @@ export async function insertSnapshotEntry(client, snapshot) {
       [snapshotId, slug, toVector(snapshot.p[slug]), levels, snapshot.q?.[slug] ?? null],
     );
   }
+
+  await recordMilestones(client, snapshotId);
 
   return { snapshotId, playerCount: slugs.length };
 }

@@ -13,6 +13,7 @@
 
 import { query } from '../db.mjs';
 import { projectLatest, projectHistory } from '../projections.mjs';
+import { fetchMilestonesByPlayer } from './milestones.mjs';
 
 /** Exported too — handleHistory (routes/read.mjs) needs just
  * `tracking_since` to bound how far back a history query looks. */
@@ -63,15 +64,17 @@ export async function readCurrentLatest() {
   const group = await fetchGroup();
   if (!group) return null;
 
-  const [groupRankRow, playerRows, questStatusByPlayer] = await Promise.all([
+  const [groupRankRow, playerRows, questStatusByPlayer, milestonesByPlayer] = await Promise.all([
     fetchGroupRankRow(),
     fetchPlayerStateRows(),
     fetchQuestStatusByPlayer(),
+    fetchMilestonesByPlayer(),
   ]);
 
   const players = playerRows.map((row) => ({
     ...row,
     ...(questStatusByPlayer.get(row.slug) ?? { completedQuests: [], startedQuests: [] }),
+    milestones: milestonesByPlayer.get(row.slug) ?? [],
   }));
 
   return projectLatest({

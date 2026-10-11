@@ -3,6 +3,7 @@ import { computed, watch } from 'vue';
 
 import { computeAllGains } from '@/lib/gains';
 import HighlightsRow from '@/components/HighlightsRow.vue';
+import StarsRow from '@/components/StarsRow.vue';
 import GainsSection from '@/components/GainsSection.vue';
 import Standings from '@/components/Standings.vue';
 import SkillMatrix from '@/components/SkillMatrix.vue';
@@ -34,6 +35,7 @@ watch(
        silently renders nothing once wrapped in a real Transition (Vue only
        warns about it in dev builds, so it's easy to miss). -->
   <div v-if="data" class="home-view">
+    <StarsRow :players="data.players" />
     <HighlightsRow :gains="gains!" :snapshots="data.snapshots" :players="data.players" />
     <GainsSection :gains="gains!" :players="data.players" :snapshots="data.snapshots" v-model:view="gainsView" v-model:period="gainsPeriod" />
     <Standings :players="data.players" :gains="gains!" :period="gainsPeriod" v-model:view="standingsView" />

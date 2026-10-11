@@ -1,6 +1,6 @@
 import { el, swatch } from '../dom.js';
 import { formatNumber, formatRank } from '../format.js';
-import { buildMatrix, buildTotalsRow, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts, TOTAL_MEASURE } from '../compute.js';
+import { buildMatrix, buildTotalsRow, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts, holdsMilestone, TOTAL_MEASURE } from '../compute.js';
 import { iconFor, TOTAL_LEVEL_ICON } from '../config.js';
 import { bindTooltip, tooltipContent } from '../tooltip.js';
 import { xpForLevel } from '../xp-table.js';
@@ -18,12 +18,12 @@ function matrixCell(cell, skill, levelsGained) {
   // level, not a level on any single curve — so only a real skill (a
   // numeric id; TOTAL_MEASURE's is the string 'total') gets this row at all.
   const isRealSkill = Number.isInteger(skill.id);
-  // Same "99"/"120" thresholds as the Skill Leaderboard's own green/blue
-  // header badges (maxedSkillCounts/eliteMaxedSkillCounts, compute.js) —
-  // only ever on a real skill row, since Total's own "max" is a sum across
-  // every skill, not a level to hit 99 or 120 on.
-  const isMaxed = isRealSkill && cell.level >= 99 && cell.level < 120;
-  const isElite = isRealSkill && cell.level >= 120;
+  // Same first-to-99 / first-to-120 rule as the Skill Leaderboard's own
+  // green/blue header badges (maxedSkillCounts/eliteMaxedSkillCounts,
+  // compute.js) — only ever on a real skill row, since Total's own "max" is
+  // a sum across every skill, not a level to hit 99 or 120 on.
+  const isMaxed = isRealSkill && holdsMilestone(cell.player, skill.id, 99);
+  const isElite = isRealSkill && holdsMilestone(cell.player, skill.id, 120);
 
   const node = el(
     'td',

@@ -61,6 +61,8 @@
   --medal-gold: #d9b44a;
   --medal-silver: #c3c9cf;
   --medal-bronze: #c17f4a;
+  --medal-silver-ink: var(--medal-silver);
+  --medal-bronze-ink: var(--medal-bronze);
 
   /* Per-player colours are the validated set from config.js, applied inline
      via --accent — nothing here duplicates that palette. This one alone
@@ -141,6 +143,10 @@
   --gain-bg: rgba(31, 122, 77, 0.14);
   --warn: #8a5a00;
   --medal-gold: #8a6114;
+  /* Silver and bronze stay light for the ribbons, so the podium's text
+     uses these darker, page-legible counterparts instead. */
+  --medal-silver-ink: #6b7480;
+  --medal-bronze-ink: #8f5a2c;
   --ember-ink: var(--ink);
   --positive-ink: var(--gain);
   --negative-ink: var(--crimson);
@@ -2199,17 +2205,21 @@ body::after {
   border-bottom: 1px solid var(--brass);
 }
 
+/* font-size is set here (not only on the span inside) because the cell's own
+   16px strut otherwise sets a 24.8px line box, which made this the tallest
+   cell in the header row and left a gap above every player name. */
 .matrix th.corner {
   left: 0;
   z-index: 3;
   min-width: 168px;
+  font-size: 0.6rem;
 }
 
 .matrix thead th {
   padding: 0.55rem 0.75rem;
   text-align: left;
   font-weight: 400;
-  vertical-align: bottom;
+  vertical-align: middle;
 }
 
 .player-head {
@@ -2368,6 +2378,61 @@ body::after {
   top: -0.1em;
 }
 
+/* Podium column (HighlightsRow.vue) — one card per medal, each showing the
+   top holder's whole gold/silver/bronze line with the card's own medal drawn
+   larger. Reuses .highlight-badge's plaque chrome; --medal sets the featured
+   colour per card. */
+.podium .lb-icon rect {
+  fill: var(--ink-2);
+}
+
+.podium-gold {
+  --medal: var(--medal-gold);
+}
+
+.podium-silver {
+  --medal: var(--medal-silver-ink);
+}
+
+.podium-bronze {
+  --medal: var(--medal-bronze-ink);
+}
+
+.podium-label {
+  color: var(--medal);
+}
+
+/* Same ring as Weekly leaders' medallion, but in the medal's own colour
+   (gold / silver / bronze) rather than the holder's, with a star inside. */
+.podium-medal {
+  box-shadow: inset 0 0 0 2px var(--medal);
+  color: var(--medal);
+}
+
+.podium-card:not(.is-empty):hover .podium-medal,
+.podium-card:not(.is-empty):focus-visible .podium-medal {
+  box-shadow:
+    inset 0 0 0 2px var(--medal),
+    0 0 14px -2px var(--medal);
+}
+
+.podium-medal-star {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.podium-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--medal);
+}
+
+.podium-value-star {
+  font-size: 1.2em;
+  line-height: 1;
+}
+
 /* The lone summary row (quest points now live in Account Standings instead):
    a brass top border still marks it apart from the skill rows above, and no
    bottom border since it's also the table's last row. */
@@ -2380,6 +2445,108 @@ body::after {
 
 .row-total .skill-name {
   color: var(--ink);
+}
+
+/* The Stars panel (StarsRow.vue) above the Home page's top row: one block per
+   player, every star kind in a line under their name. Same width as the
+   panels below it. */
+.stars-row .lb-icon polygon {
+  fill: var(--medal-gold);
+}
+
+.stars-row-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.3rem;
+}
+
+/* Wide enough: every player in one single row. Columns size to their content
+   (then share the leftover space), so a long name like HighlordWhos gets
+   the room it needs instead of every card being forced to the same width. */
+@media (min-width: 1000px) {
+  .stars-row-players {
+    grid-auto-flow: column;
+    grid-auto-columns: auto;
+    grid-template-columns: none;
+  }
+}
+
+/* One line per player: swatch + name on the left, the five counts on the
+   right. The name truncates before the counts ever wrap. */
+.stars-row-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.4rem 0.4rem;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.stars-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.stars-row-name-text {
+  overflow: hidden;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stars-line {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.stars-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.7rem;
+  letter-spacing: 0;
+}
+
+/* Hidden, not removed: the slot stays so the other stars don't shift. */
+.stars-stat.is-zero {
+  visibility: hidden;
+}
+
+.stars-stat-star {
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.stars-stat-gold {
+  color: var(--medal-gold);
+}
+
+.stars-stat-silver {
+  color: var(--medal-silver-ink);
+}
+
+.stars-stat-bronze {
+  color: var(--medal-bronze-ink);
+}
+
+.stars-stat-green {
+  color: var(--gain);
+}
+
+.stars-stat-blue {
+  color: var(--temper);
 }
 
 /* Stays a table-cell: flex here would drop it out of the table box model and
@@ -2486,6 +2653,16 @@ body::after {
 .cell-star {
   font-size: 0.72rem;
   color: var(--medal-gold);
+}
+
+/* Second and third in the row — same glyph in silver / bronze, in place of
+   the gold leader star (a cell is only ever one place). */
+.cell-star-silver {
+  color: var(--medal-silver-ink);
+}
+
+.cell-star-bronze {
+  color: var(--medal-bronze-ink);
 }
 
 /* Maxed at level 99 — same star glyph, its own colour (--gain, same green
@@ -8373,7 +8550,8 @@ body[data-ready] .loading {
   }
 }
 
-.highlights-carousel {
+.highlights-carousel,
+.highlights-split {
   position: relative;
 }
 

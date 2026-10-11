@@ -73,6 +73,9 @@ export function projectPlayerState(row) {
     skills: row.skills ?? [],
     activities: row.activities ?? [],
     latestActivity: row.latest_activity ?? null,
+    // The skills this player was first in the group to take to 99 / 120 —
+    // the only ones that earn the green / blue star (skill_milestones).
+    milestones: (row.milestones ?? []).map((milestone) => ({ skillId: milestone.skill_id, tier: milestone.tier })),
   };
 }
 
