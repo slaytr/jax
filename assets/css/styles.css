@@ -1171,6 +1171,139 @@ body::after {
   }
 }
 
+/* The activity feed / changelog / player-sprite cards share the two columns
+   to the right of Weekly leaders, one slide at a time (HighlightsRow.vue). */
+.highlights-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+@media (max-width: 720px) {
+  .highlights-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.highlights-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.highlights-carousel > .lb {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* Slide 1: activity feed and changelog, one column each. */
+.carousel-pair {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.carousel-pair > .lb {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .carousel-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+.player-sprites .lb-icon circle,
+.player-sprites .lb-icon path {
+  fill: var(--ink-2);
+}
+
+.sprite-cards {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+@media (max-width: 720px) {
+  .sprite-cards {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+}
+
+.sprite-card-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.6rem 0.4rem;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.sprite-card-stage {
+  width: 100%;
+  background: var(--surface-0);
+  border-radius: 6px;
+  padding: 0.2rem;
+}
+
+.sprite-card-name {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink);
+}
+
+.sprite-card-activity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.carousel-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  padding: 0;
+  border: 1px solid var(--ink-muted);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.carousel-dot.active {
+  background: var(--ember);
+  border-color: var(--ember);
+}
+
+.carousel-dot:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
 /* One medallion — icon ring, category name, winner, figure — a small
    trophy plaque stacked top to bottom rather than a flat leaderboard-style
    row: this section alone exists to name a champion, not relay a figure,
@@ -8204,5 +8337,85 @@ body[data-ready] .loading {
   .cell-rule-fill,
   .lb-bar-fill {
     forced-color-adjust: none;
+  }
+}
+
+/* One fixed height for every box in the top row — Weekly leaders, activity
+   feed, changelog and the player sprite cards, on both carousel slides and
+   whatever skill is animating — so rotating never reflows the page. Content
+   that needs more room scrolls inside its own box. Desktop only: stacked
+   on a phone each box just takes the height it needs. */
+@media (min-width: 721px) {
+  .highlights-split {
+    --highlights-h: 13rem;
+    grid-template-rows: var(--highlights-h);
+  }
+
+  .highlights-split > .lb,
+  .highlights-carousel,
+  .carousel-pair {
+    min-height: 0;
+    height: var(--highlights-h);
+  }
+
+  .carousel-pair {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .highlights-carousel > .lb,
+  .carousel-pair > .lb {
+    min-height: 0;
+  }
+
+  .activity-feed-list {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+.highlights-carousel {
+  position: relative;
+}
+
+/* Dots sit in the gap under the row rather than in the box's own height. */
+.carousel-dots {
+  position: absolute;
+  right: 0;
+  bottom: -1.1rem;
+  left: 0;
+}
+
+.sprite-card-activity {
+  flex-wrap: nowrap;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.sprite-card-activity > img {
+  flex: none;
+}
+
+/* The boxes in the top row carry no bottom margin of their own, so they all
+   measure exactly --highlights-h; the row keeps the usual .lb spacing. */
+.highlights-split {
+  margin-bottom: 1.75rem;
+}
+
+.highlights-split .lb {
+  margin-bottom: 0;
+}
+
+.sprite-card-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The changelog's own 9.75rem cap is moot now the row has one fixed height
+   (--highlights-h) — fill the box and scroll inside it instead. */
+@media (min-width: 721px) {
+  .changelog-list {
+    min-height: 0;
+    max-height: none;
   }
 }

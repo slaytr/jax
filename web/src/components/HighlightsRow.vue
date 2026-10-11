@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { buildMatrix, buildTotalsRow, computeDailyBreakdown, eliteMaxedSkillCounts, leaderCounts, maxedSkillCounts } from '@shared/compute.js';
 import { el } from '@shared/dom.js';
@@ -11,6 +11,7 @@ import { usePrefs } from '@/composables/usePrefs';
 import HighlightChangeDialog, { type HighlightChange } from '@/components/HighlightChangeDialog.vue';
 import HighlightMedalIcon from '@/components/HighlightMedalIcon.vue';
 import OdometerValue from '@/components/OdometerValue.vue';
+import PlayerSpriteCards from '@/components/PlayerSpriteCards.vue';
 import changelogEntries from '@shared/changelog.json';
 
 const props = defineProps<{ gains: AllGains; snapshots: any[]; players: any[] }>();
@@ -220,6 +221,31 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
     );
   };
 }
+
+/**
+ * The two right-hand columns rotate between two slides: the activity feed
+ * and changelog side by side, then the players' sprite cards across the
+ * full double width. Auto-advances on a
+ * timer, pausing while hovered/focused (so a tooltip or a click isn't
+ * yanked away) and never auto-advancing under prefers-reduced-motion — the
+ * dots still work by hand.
+ */
+const SLIDES = [
+  { key: 'feed', label: 'Activity feed and changelog' },
+  { key: 'players', label: 'Players' },
+] as const;
+const ROTATE_MS = 9000;
+const slide = ref(0);
+const paused = ref(false);
+let rotateTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  rotateTimer = setInterval(() => {
+    if (!paused.value) slide.value = (slide.value + 1) % SLIDES.length;
+  }, ROTATE_MS);
+});
+onBeforeUnmount(() => clearInterval(rotateTimer));
 </script>
 
 <template>
@@ -264,6 +290,14 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
          one entry per player — captured by every update cycle, cron and
          REFRESH NOW alike, so this is always as fresh as the rest of the
          page. -->
+    <div
+      class="highlights-carousel"
+      @mouseenter="paused = true"
+      @mouseleave="paused = false"
+      @focusin="paused = true"
+      @focusout="paused = false"
+    >
+    <div v-if="slide === 0" class="carousel-pair">
     <section class="lb activity-feed">
       <div class="lb-head">
         <h2>
@@ -340,6 +374,35 @@ function buildTooltip(entry: (typeof highlights.value)[number]) {
         <p>Nothing here yet.</p>
       </div>
     </section>
+    </div>
+
+    <section v-else class="lb player-sprites">
+      <div class="lb-head">
+        <h2>
+          <svg class="lb-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="5" r="3.2" />
+            <path d="M3,17 C3,11.5 15,11.5 15,17 Z" />
+          </svg>
+          <span>Today's players</span>
+        </h2>
+      </div>
+      <PlayerSpriteCards :snapshots="snapshots" :players="players" />
+    </section>
+
+    <div class="carousel-dots" role="tablist" aria-label="Home panels">
+      <button
+        v-for="(entry, i) in SLIDES"
+        :key="entry.key"
+        type="button"
+        role="tab"
+        class="carousel-dot"
+        :class="{ active: slide === i }"
+        :aria-selected="slide === i"
+        :aria-label="entry.label"
+        @click="slide = i"
+      />
+    </div>
+    </div>
   </div>
 
   <HighlightChangeDialog v-if="highlightChanges.length > 0" :changes="highlightChanges" @close="highlightChanges = []" />

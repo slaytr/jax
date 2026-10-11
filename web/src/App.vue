@@ -23,6 +23,10 @@ const trend = computed(() => (data.value ? groupTrend(data.value.snapshots) : nu
 const rankDelta = computed(() => (data.value ? computeRankDelta(data.value.snapshots) : null));
 const staleCount = computed(() => data.value?.players.filter((player: any) => player.stale).length ?? 0);
 
+// The /sprites playground never reads hiscore data, so it shouldn't sit
+// behind the loading/error gate below.
+const needsData = computed(() => route.name !== 'sprites');
+
 // Whenever a player's own page is routed to, TheMasthead swaps its group
 // .topbar for that player's own identity block instead — see its own
 // activePlayer prop doc comment.
@@ -55,9 +59,9 @@ watch([loading, error], ([isLoading]) => {
       />
     </template>
 
-    <p v-if="loading" class="loading">Reading the ledger…</p>
+    <p v-if="loading && needsData" class="loading">Reading the ledger…</p>
 
-    <div v-else-if="error && !data" class="empty empty-error">
+    <div v-else-if="error && !data && needsData" class="empty empty-error">
       <p class="empty-title">Could not load hiscore data</p>
       <p class="empty-body">{{ error }}</p>
     </div>

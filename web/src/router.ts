@@ -6,6 +6,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: () => import('./views/HomeView.vue') },
+    { path: '/sprites', name: 'sprites', component: () => import('./views/SpritesView.vue') },
     { path: '/stats/:slug', name: 'player', component: () => import('./views/PlayerView.vue') },
   ],
 });
