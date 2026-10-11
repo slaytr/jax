@@ -40,7 +40,7 @@ function tooltipFor(player: any, kind: (typeof STAR_KINDS)[number]) {
     </div>
     <div class="stars-row-players">
       <div v-for="player in players" :key="player.slug" class="stars-row-player" :style="{ '--accent': player.colour }">
-        <p class="stars-row-name">
+        <p class="stars-row-name lb-name">
           <span class="swatch" :style="{ '--swatch': player.colour }" aria-hidden="true" />
           <span class="stars-row-name-text">{{ player.name }}</span>
         </p>

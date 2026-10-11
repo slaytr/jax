@@ -5,7 +5,6 @@ import {
   buildMatrix,
   buildTotalsRow,
   computeDailyBreakdown,
-  leaderCounts,
   podiumCounts,
 } from '@shared/compute.js';
 import { el } from '@shared/dom.js';
@@ -65,13 +64,6 @@ const activityFeed = computed(() =>
     }))
     .sort((a, b) => Date.parse(b.activity.date) - Date.parse(a.activity.date)),
 );
-
-/** How many skill rows (plus the Total row) each player leads the group
- * in — the exact same figure, same ★ + count treatment, as each player's
- * own column header on the Skill Leaderboard (SkillMatrix.vue's `leads`) —
- * shown here too so a name in the feed carries that same context without
- * having to go check the table below. */
-const leads = computed(() => leaderCounts([...buildMatrix(props.players, 'level'), buildTotalsRow(props.players)]));
 
 function activityTooltip(entry: (typeof activityFeed.value)[number]) {
   return () =>
@@ -316,10 +308,10 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
           <p class="highlight-label">{{ entry.label }}</p>
           <p v-if="entry.winner" class="highlight-answer">
             <span class="swatch" :style="{ '--swatch': entry.winner.player.colour }" aria-hidden="true" />
-            <span class="highlight-name">{{ entry.winner.player.name }}</span>
+            <span class="highlight-name lb-name">{{ entry.winner.player.name }}</span>
           </p>
           <p v-else class="highlight-answer">
-            <span class="highlight-name">No gains yet</span>
+            <span class="highlight-name lb-name">No gains yet</span>
           </p>
           <p v-if="entry.winner" class="highlight-value">+<OdometerValue :value="entry.winner.value" :format="entry.formatValue" /></p>
         </div>
@@ -357,10 +349,10 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
           <p class="highlight-label podium-label">{{ card.place }}<span class="visually-hidden"> ({{ card.label }})</span></p>
           <p v-if="card.player" class="highlight-answer">
             <span class="swatch" :style="{ '--swatch': card.player.colour }" aria-hidden="true" />
-            <span class="highlight-name">{{ card.player.name }}</span>
+            <span class="highlight-name lb-name">{{ card.player.name }}</span>
           </p>
           <p v-else class="highlight-answer">
-            <span class="highlight-name">Nobody yet</span>
+            <span class="highlight-name lb-name">Nobody yet</span>
           </p>
           <p v-if="card.counts" class="highlight-value podium-value">
             <span class="podium-value-star" aria-hidden="true">★</span>{{ formatNumber(card.counts[card.key]) }}
@@ -396,13 +388,6 @@ onBeforeUnmount(() => clearInterval(rotateTimer));
           <span class="swatch" :style="{ '--swatch': entry.player.colour }" aria-hidden="true" />
           <span class="activity-feed-name-group">
             <span class="activity-feed-name">{{ entry.player.name }}</span>
-            <span class="player-badges">
-              <span class="player-leads" :class="{ 'has-leads': (leads[entry.player.slug] ?? 0) > 0 }">
-                <span class="player-leads-star" aria-hidden="true">★</span>
-                <span aria-hidden="true">{{ formatNumber(leads[entry.player.slug] ?? 0) }}</span>
-                <span class="visually-hidden">Leads {{ formatNumber(leads[entry.player.slug] ?? 0) }} skill rows</span>
-              </span>
-            </span>
           </span>
           <span v-if="entry.levelUp" class="activity-feed-text activity-feed-levelup">
             <img :src="iconFor(entry.levelUp.skill)" class="activity-feed-skill-icon" width="14" height="14" alt="" decoding="async" />

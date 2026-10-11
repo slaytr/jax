@@ -1322,7 +1322,7 @@ body::after {
   justify-content: center;
   gap: 0.25rem;
   min-width: 0;
-  padding: 0.8rem 0.75rem 0.7rem;
+  padding: 0.8rem 0.5rem 0.7rem;
   background: var(--surface-1);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
@@ -1413,8 +1413,6 @@ body::after {
 
 .highlight-name {
   overflow: hidden;
-  font-size: 0.72rem;
-  color: var(--ink-2);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -2496,8 +2494,6 @@ body::after {
 
 .stars-row-name-text {
   overflow: hidden;
-  font-size: 0.9rem;
-  color: var(--ink-2);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
