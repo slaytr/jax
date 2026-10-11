@@ -57,8 +57,18 @@ const CAPTAIN_HEAD = [
   '..KKKKKK..',
 ];
 
-/** HighlordWhos: swept silver hair, gold circlet with a gem. */
-const CIRCLET_HEAD = ['.K..KK..K.', '.KhHHHHhK.', 'KhHHhhhhhK', 'KyyyycyyyK', ...FACE];
+/** HighlordWhos: hood up over the face, silver fringe peeking out. */
+const HOOD_HEAD = [
+  '..KKKKKK..',
+  '.KttttttK.',
+  'KttttttttK',
+  'KtThHHhTtK',
+  'KtsswsswtK',
+  'KtssessetK',
+  'KtmssssmtK',
+  '.KtsssStK.',
+  '..KKKKKK..',
+];
 
 // ── Bodies ──────────────────────────────────────────────────────────────────
 const TUNIC_BODY = ['.KtttttK.', '.KtttttK.', '.KooyooK.', '.KpppppK.', '.KpK.KpK.', '.KoK.KoK.', '.KKK.KKK.'];
@@ -69,12 +79,14 @@ const DRESS_BODY = ['.KtttttK.', '.KtttttK.', '.KaaaaaK.', 'KtttttttK', 'KTTTTTT
 /** Cpt Draynor: a coat with a gold button. */
 const COAT_BODY = ['.KtttttK.', '.KttyttK.', '.KooyooK.', '.KpppppK.', '.KpK.KpK.', '.KoK.KoK.', '.KKK.KKK.'];
 
-/** HighlordWhos: a pale gorget over the tunic. */
-const GORGET_BODY = ['.KaaaaaK.', '.KtttttK.', '.KooyooK.', '.KpppppK.', '.KpK.KpK.', '.KoK.KoK.', '.KKK.KKK.'];
+/** HighlordWhos: a hoodie — bunched hood at the neck, drawstrings, ribbed hem. */
+const HOODIE_BODY = ['.KtTTTtK.', '.KtaTatK.', '.KTTTTTK.', '.KpppppK.', '.KpK.KpK.', '.KoK.KoK.', '.KKK.KKK.'];
 
 type LookSpec = Pick<PlayerSprite, 'slug' | 'name'> & { look: Look; colours: Palette };
 
 // Theme colour → tunic (t), its shade → T; every other override is flavour.
+// A look can set its own `t` (HighlordWhos' dark hoodie) to wear something other
+// than the theme colour.
 const SPECS: LookSpec[] = [
   {
     slug: 'jelly-tax',
@@ -103,8 +115,10 @@ const SPECS: LookSpec[] = [
   {
     slug: 'highlordwhos',
     name: 'HighlordWhos',
-    look: { head: CIRCLET_HEAD, body: GORGET_BODY },
-    colours: { T: '#a8416d', p: '#5b4a8a', h: '#cfd2e6', H: '#ffffff', a: '#ffd0e4', s: '#ffe0c4', S: '#efb892' },
+    look: { head: HOOD_HEAD, body: HOODIE_BODY },
+    // t/T: the dark purple hoodie and its shade, in place of the usual theme-
+    // coloured tunic; a: pink drawstrings keep the theme colour in the outfit.
+    colours: { t: '#3b2a63', T: '#241838', p: '#262433', h: '#cfd2e6', H: '#ffffff', a: '#ff9fc8', s: '#ffe0c4', S: '#efb892' },
   },
 ];
 
@@ -115,7 +129,7 @@ export const PLAYER_SPRITES: PlayerSprite[] = SPECS.map(({ slug, name, look, col
     name,
     colour,
     look,
-    palette: { ...PALETTE, ...colours, t: colour },
+    palette: { ...PALETTE, ...colours, t: colours.t ?? colour },
   };
 });
 

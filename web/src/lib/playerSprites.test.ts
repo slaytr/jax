@@ -1,4 +1,4 @@
-import { TRACKED_SKILLS } from '@shared/config.js';
+import { TRACKED_SKILLS, colourForPlayer } from '@shared/config.js';
 import { describe, expect, it } from 'vitest';
 
 import { PLAYER_SPRITES, skillSpritesFor, stateSpritesFor } from './playerSprites';
@@ -8,11 +8,26 @@ const ALL_SPRITES = (player: (typeof PLAYER_SPRITES)[number]) => [...skillSprite
 const PLAYERS = PLAYER_SPRITES.map((p) => [p.name, p] as const);
 
 describe('PLAYER_SPRITES', () => {
-  it('has one sprite per roster player, in the pinned theme colour', () => {
+  it('has one sprite per roster player, tagged with the pinned theme colour', () => {
     expect(PLAYER_SPRITES.map((p) => p.slug).sort()).toEqual(
       ['bloyze', 'cpt-draynor', 'highlordwhos', 'jelly-tax', 'melooms'],
     );
-    for (const player of PLAYER_SPRITES) expect(player.palette.t).toBe(player.colour);
+    for (const player of PLAYER_SPRITES) {
+      expect(player.colour).toBe(colourForPlayer(player.slug, PLAYER_SPRITES.indexOf(player)));
+    }
+  });
+
+  it('dresses everyone in their theme colour except HighlordWhos, who wears a dark purple hoodie', () => {
+    for (const player of PLAYER_SPRITES) {
+      if (player.slug === 'highlordwhos') continue;
+      expect(player.palette.t, player.name).toBe(player.colour);
+    }
+    const hoodie = PLAYER_SPRITES.find((p) => p.slug === 'highlordwhos')!;
+    expect(hoodie.palette.t).not.toBe(hoodie.colour);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hoodie.palette.t.slice(i, i + 2), 16));
+    expect(Math.max(r, g, b), 'dark').toBeLessThan(110);
+    expect(b, 'purple: blue leads, then red, green lowest').toBeGreaterThan(r);
+    expect(r).toBeGreaterThan(g);
   });
 
   it.each(PLAYERS)('%s: head and body keep the shared footprint', (_name, player) => {
