@@ -4,8 +4,9 @@ import { computed, onMounted } from 'vue';
 import { COMBAT_ICON, QUEST_POINTS_ICON, WIKI_ICON, iconFor } from '@shared/config.js';
 import { skillLevelsByName } from '@shared/quest-status.js';
 import { useAreaTasks } from '@/composables/useAreaTasks';
+import { useQuests } from '@/composables/useQuests';
 import { useAreaTaskCompletion } from '@/composables/useAreaTaskCompletion';
-import { parseRequirement, requirementStatus, summarizeRequirementStatuses } from '@/lib/areaTasks';
+import { dropQuestCoveredSkills, keepHighestSkillRequirements, parseRequirement, requirementStatus, summarizeRequirementStatuses } from '@/lib/areaTasks';
 import type { AreaTaskRequirement } from '@/lib/areaTasks';
 import type { StatsPageState } from '@/composables/useStatsPageState';
 
@@ -79,7 +80,11 @@ import type { StatsPageState } from '@/composables/useStatsPageState';
 const props = defineProps<{ player: any; statsState: StatsPageState }>();
 
 const { regions, status, error, ensureLoaded } = useAreaTasks();
-onMounted(ensureLoaded);
+const { quests, ensureLoaded: ensureQuestsLoaded } = useQuests();
+onMounted(() => {
+  ensureLoaded();
+  ensureQuestsLoaded();
+});
 
 const { isCompleted, toggle } = useAreaTaskCompletion(props.player.slug);
 
@@ -103,10 +108,11 @@ const selectedTier = computed(() => {
  * rather than the two places drifting into two different readings of the
  * same player. */
 function withStatus(requirements: AreaTaskRequirement[]) {
-  return requirements.map((requirement) => {
+  const rows = requirements.map((requirement) => {
     const parsed = parseRequirement(requirement);
     return { parsed, status: requirementStatus(parsed, skillLevels.value, completedQuests.value) };
   });
+  return dropQuestCoveredSkills(keepHighestSkillRequirements(rows), quests.value ?? []);
 }
 
 const tierRequirements = computed(() => (selectedTier.value ? withStatus(selectedTier.value.requirements) : []));
@@ -198,7 +204,7 @@ function isTierComplete(tier: { tasks: { slug: string }[] }) {
  * *selected* tier. Used only to light up the region list's tier letters
  * blue for a tier a player could start right now but hasn't finished. */
 function isTierRequirementsMet(tier: { requirements: AreaTaskRequirement[] }) {
-  const statuses = tier.requirements.map((requirement) => requirementStatus(parseRequirement(requirement), skillLevels.value, completedQuests.value));
+  const statuses = withStatus(tier.requirements).map((row) => row.status);
   return summarizeRequirementStatuses(statuses).level === 'met';
 }
 
@@ -358,7 +364,9 @@ const filteredTasks = computed(() => {
         <details v-if="selectedTier.recommendedItems.length" class="task-tier-items">
           <summary>Recommended items ({{ selectedTier.recommendedItems.length }})</summary>
           <ul>
-            <li v-for="item in selectedTier.recommendedItems" :key="item">{{ item }}</li>
+            <li v-for="item in selectedTier.recommendedItems" :key="item">
+              <label><input type="checkbox" /> <span>{{ item }}</span></label>
+            </li>
           </ul>
         </details>
       </div>

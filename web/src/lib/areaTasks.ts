@@ -46,10 +46,9 @@ export interface ParsedRequirement {
   alternatives: AlternativeSkill[] | null;
   /** Set only for a "N Combat" / "N combat level" requirement — combat
    * level isn't a trainable skill (no entry in SKILLS, so `skill` above
-   * can't hold it), and this app has no combat-level formula to check it
-   * against anyway, so requirementStatus always reads this as 'unknown'
-   * (neutral) rather than guessing green or red. TasksTab.vue's own
-   * COMBAT_ICON renders it as a proper icon+level chip regardless. */
+   * can't hold it). requirementStatus checks it against the player's
+   * calculated combat level (calculateCombatLevel), and TasksTab.vue's own
+   * COMBAT_ICON renders it as an icon+level chip. */
   combatLevel: number | null;
   quest: boolean;
   /** The wiki's own "this level can be reached with a boost, not just
@@ -96,7 +95,64 @@ export function parseRequirement(requirement: AreaTaskRequirement): ParsedRequir
   if (match && skill) {
     return { skill, level: Number(match[1]), alternatives: null, combatLevel: null, quest: false, boostable: /\(boostable\)/i.test(requirement.text), text: requirement.text };
   }
-  return { skill: null, level: null, alternatives: null, combatLevel: null, quest: requirement.quest, boostable: false, text: requirement.text };
+  // "The Dig Site recommended to make it easier to obtain Kudos" is a quest
+  // requirement with trailing advice; treat it as just the quest.
+  const text = requirement.quest ? requirement.text.replace(/ +recommended( .*)?$/i, '') : requirement.text;
+  return { skill: null, level: null, alternatives: null, combatLevel: null, quest: requirement.quest, boostable: false, text };
+}
+
+/** Collapses plain single-skill rows to the highest level per skill (a tier
+ * that lists both "81 Fishing (boostable)" and "90 Fishing" only needs the
+ * 90). The survivor keeps the position of the skill's first row; either/or,
+ * combat, quest and unparsed rows pass through untouched. */
+export function keepHighestSkillRequirements<T extends { parsed: ParsedRequirement }>(rows: T[]): T[] {
+  const highest = new Map<string, T>();
+  for (const row of rows) {
+    const { skill, level } = row.parsed;
+    if (!skill) continue;
+    const best = highest.get(skill.name);
+    if (!best || (level ?? 0) > (best.parsed.level ?? 0)) highest.set(skill.name, row);
+  }
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const skill = row.parsed.skill;
+    if (!skill) return true;
+    if (seen.has(skill.name)) return false;
+    seen.add(skill.name);
+    return true;
+  }).map((row) => (row.parsed.skill ? (highest.get(row.parsed.skill.name) as T) : row));
+}
+
+/** Drops plain skill rows that a listed quest already demands at least as
+ * much of (a tier listing both "Nomad's Requiem" and "60 Mining" only needs
+ * the quest — it can't be done without the Mining). Quest names come from
+ * the quest list; if it hasn't loaded, nothing is dropped. */
+export function dropQuestCoveredSkills<T extends { parsed: ParsedRequirement }>(
+  rows: T[],
+  quests: Array<{ name: string; skillRequirements?: Array<{ skill: string; level: number }> }>,
+): T[] {
+  const byName = new Map(quests.map((quest) => [quest.name.toLowerCase(), quest]));
+  const listed = rows
+    .filter((row) => row.parsed.quest)
+    .map((row) => byName.get(row.parsed.text.replace(/ *[(]partial[)] *$/i, '').trim().toLowerCase()))
+    .filter((quest): quest is NonNullable<typeof quest> => Boolean(quest));
+  return rows.filter((row) => {
+    const { skill, level } = row.parsed;
+    if (!skill) return true;
+    return !listed.some((quest) => (quest.skillRequirements ?? []).some((req) => req.skill === skill.name && req.level >= (level ?? 0)));
+  });
+}
+
+/** RS3 combat level from a skill-name → level map: a quarter of
+ * 1.3 × the best of melee (Attack + Strength), 2 × Magic or 2 × Ranged, plus
+ * Defence, Constitution (never below its starting 10) and half of Prayer and
+ * Summoning (each rounded down), with the total rounded down. */
+export function calculateCombatLevel(skillLevels: Map<string, number>): number {
+  const level = (name: string) => skillLevels.get(name) ?? 0;
+  const offence = Math.max(level('Attack') + level('Strength'), 2 * level('Magic'), 2 * level('Ranged'));
+  const total =
+    1.3 * offence + level('Defence') + Math.max(level('Constitution'), 10) + Math.floor(level('Prayer') / 2) + Math.floor(level('Summoning') / 2);
+  return Math.floor(total / 4);
 }
 
 export type RequirementStatus = 'met' | 'unmet' | 'unknown';
@@ -124,6 +180,7 @@ export function requirementStatus(parsed: ParsedRequirement, skillLevels: Map<st
     const anyMet = parsed.alternatives.some((alt) => (skillLevels.get(alt.skill.name) ?? 0) >= alt.level);
     return anyMet ? 'met' : 'unmet';
   }
+  if (parsed.combatLevel !== null) return calculateCombatLevel(skillLevels) >= parsed.combatLevel ? 'met' : 'unmet';
   if (parsed.quest) {
     const questName = parsed.text.replace(/\s*\(partial\)\s*$/i, '').trim();
     return matchesTitle({ name: questName }, completedQuestTitles) ? 'met' : 'unmet';

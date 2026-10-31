@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseRequirement, requirementStatus, summarizeRequirementStatuses } from './areaTasks';
+import { calculateCombatLevel, dropQuestCoveredSkills, keepHighestSkillRequirements, parseRequirement, requirementStatus, summarizeRequirementStatuses } from './areaTasks';
 
 const req = (text: string, quest = false) => ({ text, quest });
 
@@ -66,6 +66,12 @@ describe('parseRequirement', () => {
 
   it('parses a "N combat level" requirement into combatLevel', () => {
     expect(parseRequirement(req('100 combat level')).combatLevel).toBe(100);
+  });
+
+  it('treats a quest with trailing "recommended ..." advice as just the quest', () => {
+    const parsed = parseRequirement(req('The Dig Site recommended to make it easier to obtain Kudos', true));
+    expect(parsed.quest).toBe(true);
+    expect(parsed.text).toBe('The Dig Site');
   });
 
   it('parses a bare "N Combat" requirement into combatLevel too', () => {
@@ -138,8 +144,11 @@ describe('requirementStatus', () => {
     expect(requirementStatus(parseRequirement(req('99 Crafting or 99 Smithing')), skillLevels, completedQuests)).toBe('unmet');
   });
 
-  it('is unknown for a combat-level requirement — no combat-level formula to check it against', () => {
-    expect(requirementStatus(parseRequirement(req('63 Combat')), skillLevels, completedQuests)).toBe('unknown');
+  it('checks a combat-level requirement against the calculated combat level', () => {
+    const levels = new Map([['Attack', 60], ['Strength', 60], ['Defence', 60], ['Constitution', 60]]);
+    expect(calculateCombatLevel(levels)).toBe(Math.floor((1.3 * 120 + 60 + 60) / 4));
+    expect(requirementStatus(parseRequirement(req('69 Combat')), levels, completedQuests)).toBe('met');
+    expect(requirementStatus(parseRequirement(req('100 combat level')), levels, completedQuests)).toBe('unmet');
   });
 });
 
@@ -166,5 +175,50 @@ describe('summarizeRequirementStatuses', () => {
       label: 'Most Requirements Met',
       level: 'most',
     });
+  });
+});
+
+describe('keepHighestSkillRequirements', () => {
+  const rows = (...texts: string[]) => texts.map((text) => ({ parsed: parseRequirement(req(text)) }));
+
+  it('keeps only the highest level per skill', () => {
+    const result = keepHighestSkillRequirements(rows('81 Fishing (boostable)', '90 Fishing'));
+    expect(result.map((row) => row.parsed.text)).toEqual(['90 Fishing']);
+  });
+
+  it('keeps the highest regardless of order and leaves other rows alone', () => {
+    const result = keepHighestSkillRequirements(rows('90 Fishing', '50 Magic', '81 Fishing (boostable)', '500 music'));
+    expect(result.map((row) => row.parsed.text)).toEqual(['90 Fishing', '50 Magic', '500 music']);
+  });
+});
+
+describe('calculateCombatLevel', () => {
+  it('reaches 138 with every combat skill at 99', () => {
+    const levels = new Map(['Attack', 'Strength', 'Defence', 'Constitution', 'Prayer', 'Magic', 'Ranged', 'Summoning'].map((name) => [name, 99] as [string, number]));
+    expect(calculateCombatLevel(levels)).toBe(138);
+  });
+
+  it('uses the best of melee, magic and ranged', () => {
+    const levels = new Map([['Magic', 99], ['Constitution', 99], ['Defence', 99]]);
+    expect(calculateCombatLevel(levels)).toBe(Math.floor((1.3 * 198 + 99 + 99) / 4));
+  });
+
+  it('counts a fresh account as combat level 3', () => {
+    expect(calculateCombatLevel(new Map([['Attack', 1], ['Strength', 1], ['Defence', 1], ['Constitution', 10]]))).toBe(3);
+  });
+});
+
+describe('dropQuestCoveredSkills', () => {
+  const quests = [{ name: "Nomad's Requiem", skillRequirements: [{ skill: 'Mining', level: 66 }] }];
+  const rows = (...items: Array<[string, boolean]>) => items.map(([text, quest]) => ({ parsed: parseRequirement(req(text, quest)) }));
+
+  it('drops a skill a listed quest already requires at least as much of', () => {
+    const result = dropQuestCoveredSkills(rows(["Nomad's Requiem", true], ['60 Mining', false], ['70 Fishing', false]), quests);
+    expect(result.map((row) => row.parsed.text)).toEqual(["Nomad's Requiem", '70 Fishing']);
+  });
+
+  it('keeps a skill that demands more than the quest does, or when the quest is not listed', () => {
+    expect(dropQuestCoveredSkills(rows(["Nomad's Requiem", true], ['80 Mining', false]), quests)).toHaveLength(2);
+    expect(dropQuestCoveredSkills(rows(['60 Mining', false]), quests)).toHaveLength(1);
   });
 });

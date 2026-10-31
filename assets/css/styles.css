@@ -3509,11 +3509,19 @@ body::after {
 
 .task-tier-items ul {
   margin: 0.35rem 0 0;
-  padding-left: 1.1rem;
+  padding: 0;
+  list-style: none;
 }
 
 .task-tier-items li {
   line-height: 1.5;
+}
+
+.task-tier-items label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  cursor: pointer;
 }
 
 /* The reward box (TasksTab.vue) — deliberately its own bordered card, not
