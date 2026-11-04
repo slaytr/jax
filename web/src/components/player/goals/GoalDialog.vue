@@ -3,7 +3,7 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
 import { formatNumber } from '@shared/format.js';
 import { levelForXp, xpForLevel } from '@shared/xp-table.js';
-import { recentLabelNames } from '@/lib/goals';
+import { GOAL_MAX_LEVEL, recentLabelNames } from '@/lib/goals';
 import GoalLabelPicker from '@/components/player/goals/GoalLabelPicker.vue';
 
 /**
@@ -28,11 +28,13 @@ const emit = defineEmits<{
 }>();
 
 const value = computed(() => props.player.skillById?.[props.skill.id] ?? { level: 1, xp: 0 });
-const maxed = computed(() => value.value.level >= props.skill.max);
-const nextLevel = computed(() => Math.min(value.value.level + 1, props.skill.max));
+// Goals can target virtual levels (100-120) on every skill, not just the
+// skill's own cap — the xp tables run to 120 for all of them.
+const maxed = computed(() => value.value.level >= GOAL_MAX_LEVEL);
+const nextLevel = computed(() => Math.min(value.value.level + 1, GOAL_MAX_LEVEL));
 
 const targetType = ref<'level' | 'xp'>(maxed.value ? 'xp' : 'level');
-const levelInput = ref(maxed.value ? props.skill.max : nextLevel.value);
+const levelInput = ref(maxed.value ? GOAL_MAX_LEVEL : nextLevel.value);
 const xpInput = ref(xpForLevel(props.skill, nextLevel.value) ?? value.value.xp + 100000);
 const errorText = ref<string | null>(null);
 const selectedLabels = ref<string[]>([]);
@@ -40,7 +42,7 @@ const selectedLabels = ref<string[]>([]);
 function onLevelInput() {
   const level = Math.trunc(levelInput.value);
   if (!Number.isFinite(level) || level < 1) return;
-  const xp = xpForLevel(props.skill, Math.min(level, props.skill.max));
+  const xp = xpForLevel(props.skill, Math.min(level, GOAL_MAX_LEVEL));
   if (xp !== undefined) xpInput.value = xp;
 }
 
@@ -95,7 +97,7 @@ function submit() {
       <label class="goal-target-choice">
         <input type="radio" name="goal-target-type" value="level" v-model="targetType" :disabled="maxed" />
         <span>Level</span>
-        <input type="number" :min="value.level + 1" :max="skill.max" step="1" v-model.number="levelInput" :disabled="targetType !== 'level'" @input="onLevelInput" />
+        <input type="number" :min="value.level + 1" :max="GOAL_MAX_LEVEL" step="1" v-model.number="levelInput" :disabled="targetType !== 'level'" @input="onLevelInput" />
       </label>
       <label class="goal-target-choice">
         <input type="radio" name="goal-target-type" value="xp" v-model="targetType" />

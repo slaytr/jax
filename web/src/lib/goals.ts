@@ -9,6 +9,10 @@ import { statusOf } from '@shared/quest-status.js';
  * the rest of this port.
  */
 
+/** Highest level a goal can target — the xp tables (shared/xp-table.js) run
+ * to 120 for every skill, past the 99 cap of non-elite skills. */
+export const GOAL_MAX_LEVEL = 120;
+
 export const LABEL_COLOURS = ['#0b8fa3', '#cc3346', '#199e70', '#3987e5', '#dd6296', '#d95926', '#c98500', '#8b6fd9'];
 export const DEFAULT_LABEL_COLOUR = '#776d5f';
 
