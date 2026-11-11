@@ -56,16 +56,19 @@ async function main() {
     for (const row of bad) {
       const label = `snapshot ${row.snapshot_id} (${row.taken_at.toISOString()}) ${row.player_slug}`;
       const { before_qp: before, after_qp: after } = row;
-      // Quest points only ever go up, so the true value lies in [before, after];
-      // require them equal so the repair isn't a guess.
-      if (before === null || after === null || before !== after) {
+      // Quest points only ever go up, so the true value lies in [before, after].
+      // With both neighbours, require them equal so the repair isn't a guess. With
+      // no later snapshot (the zero is the newest row), the last good value is a
+      // safe floor; the next real read raises it if the player has gained points.
+      const value = after === null ? before : before === after ? before : null;
+      if (before === null || value === null) {
         console.log(`  ${label}: neighbours ${before}/${after} don't give a safe value — skipped`);
         continue;
       }
-      console.log(`  ${label}: quest_points 0 -> ${after}`);
+      console.log(`  ${label}: quest_points 0 -> ${value}`);
       if (apply) {
         await client.query('update player_snapshots set quest_points = $1 where snapshot_id = $2 and player_slug = $3', [
-          after,
+          value,
           row.snapshot_id,
           row.player_slug,
         ]);
@@ -73,9 +76,28 @@ async function main() {
       fixed += 1;
     }
 
-    const { rows: stale } = await client.query('select player_slug from player_state where quest_points = 0');
-    if (stale.length > 0) {
-      console.log(`\nNote: player_state still has quest_points = 0 for ${stale.map((r) => r.player_slug).join(', ')} (next update cycle will refresh it).`);
+    // player_state is what the update job's monotonic guard compares against, so
+    // a 0 there would let the next bad read through. Restore it from the newest
+    // non-zero snapshot value.
+    const { rows: stale } = await client.query(
+      `select st.player_slug,
+              (select p.quest_points from player_snapshots p join snapshots t on t.id = p.snapshot_id
+                where p.player_slug = st.player_slug and p.quest_points > 0
+                order by t.taken_at desc limit 1) as good_qp
+         from player_state st where st.quest_points = 0`,
+    );
+    for (const row of stale) {
+      if (row.good_qp === null) {
+        console.log(`  player_state ${row.player_slug}: no non-zero history — skipped`);
+        continue;
+      }
+      console.log(`  player_state ${row.player_slug}: quest_points 0 -> ${row.good_qp}`);
+      if (apply) {
+        await client.query('update player_state set quest_points = $1 where player_slug = $2 and quest_points = 0', [
+          row.good_qp,
+          row.player_slug,
+        ]);
+      }
     }
 
     console.log(apply ? `\nFixed ${fixed} row(s).` : `\nDry run: ${fixed} row(s) would be fixed. Re-run with --apply to write.`);
