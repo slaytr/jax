@@ -21,7 +21,7 @@ import { fetchAllPlayers } from './hiscores.mjs';
 import { fetchGroupRank } from './group-rank.mjs';
 import { fetchAllQuestPoints } from './quests.mjs';
 import { fetchAllLatestActivity } from './activity.mjs';
-import { isRedundant, mergePlayers, toSnapshot, HISTORY_VERSION } from './snapshots.mjs';
+import { isRedundant, keepQuestPointsMonotonic, mergePlayers, toSnapshot, HISTORY_VERSION } from './snapshots.mjs';
 import { appendDailySnapshot } from './history-store.mjs';
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
@@ -131,7 +131,10 @@ export async function runUpdate({ roster, previousLatest = null, log = defaultLo
 
   const group = roster.group ?? { name: 'Group', tagline: '' };
   const groupRank = await resolveGroupRank(group, previousLatest?.groupRank ?? null, log);
-  const quests = await fetchAllQuestPoints(roster.players, log.quest);
+  const quests = keepQuestPointsMonotonic(
+    await fetchAllQuestPoints(roster.players, log.quest),
+    previousLatest?.players ?? [],
+  );
   const activity = await fetchAllLatestActivity(roster.players, log.activity);
 
   const snapshot = toSnapshot(results, epochSeconds, groupRank, quests);
@@ -167,7 +170,10 @@ export async function runPlayerUpdate({ player, previousPlayer = null, log = def
   // fetchAllQuestPoints/fetchAllLatestActivity, unlike fetchAllPlayers,
   // return an object keyed by slug rather than an array — see their own
   // return shapes in quests.mjs/activity.mjs.
-  const questsBySlug = await fetchAllQuestPoints([player], log.quest);
+  const questsBySlug = keepQuestPointsMonotonic(
+    await fetchAllQuestPoints([player], log.quest),
+    previousPlayer ? [previousPlayer] : [],
+  );
   const quest = questsBySlug[player.slug];
   const activityBySlug = await fetchAllLatestActivity([player], log.activity);
   const activity = activityBySlug[player.slug];

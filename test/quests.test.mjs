@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { questPointsFrom } from '../scripts/quests.mjs';
-import { mergePlayers } from '../scripts/snapshots.mjs';
+import { keepQuestPointsMonotonic, mergePlayers } from '../scripts/snapshots.mjs';
 
 const quest = (title, status, questPoints) => ({ title, status, questPoints, difficulty: 0, members: false });
 
@@ -103,5 +103,45 @@ describe('mergePlayers with quest points', () => {
     assert.equal(player.stale, true, 'hiscore data is stale');
     assert.equal(player.questPoints, 42, 'but fresh quest points still land');
     assert.equal(player.questsStale, false);
+  });
+});
+
+describe('keepQuestPointsMonotonic', () => {
+  const previous = [
+    { slug: 'a', questPoints: 159, questsComplete: 107, completedQuests: ['Dragon Slayer'], startedQuests: ['Lost City'] },
+  ];
+
+  it('keeps the previous quest data when the new read is lower (e.g. a transient 0)', () => {
+    const fetched = { a: { ok: true, questPoints: 0, questsComplete: 0, completedQuests: [], startedQuests: [] } };
+    const result = keepQuestPointsMonotonic(fetched, previous);
+
+    assert.equal(result.a.ok, true);
+    assert.equal(result.a.questPoints, 159);
+    assert.equal(result.a.questsComplete, 107);
+    assert.deepEqual(result.a.completedQuests, ['Dragon Slayer']);
+    assert.deepEqual(result.a.startedQuests, ['Lost City']);
+  });
+
+  it('accepts an equal or higher read untouched', () => {
+    const fetched = {
+      a: { ok: true, questPoints: 161, questsComplete: 108, completedQuests: ['x'], startedQuests: [] },
+    };
+    assert.deepEqual(keepQuestPointsMonotonic(fetched, previous), fetched);
+    assert.equal(keepQuestPointsMonotonic({ a: { ok: true, questPoints: 159 } }, previous).a.questPoints, 159);
+  });
+
+  it('leaves failed reads and players with no previous value alone', () => {
+    const failed = { a: { ok: false, error: 'boom' }, b: { ok: true, questPoints: 0 } };
+    assert.deepEqual(keepQuestPointsMonotonic(failed, previous), failed);
+    assert.deepEqual(keepQuestPointsMonotonic({ a: { ok: true, questPoints: 3 } }, [{ slug: 'a', questPoints: null }]), {
+      a: { ok: true, questPoints: 3 },
+    });
+  });
+
+  it('does not mutate its inputs', () => {
+    const frozen = Object.freeze({ a: Object.freeze({ ok: true, questPoints: 0 }) });
+    const result = keepQuestPointsMonotonic(frozen, previous);
+    assert.equal(frozen.a.questPoints, 0);
+    assert.equal(result.a.questPoints, 159);
   });
 });

@@ -31,6 +31,38 @@ function questVector(questsBySlug = {}) {
 }
 
 /**
+ * Quest points can never go down, so a successful read lower than the value
+ * we already have is a bad read (RuneMetrics occasionally answers "ok" with
+ * an empty quest list, which sums to 0). In that case the previous quest data
+ * is kept wholesale — points, count and the completed/started lists — so the
+ * four never disagree. Run on the raw fetch results before they feed both
+ * toSnapshot() (history) and mergePlayers() (latest state).
+ */
+export function keepQuestPointsMonotonic(questsBySlug = {}, previousPlayers = []) {
+  const previousBySlug = new Map(previousPlayers.map((player) => [player.slug, player]));
+
+  return Object.fromEntries(
+    Object.entries(questsBySlug).map(([slug, result]) => {
+      const previous = previousBySlug.get(slug);
+      const lowered =
+        result?.ok && Number.isFinite(previous?.questPoints) && result.questPoints < previous.questPoints;
+      if (!lowered) return [slug, result];
+
+      return [
+        slug,
+        {
+          ...result,
+          questPoints: previous.questPoints,
+          questsComplete: previous.questsComplete ?? result.questsComplete,
+          completedQuests: previous.completedQuests ?? result.completedQuests,
+          startedQuests: previous.startedQuests ?? result.startedQuests,
+        },
+      ];
+    }),
+  );
+}
+
+/**
  * @param groupRank optional competitive-ladder standing; its rank is stored as
  *   `r` so day-over-day movement can be computed later.
  * @param questsBySlug optional quest-point results (from fetchAllQuestPoints),
